@@ -1,3 +1,8 @@
+PATH
+  remote: .
+  specs:
+    fargo (0.0.1)
+
 GEM
   remote: http://rubygems.org/
   specs:
@@ -26,6 +31,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  fargo!
   jeweler
   rake
   rcov

@@ -1,6 +1,6 @@
 source :rubygems
 
-# gem 'fargo', :path => '.'
+gem 'fargo', :path => '.'
 
 group :development do
   gem 'jeweler'
