@@ -1,6 +1,7 @@
 source :rubygems
 
 gem 'fargo', :path => '.'
+gem 'activesupport', '>= 3.0.0'
 
 group :development do
   gem 'jeweler'
