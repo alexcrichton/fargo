@@ -1,9 +1,10 @@
 module Fargo
   module Supports
     module NickList
+      extend ActiveSupport::Concern
       
-      def self.included(base)
-        base.after_setup :subscribe_to_nicks
+      included do
+        set_callback :setup, :after, :subscribe_to_nicks
       end
       
       def nicks

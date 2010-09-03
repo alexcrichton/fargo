@@ -1,9 +1,10 @@
 module Fargo
   module Supports
     module Persistence
-      
-      def self.included base
-        base.after_setup :setup_connection_cache
+      extend ActiveSupport::Concern
+
+      included do
+        set_callback :setup, :after, :setup_connection_cache
       end
       
       def lock_connection_with! nick, connection

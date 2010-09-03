@@ -1,6 +1,7 @@
 module Fargo
   module Supports
     module Downloads
+      extend ActiveSupport::Concern
 
       class Download < Struct.new(:nick, :file, :tth, :size)
         attr_accessor :percent, :status
@@ -13,8 +14,8 @@ module Fargo
       attr_reader :current_downloads, :finished_downloads, :queued_downloads, :failed_downloads,
                   :open_download_slots, :trying, :timed_out
       
-      def self.included base
-        base.after_setup :initialize_queues
+      included do
+        set_callback :setup, :after, :initialize_queues
       end
       
       def clear_failed_downloads

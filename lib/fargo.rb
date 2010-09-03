@@ -3,6 +3,7 @@ require 'fileutils'
 require 'active_support/dependencies/autoload'
 require 'active_support/core_ext/module/attribute_accessors'
 require 'active_support/buffered_logger'
+require 'active_support/concern'
 
 # Thread.abort_on_exception = true
 

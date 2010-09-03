@@ -1,9 +1,10 @@
 module Fargo
   module Supports
     module Searches
+      extend ActiveSupport::Concern
       
-      def self.included base
-        base.after_setup :subscribe_to_searches
+      included do
+        set_callback :setup, :after, :subscribe_to_searches
       end
       
       def search search

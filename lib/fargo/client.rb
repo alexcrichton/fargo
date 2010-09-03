@@ -1,11 +1,12 @@
+require 'active_support/callbacks'
+
 module Fargo
   class Client
 
-    @@after_setup_callbacks = []
-    def self.after_setup method
-      @@after_setup_callbacks << method
-    end
-    
+    include ActiveSupport::Callbacks
+
+    define_callbacks :setup
+
     include Fargo::Publisher
     include Fargo::Supports::Chat
     include Fargo::Supports::Uploads
@@ -61,7 +62,7 @@ module Fargo
         self.active_server = Fargo::Server.new active_options
       end
       
-      @@after_setup_callbacks.each { |callback| send callback }
+      run_callbacks :setup
     end
   
     def get_info nick

@@ -1,11 +1,12 @@
 module Fargo
   module Supports
     module Chat
+      extend ActiveSupport::Concern
       
-      def self.included(base)
-        base.after_setup :subscribe_to_chats
+      included do
+        set_callback :setup, :after, :subscribe_to_chats
       end
-      
+
       def messages
         @public_chats
       end
