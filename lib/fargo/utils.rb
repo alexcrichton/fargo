@@ -1,6 +1,6 @@
 module Fargo
   module Utils
-
+    
     # Lord knows why they're doing this...
     def generate_key lock
       lock_bytes = lock.bytes.to_a

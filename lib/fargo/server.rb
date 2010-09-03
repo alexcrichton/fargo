@@ -1,7 +1,7 @@
 module Fargo
   class Server
     
-    include Fargo::Utils::Publisher
+    include Fargo::Publisher
   
     def initialize options = {}
       @options = options

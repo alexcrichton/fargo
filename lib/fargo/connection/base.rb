@@ -6,7 +6,7 @@ module Fargo
 
     class Base
   
-      include Fargo::Utils::Publisher
+      include Fargo::Publisher
   
       attr_accessor :options, :socket
       

@@ -6,7 +6,7 @@ module Fargo
       @@after_setup_callbacks << method
     end
     
-    include Fargo::Utils::Publisher
+    include Fargo::Publisher
     include Fargo::Supports::Chat
     include Fargo::Supports::Uploads
     include Fargo::Supports::NickList

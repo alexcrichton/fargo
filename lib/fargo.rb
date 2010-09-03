@@ -1,44 +1,46 @@
 require 'socket'
-require 'thread'
-require 'logger'
 require 'fileutils'
-require 'zlib'
+require 'active_support/dependencies/autoload'
+require 'active_support/core_ext/module/attribute_accessors'
+require 'active_support/buffered_logger'
 
-require File.dirname(__FILE__) + '/fargo/utils'
-require File.dirname(__FILE__) + '/fargo/utils/publisher'
-require File.dirname(__FILE__) + '/fargo/parser'
-require File.dirname(__FILE__) + '/fargo/search'
-require File.dirname(__FILE__) + '/fargo/search/result'
-
-require File.dirname(__FILE__) + '/fargo/supports/chat'
-require File.dirname(__FILE__) + '/fargo/supports/searches'
-require File.dirname(__FILE__) + '/fargo/supports/nick_list'
-require File.dirname(__FILE__) + '/fargo/supports/uploads'
-require File.dirname(__FILE__) + '/fargo/supports/downloads'
-require File.dirname(__FILE__) + '/fargo/supports/persistence'
-
-require File.dirname(__FILE__) + '/fargo/connection/base'
-require File.dirname(__FILE__) + '/fargo/connection/download'
-require File.dirname(__FILE__) + '/fargo/connection/hub'
-require File.dirname(__FILE__) + '/fargo/connection/search'
-require File.dirname(__FILE__) + '/fargo/connection/upload'
-
-require File.dirname(__FILE__) + '/fargo/server'
-require File.dirname(__FILE__) + '/fargo/client'
-
-Thread.abort_on_exception = true
+# Thread.abort_on_exception = true
 
 module Fargo
+  extend ActiveSupport::Autoload
+
   class ConnectionException < RuntimeError; end
   
-  @@logger = Logger.new STDOUT
-  
-  def self.logger
-    @@logger
+  mattr_accessor(:logger){ ActiveSupport::BufferedLogger.new STDOUT }
+
+  autoload :Utils  
+  autoload :Publisher
+  autoload :Parser
+  autoload :Server
+  autoload :Client
+  autoload :Search
+  autoload :SearchResult
+  autoload :VERSION
+
+  module Supports
+    extend ActiveSupport::Autoload
+
+    autoload :Chat
+    autoload :Searches
+    autoload :NickList
+    autoload :Uploads
+    autoload :Downloads
+    autoload :Persistence
   end
-  
-  def self.logger= logger
-    @@logger = logger
+
+  module Connection
+    extend ActiveSupport::Autoload
+
+    autoload :Base
+    autoload :Download
+    autoload :Hub
+    autoload :Search
+    autoload :Upload
   end
-  
+
 end

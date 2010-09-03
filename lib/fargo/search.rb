@@ -1,5 +1,7 @@
 module Fargo
   class Search
+    
+    autoload :Result
   
     ANY = 1
     AUDIO = 2

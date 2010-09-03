@@ -1,3 +1,5 @@
+require 'zlib'
+
 module Fargo
   module Connection
     class Download < Base
