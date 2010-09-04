@@ -10,11 +10,11 @@ module Fargo
       def messages
         @public_chats
       end
-      
+
       def messages_with nick
         @chats[nick] if @chats
       end
-      
+
       def subscribe_to_chats
         @public_chats = []
         @chats = Hash.new{ |h, k| h[k] = [] }

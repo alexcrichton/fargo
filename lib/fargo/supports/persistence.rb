@@ -6,51 +6,47 @@ module Fargo
       included do
         set_callback :setup, :after, :setup_connection_cache
       end
-      
+
       def lock_connection_with! nick, connection
         @connection_cache[nick] = connection
       end
-      
+
       def connection_for nick
-        if @connection_cache
-          c = @connection_cache[nick]
-          return c if c.nil? || c.connected?
-          @connection_cache.delete nick
-        end
+        c = @connection_cache.try :[], nick
+        return c if c.nil? || c.connected?
+
+        # If it's present and not connected, remove it from the cache
+        @connection_cache.try :delete, nick
         nil
       end
       
       def connected_with? nick
-        if @connection_cache
-          c = @connection_cache[nick]
-          return c.connected? unless c.nil?
-        end
-        false
+        c = @connection_cache.try :[], nick
+        c.connected? unless c.nil?
       end 
       
       def disconnect_from nick
-        if @connection_cache
-          c = @connection_cache.delete nick
-          c.disconnect unless c.nil?
-        end
+        c = @connection_cache.try :delete, nick
+        c.disconnect unless c.nil?
       end
       
       def nicks_connected_with
         return [] if @connection_cache.nil?
+
         nicks = @connection_cache.keys
         nicks.reject{ |n| !connected_with? n } 
       end
       
       def setup_connection_cache
         @connection_cache = {}
-        
+
         subscribe { |type, hash|
           if type == :hub_disconnected
             nicks_connected_with.each{ |n| disconnect_from n }
           end
         }
       end
-      
+
     end
   end
 end

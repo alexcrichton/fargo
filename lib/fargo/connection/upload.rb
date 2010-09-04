@@ -1,3 +1,4 @@
+# TODO: actually get this class to work in some fashion
 module Fargo
   module Connection
     class Upload < Base

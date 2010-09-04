@@ -1,11 +1,19 @@
 module Fargo
   module Connection
     class Hub < Base
-  
+
       include Fargo::Utils
       include Fargo::Parser
       
-      # See <http://www.teamfair.info/DC-Protocol.htm> for specifics on protocol handling
+      attr_reader :hubname
+      
+      configure do |config|
+        config.address = '127.0.0.1'
+        config.port    = 7314
+      end
+
+      # See <http://www.teamfair.info/DC-Protocol.htm> for specifics on 
+      # the DC protocol
       def receive data
         message = parse_message data
 
@@ -14,40 +22,54 @@ module Fargo
             @validated = false
             write "$Key #{generate_key message[:lock]}"
           when :hubname
-            self[:hubname] = message[:name]
-            write "$ValidateNick #{self[:client].nick}" unless @validated
+            @hubname = message[:name]
+            write "$ValidateNick #{@client.config.nick}" unless @validated
           when :getpass
-            write "$MyPass #{self[:client].password || ''}"
+            write "$MyPass #{@client.password}"
           when :badpass, :hubfull
             Fargo.logger.warn "Disconnecting because of: #{message.inspect}"
             disconnect
           when :hello
-            if message[:who] == self[:nick] 
-              Fargo.logger.info "Connected to DC Hub #{self[:hubname]} (#{self[:address]}:#{self[:port]})"
+            if message[:who] == @client.config.nick
+              Fargo.logger.info "Connected to DC Hub #{@hubname} (#{config.address}:#{config.port})"
               @validated = true
+
               write "$Version 1,0091"
               write "$GetNickList"
-              write "$MyINFO $ALL #{self[:nick]} #{self[:client].description}$ $#{self[:client].speed || 'DSL'}#{self[:status] || 1.chr}$#{self[:client].email}$#{self[:client].share_size}$"
+              write "$MyINFO $ALL #{@client.config.nick} " +
+                "#{@client.description}$ $#{@client.speed || 'DSL'}" + 
+                "#{@status || 1.chr}$#{@client.email}$#{@client.share_size}$"
             end
             
           when :connect_to_me
-            return unless self[:client].nicks.include?(message[:nick])
+            if !@client.nicks.include?(message[:nick])
+              Fargo.logger.info "Invalid connect_to_me request from: #{message[:nick]}"
+              return
+            end
+
             @client_connections ||= []
             
             # we're going to initiate the download
             message[:first] = true
-            
+
             # the message will contain the port and address of who to connect to
-            connection = Fargo::Connection::Download.new self.options.merge(message)
+            connection = Fargo::Connection::Download.new @client
+            connection.configure do |config|
+              config.address = message[:address]
+              config.port    = message[:port]
+              config.first   = true
+            end
+            # self.options.merge(message)
             
             # proxy all messages from them back to the client and delete the connection if 
             # necessary
-            connection.subscribe { |*args| 
-              self[:client].publish *args
+            connection.subscribe { |*args|
+              @client.publish *args
               @client_connections.delete connection unless connection.connected?
             }
             
-            # establish the connection. This will also listen for data to be read/written
+            # establish the connection. This will also listen for data to be
+            # read/written
             connection.connect
             
             # keep track of who we're downloading from
@@ -55,31 +77,36 @@ module Fargo
             
           when :search
             # Make sure we received a valid search request
-            return unless message[:searcher].nil? || self[:client].nicks.include?(message[:searcher])
+            if message[:searcher].nil? || !@client.nicks.include?(message[:searcher])
+              Fargo.logger.info "Invalid search request: #{message.inspect}"
+              return
+            end
             
             # Let the client handle the results
-            @results = self[:client].search_files message
+            @results = @client.search_files message
             
-            # Send all the results to the peer. Take care of active/passive connections
+            # Send all the results to the peer. Take care of active/passive
+            # connections
             @results.each { |r| 
               if message[:address]
-                r.active_send self[:client].nick, message[:ip], message[:port]
+                r.active_send @client.config.nick, message[:ip], message[:port]
               else
-                write "$SR #{self[:client].nick} #{r}" 
+                write "$SR #{@client.config.nick} #{r}" 
               end
             }
-            
+
           when :revconnect
-            # TODO: Don't send RevConnectToMe when we're passive and receiving is passive
-            if self[:client].passive
-              write "$RevConnectToMe #{self[:client].nick} #{message[:who]}"
+            # TODO: Don't send RevConnectToMe when we're passive and 
+            # receiving is passive
+            if @client.config.passive
+              write "$RevConnectToMe #{@client.config.nick} #{message[:who]}"
             else
-              write "$ConnectToMe #{self[:client].nick} #{self[:client].address}:#{self[:client].extport}"
+              write "$ConnectToMe #{@client.config.nick} #{@client.config.address}:#{@client.config.extport}"
             end
             
           # proxy this message on up the stack if we don't handle it
           else
-            self[:client].publish message[:type], message
+            @client.publish message[:type], message
             
         end
       end
@@ -89,10 +116,10 @@ module Fargo
           @client_connections.each &:disconnect
           @client_connections.clear
         end
-        
+
         super
       end
-      
+
     end # Hub
   end # Connection
 end # Fargo

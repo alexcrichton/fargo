@@ -11,7 +11,7 @@ module Fargo
       def receive data
         message = parse_message data
         
-        self[:client].publish message[:type], message
+        @client.publish message[:type], message
       end
   
     end

@@ -3,13 +3,13 @@ module Fargo
     
     autoload :Result
   
-    ANY = 1
-    AUDIO = 2
+    ANY        = 1
+    AUDIO      = 2
     COMPRESSED = 3
-    DOCUMENT = 4
+    DOCUMENT   = 4
     EXECUTABLE = 5
-    VIDEO = 7
-    FOLDER = 8
+    VIDEO      = 7
+    FOLDER     = 8
   
     attr_accessor :size_restricted, :is_minimum_size, :size, :filetype, :pattern
   
@@ -26,15 +26,15 @@ module Fargo
     end
   
     def query= query
-      self.pattern = query.split(' ').join('$')
+      pattern = query.split(' ').join('$')
     end
     
     def queries
-      self.pattern.split("$")
+      pattern.split("$")
     end
     
     def query
-      self.pattern.gsub('$', ' ')
+      pattern.gsub('$', ' ')
     end
     
     def matches_result? map
