@@ -12,7 +12,7 @@ Jeweler::Tasks.new do |gem|
   gem.email       = ['alex@alexcrichton.com']
   gem.homepage    = 'http://github.com/alexcrichton/fargo'
 
-  gem.add_bundler_dependencies
+  gem.add_dependency 'activesupport', '>= 3.0.0'
   gem.files = FileList['lib/**/*.rb']
   gem.files += FileList['lib/**/*.rake']
   gem.files << 'VERSION'

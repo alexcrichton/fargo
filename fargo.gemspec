@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Alex Crichton"]
-  s.date = %q{2010-09-02}
+  s.date = %q{2010-09-04}
   s.description = %q{DC Client}
   s.email = ["alex@alexcrichton.com"]
   s.files = [
@@ -22,8 +22,9 @@ Gem::Specification.new do |s|
      "lib/fargo/connection/search.rb",
      "lib/fargo/connection/upload.rb",
      "lib/fargo/parser.rb",
+     "lib/fargo/publisher.rb",
      "lib/fargo/search.rb",
-     "lib/fargo/search/result.rb",
+     "lib/fargo/search_result.rb",
      "lib/fargo/server.rb",
      "lib/fargo/supports/chat.rb",
      "lib/fargo/supports/downloads.rb",
@@ -32,7 +33,6 @@ Gem::Specification.new do |s|
      "lib/fargo/supports/searches.rb",
      "lib/fargo/supports/uploads.rb",
      "lib/fargo/utils.rb",
-     "lib/fargo/utils/publisher.rb",
      "lib/fargo/version.rb"
   ]
   s.homepage = %q{http://github.com/alexcrichton/fargo}
@@ -46,21 +46,12 @@ Gem::Specification.new do |s|
     s.specification_version = 3
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
-      s.add_development_dependency(%q<jeweler>, [">= 0"])
-      s.add_development_dependency(%q<rake>, [">= 0"])
-      s.add_development_dependency(%q<rcov>, [">= 0"])
-      s.add_development_dependency(%q<rspec>, [">= 2.0.0.beta.19"])
+      s.add_runtime_dependency(%q<activesupport>, [">= 3.0.0"])
     else
-      s.add_dependency(%q<jeweler>, [">= 0"])
-      s.add_dependency(%q<rake>, [">= 0"])
-      s.add_dependency(%q<rcov>, [">= 0"])
-      s.add_dependency(%q<rspec>, [">= 2.0.0.beta.19"])
+      s.add_dependency(%q<activesupport>, [">= 3.0.0"])
     end
   else
-    s.add_dependency(%q<jeweler>, [">= 0"])
-    s.add_dependency(%q<rake>, [">= 0"])
-    s.add_dependency(%q<rcov>, [">= 0"])
-    s.add_dependency(%q<rspec>, [">= 2.0.0.beta.19"])
+    s.add_dependency(%q<activesupport>, [">= 3.0.0"])
   end
 end
 

@@ -2,6 +2,7 @@ PATH
   remote: .
   specs:
     fargo (0.0.1)
+      activesupport (>= 3.0.0)
 
 GEM
   remote: http://rubygems.org/
