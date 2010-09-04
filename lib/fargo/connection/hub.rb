@@ -50,18 +50,12 @@ module Fargo
 
             @client_connections ||= []
             
-            # we're going to initiate the download
-            message[:first] = true
-
-            # the message will contain the port and address of who to connect to
             connection = Fargo::Connection::Download.new @client
-            connection.configure do |config|
-              config.address = message[:address]
-              config.port    = message[:port]
-              config.first   = true
-            end
-            # self.options.merge(message)
-            
+            connection.config.address = message[:address]
+            connection.config.port    = message[:port]
+            # we're going to initiate the download
+            connection.config.first   = true
+
             # proxy all messages from them back to the client and delete the connection if 
             # necessary
             connection.subscribe { |*args|

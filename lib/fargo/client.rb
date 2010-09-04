@@ -84,9 +84,9 @@ module Fargo
       end
 
       if config.passive
-        hub.write "$RevConnectToMe #{self.nick} #{nick}"
+        hub.write "$RevConnectToMe #{self.config.nick} #{nick}"
       else
-        hub.write "$ConnectToMe #{nick} #{address}:#{active_port}"
+        hub.write "$ConnectToMe #{nick} #{config.address}:#{config.active_port}"
       end
     end
     
