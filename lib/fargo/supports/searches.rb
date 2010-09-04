@@ -57,7 +57,6 @@ module Fargo
             @search_objects.clear
           end
         end
-        
       end
       
     end
