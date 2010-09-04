@@ -133,12 +133,12 @@ module Fargo
         location = "#{config.address}:#{config.search_port}"
       end
 
-      hub.write "$Search #{location} #{query}"
+      hub.write "$Search #{location} #{query.to_s}"
     end
 
     # see hub/parser#@@search for what's passed in
     # searches this client's files based on those options and returns an array
-    # of Search::Results
+    # of SearchResult(s)
     def search_files options
       # TODO: implement me
       []

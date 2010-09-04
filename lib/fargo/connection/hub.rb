@@ -37,8 +37,9 @@ module Fargo
               write "$Version 1,0091"
               write "$GetNickList"
               write "$MyINFO $ALL #{@client.config.nick} " +
-                "#{@client.description}$ $#{@client.speed || 'DSL'}" + 
-                "#{@status || 1.chr}$#{@client.email}$#{@client.share_size}$"
+                "#{@client.description}$ $#{@client.config.speed || 'DSL'}" + 
+                "#{@status || 1.chr}$#{@client.config.email}" +
+                "$#{@client.share_size}$"
             end
             
           when :connect_to_me

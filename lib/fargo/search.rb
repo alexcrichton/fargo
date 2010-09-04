@@ -1,8 +1,6 @@
 module Fargo
   class Search
     
-    autoload :Result
-  
     ANY        = 1
     AUDIO      = 2
     COMPRESSED = 3
@@ -26,13 +24,13 @@ module Fargo
     end
   
     def query= query
-      pattern = query.split(' ').join('$')
+      @pattern = query.split(' ').join('$')
     end
     
     def queries
       pattern.split("$")
     end
-    
+
     def query
       pattern.gsub('$', ' ')
     end
