@@ -34,8 +34,8 @@ module Fargo
               Fargo.logger.info "Connected to DC Hub #{@hubname} (#{config.address}:#{config.port})"
               @validated = true
 
-              write "$Version 1,0091"
-              write "$GetNickList"
+              write '$Version 1,0091'
+              write '$GetNickList'
               write "$MyINFO $ALL #{@client.config.nick} " +
                 "#{@client.description}$ $#{@client.config.speed || 'DSL'}" + 
                 "#{@status || 1.chr}$#{@client.config.email}" +
@@ -56,8 +56,8 @@ module Fargo
             # we're going to initiate the download
             connection.config.first   = true
 
-            # proxy all messages from them back to the client and delete the connection if 
-            # necessary
+            # proxy all messages from them back to the client and delete the
+            # connection if necessary
             connection.subscribe { |*args|
               @client.publish *args
               @client_connections.delete connection unless connection.connected?

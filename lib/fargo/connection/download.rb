@@ -283,12 +283,12 @@ module Fargo
           path
         end
       end
-      
+
       def error message
         Fargo.logger.warn @last_error = message
         disconnect
       end
-  
+
     end
   end
 end
