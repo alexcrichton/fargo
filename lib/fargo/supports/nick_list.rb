@@ -23,10 +23,10 @@ module Fargo
           thread.wakeup if map[:type] == :myinfo && map[:nick].to_s == nick.to_s
         }
 
-        hub.subscribe &block
+        subscribe &block
         get_info nick
         sleep 5
-        hub.unsubscribe &block
+        unsubscribe &block
 
         @nick_info[nick]
       end
