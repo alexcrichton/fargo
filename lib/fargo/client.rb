@@ -48,13 +48,9 @@ module Fargo
     
     # Don't do this in initialization so we have time to set all the options
     def setup
-      new_options = options.merge(:client => self)
-
       @hub = Fargo::Connection::Hub.new self
-      @hub.configure do |hub_config|
-        hub_config.port = config.hub_port if config.hub_port
-        hub_config.port = config.hub_address if config.hub_address
-      end
+      @hub.config.port    = config.hub_port if config.hub_port
+      @hub.config.address = config.hub_address if config.hub_address
 
       unless config.passive
         # TODO: get this working again
@@ -141,7 +137,8 @@ module Fargo
     end
 
     # see hub/parser#@@search for what's passed in
-    # searches this client's files based on those options and returns an array of Search::Results
+    # searches this client's files based on those options and returns an array
+    # of Search::Results
     def search_files options
       # TODO: implement me
       []

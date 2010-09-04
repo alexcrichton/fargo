@@ -49,7 +49,7 @@ module Fargo
       
       def subscribe_to_nicks
         @nicks     = []
-        @nick_info = Hash.new{ {} }
+        @nick_info = Hash.new{ |h, k| h[k] = {} }
 
         subscribe do |type, map|
           case type

@@ -11,6 +11,8 @@ module Fargo
       set_callback :listen, :after do |connection|
         send_lock if connection.config.first
       end
+      
+      attr_accessor :download
 
       def pre_listen
         Fargo.logger.debug "Initiating connection on: #{config.address}:#{config.port}"
@@ -268,7 +270,7 @@ module Fargo
         return nil if @download.try(:file).nil?
 
         @file_path ||= begin
-          prefix   = @client.download_dir
+          prefix   = @client.config.download_dir
           filename = File.basename @download.file.gsub("\\", '/')
           path     = File.join(prefix, @other_nick, filename)
 

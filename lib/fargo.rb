@@ -5,14 +5,13 @@ require 'active_support/core_ext/module/attribute_accessors'
 require 'active_support/buffered_logger'
 require 'active_support/concern'
 
-# Thread.abort_on_exception = true
-
 module Fargo
   extend ActiveSupport::Autoload
 
   class ConnectionException < RuntimeError; end
   
-  mattr_accessor(:logger){ ActiveSupport::BufferedLogger.new STDOUT }
+  mattr_accessor:logger
+  self.logger = ActiveSupport::BufferedLogger.new STDOUT
 
   autoload :Utils  
   autoload :Publisher
