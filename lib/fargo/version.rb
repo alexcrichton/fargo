@@ -1,3 +1,3 @@
 module Fargo
-  VERSION = File.read(File.expand_path('../../../VERSION', __FILE__))
+  VERSION = '0.0.1'
 end
