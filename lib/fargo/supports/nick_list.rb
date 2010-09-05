@@ -18,15 +18,10 @@ module Fargo
         # If we're connected and we don't already have this user's info, ask the
         # server. We'll wait for 5 second to respond, otherwise we'll just
         # return nil and be done with it
-        thread = Thread.current
-        block = lambda { |type, map|
-          thread.wakeup if map[:type] == :myinfo && map[:nick].to_s == nick.to_s
+        info_gotten = lambda{ |type, map| 
+          map[:type] == :myinfo && map[:nick].to_s == nick.to_s
         }
-
-        subscribe &block
-        get_info nick
-        sleep 5
-        unsubscribe &block
+        timeout_response(5, info_gotten){ get_info nick }
 
         @nick_info[nick]
       end

@@ -65,7 +65,7 @@ module Fargo
       def disconnect
         Fargo.logger.debug "#{self}: Disconnecting connection"
 
-        write "$Quit #{self[:nick]}" if config.quit_on_disconnect
+        write "$Quit #{@client.config.nick}" if config.quit_on_disconnect
 
         if @threads
           @threads.each &:exit

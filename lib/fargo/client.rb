@@ -17,6 +17,8 @@ module Fargo
     include Fargo::Supports::Searches
     include Fargo::Supports::Downloads
     include Fargo::Supports::Persistence
+    include Fargo::Supports::Timeout
+    include Fargo::Supports::FileList
 
     # Options
     #   :hub_port

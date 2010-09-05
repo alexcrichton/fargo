@@ -117,7 +117,7 @@ module Fargo
               FileUtils.mkdir_p File.dirname(download_path), :mode => 0755
 
               begin_download!
-              
+
             else
               error 'Premature disconnect when key received'
             end
@@ -126,7 +126,7 @@ module Fargo
             if @handshake_step == 5
               @recvd          = 0
               @handshake_step = 6
-                            
+
               @zlib   = message[:zlib]
               @length = message[:size]
 
@@ -159,16 +159,24 @@ module Fargo
       def begin_download!
         @file = File.new download_path, File::CREAT | File::WRONLY
 
-        @offset ||= 0
-
-        @file.seek @offset
+        @file.seek @download.offset
         @file.sync      = true
         @socket.sync    = true
         @handshake_step = 5
 
+        if @download.file_list?
+          if @client_extensions.include? 'XmlBZList'
+            @download.file = 'files.xml.bz2'
+          elsif @client_extensions.include? 'BZList'
+            @download.file = 'MyList.bz2'
+          else
+            @download.file = 'MyList.DcLst' # TODO: support this?
+          end
+        end
+
         if @client_extensions.include? 'ADCGet'
           download_query = @download.file
-          if !@download.file_list? && @client_extensions.include?('TTHF')
+          if @download.tth && @client_extensions.include?('TTHF')
             download_query = @download.tth.gsub ':', '/'
           end
 
@@ -178,9 +186,9 @@ module Fargo
             Fargo.logger.debug "Enabling zlib compression on: #{@download.file}"
           end
 
-          write "$ADCGET file #{download_query} #{@offset} -1 #{zlig}"
+          write "$ADCGET file #{download_query} #{@download.offset} #{@download.size} #{zlig}"
         else
-          write "$Get #{@download.file}$#{@offset + 1}"
+          write "$Get #{@download.file}$#{@download.offset + 1}"
         end
 
         # This is the thread for the timeout of a connection. The @exit_time
@@ -260,7 +268,7 @@ module Fargo
         end
         
         # clear out these variables
-        @zs = @offset = @file_path = @zlib = @download = @length = @recvd = nil        
+        @zs = @file_path = @zlib = @download = @length = @recvd = nil        
 
         # Go back to the get step
         @handshake_step = 5

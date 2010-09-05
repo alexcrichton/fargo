@@ -3,7 +3,7 @@ module Fargo
     module Downloads
       extend ActiveSupport::Concern
 
-      class Download < Struct.new(:nick, :file, :tth, :size)
+      class Download < Struct.new(:nick, :file, :tth, :size, :offset)
         attr_accessor :percent, :status
 
         def file_list?
@@ -27,18 +27,15 @@ module Fargo
         finished_downloads.clear
       end
 
-      def download nick, file, tth, size
+      def download nick, file, tth=nil, size=-1, offset=0
         raise ConnectionException.new 'Not connected yet!' unless hub
+        raise 'File cannot be nil!' if file.nil?
 
         unless nicks.include? nick
           raise ConnectionException.new "User #{nick} does not exist!" 
         end
 
-        if tth.nil? || size.nil? || file.nil?
-          raise 'TTH or size or file are nil!'
-        end
-
-        download         = Download.new nick, file, tth, size
+        download         = Download.new nick, file, tth, size, offset
         download.percent = 0
         download.status  = 'idle'
 
@@ -47,7 +44,7 @@ module Fargo
         @to_download << download
         true
       end
-      
+
       def retry_download nick, file
         dl = (@failed_downloads[nick] ||= []).detect{ |h| h.file == file }
 

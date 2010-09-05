@@ -31,6 +31,8 @@ module Fargo
     autoload :Uploads
     autoload :Downloads
     autoload :Persistence
+    autoload :Timeout
+    autoload :FileList
   end
 
   module Connection
