@@ -3,6 +3,8 @@ PATH
   specs:
     fargo (0.0.1)
       activesupport (>= 3.0.0)
+      bzip2-ruby
+      libxml-ruby
 
 GEM
   remote: http://rubygems.org/
