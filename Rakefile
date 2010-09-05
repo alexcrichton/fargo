@@ -1,27 +1,8 @@
 require 'rubygems'
 require 'bundler/setup'
 
-require 'jeweler'
 require 'rspec/core/rake_task'
-
-Jeweler::Tasks.new do |gem|
-  gem.name        = 'fargo'
-  gem.authors     = ['Alex Crichton']
-  gem.description = 'DC Client'
-  gem.summary     = 'A client for the DC protocol'
-  gem.email       = ['alex@alexcrichton.com']
-  gem.homepage    = 'http://github.com/alexcrichton/fargo'
-
-  gem.add_dependency 'activesupport', '>= 3.0.0'
-  gem.add_dependency 'libxml-ruby'
-  gem.add_dependency 'bzip2-ruby'
-  gem.files = FileList['lib/**/*.rb']
-  gem.files += FileList['lib/**/*.rake']
-  gem.files << 'VERSION'
-  gem.test_files = []
-end
-Jeweler::GemcutterTasks.new
-
+Bundler::GemHelper.install_tasks
 RSpec::Core::RakeTask.new(:spec)
 
 if RUBY_VERSION < '1.9'

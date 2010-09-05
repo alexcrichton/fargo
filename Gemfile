@@ -7,7 +7,6 @@ gem 'libxml-ruby', :require => 'libxml'
 gem 'activesupport', '>= 3.0.0'
 
 group :development do
-  gem 'jeweler'
   gem 'rake'
 
   gem 'rcov', :platforms => :ruby_18
