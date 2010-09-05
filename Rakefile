@@ -13,6 +13,8 @@ Jeweler::Tasks.new do |gem|
   gem.homepage    = 'http://github.com/alexcrichton/fargo'
 
   gem.add_dependency 'activesupport', '>= 3.0.0'
+  gem.add_dependency 'libxml-ruby'
+  gem.add_dependency 'bzip2-ruby'
   gem.files = FileList['lib/**/*.rb']
   gem.files += FileList['lib/**/*.rake']
   gem.files << 'VERSION'

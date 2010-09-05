@@ -28,9 +28,11 @@ Gem::Specification.new do |s|
      "lib/fargo/server.rb",
      "lib/fargo/supports/chat.rb",
      "lib/fargo/supports/downloads.rb",
+     "lib/fargo/supports/file_list.rb",
      "lib/fargo/supports/nick_list.rb",
      "lib/fargo/supports/persistence.rb",
      "lib/fargo/supports/searches.rb",
+     "lib/fargo/supports/timeout.rb",
      "lib/fargo/supports/uploads.rb",
      "lib/fargo/utils.rb",
      "lib/fargo/version.rb"
@@ -47,11 +49,17 @@ Gem::Specification.new do |s|
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
       s.add_runtime_dependency(%q<activesupport>, [">= 3.0.0"])
+      s.add_runtime_dependency(%q<libxml-ruby>, [">= 0"])
+      s.add_runtime_dependency(%q<bzip2-ruby>, [">= 0"])
     else
       s.add_dependency(%q<activesupport>, [">= 3.0.0"])
+      s.add_dependency(%q<libxml-ruby>, [">= 0"])
+      s.add_dependency(%q<bzip2-ruby>, [">= 0"])
     end
   else
     s.add_dependency(%q<activesupport>, [">= 3.0.0"])
+    s.add_dependency(%q<libxml-ruby>, [">= 0"])
+    s.add_dependency(%q<bzip2-ruby>, [">= 0"])
   end
 end
 
