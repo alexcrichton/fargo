@@ -3,24 +3,24 @@ require 'zlib'
 module Fargo
   module Connection
     class Download < Base
-      
+
       include Fargo::Utils
       include Fargo::Parser
-      
+
       set_callback :listen, :before, :pre_listen
       set_callback :listen, :after do |connection|
         send_lock if connection.config.first
       end
-      
+
       attr_accessor :download
 
       def pre_listen
         Fargo.logger.debug "Initiating connection on: #{config.address}:#{config.port}"
-        
+
         config.quit_on_disconnect = false
         @lock, @pk = generate_lock
         @handshake_step = 0
-        
+
         @buffer_size = (2 << 12).freeze
       end
 
@@ -30,12 +30,12 @@ module Fargo
 
       def read_data
         # only download if we're at the correct time
-        return super if @handshake_step != 6 
+        return super if @handshake_step != 6
 
         @exit_time = 20 # reset our timeout time
-        
+
         data = @socket.readpartial @buffer_size
-        
+
         if @zlib
           @zs = Zlib::Inflate.new if @zs.nil?
           data = @zs.inflate data
@@ -50,11 +50,11 @@ module Fargo
           error "#{self} #{@recvd} > #{@length}!!!"
           download_finished!
         else
-          publish :download_progress, :percent    => @recvd.to_f / @length, 
-                                      :file       => download_path, 
-                                      :nick       => @other_nick, 
+          publish :download_progress, :percent    => @recvd.to_f / @length,
+                                      :file       => download_path,
+                                      :nick       => @other_nick,
                                       :download   => @download,
-                                      :size       => @length, 
+                                      :size       => @length,
                                       :compressed => @zlib
         end
       rescue IOError => e
@@ -67,7 +67,7 @@ module Fargo
         case message[:type]
           when :mynick
             if @handshake_step == 0
-              @handshake_step  = 1 
+              @handshake_step  = 1
               @other_nick      = message[:nick]
 
               @client.connected_with! @other_nick
@@ -94,7 +94,7 @@ module Fargo
             else
               error 'Premature disconnect when lock received'
             end
-            
+
           when :supports
             if @handshake_step == 2
               @client_extensions = message[:extensions]
@@ -102,7 +102,7 @@ module Fargo
             else
               error 'Premature disconnect when supports received'
             end
-            
+
           when :direction
             if @handshake_step == 3 && message[:direction] == 'upload'
               @client_num     = message[:number]
@@ -110,7 +110,7 @@ module Fargo
             else
               error 'Premature disconnect when direction received'
             end
-            
+
           when :key
             if @handshake_step == 4 && generate_key(@lock) == message[:key]
 
@@ -132,9 +132,9 @@ module Fargo
 
               write "$Send" unless @client_extensions.include? 'ADCGet'
 
-              publish :download_started, :file     => download_path, 
-                                         :download => @download, 
-                                         :nick     => @other_nick   
+              publish :download_started, :file     => download_path,
+                                         :download => @download,
+                                         :nick     => @other_nick
             else
               error "Premature disconnect when #{message[:type]} received"
             end
@@ -142,20 +142,20 @@ module Fargo
           when :noslots
             if @download
               Fargo.logger.debug "#{self}: No Slots for #{self[:download]}"
-              
+
               download_failed! 'No Slots'
             end
 
           when :error
             error "#{self}: Error! #{message[:message]}"
-          
-          # This wasn't handled by us, proxy it on up to the client  
+
+          # This wasn't handled by us, proxy it on up to the client
           else
             @client.publish message[:type], message
 
         end
       end
-      
+
       def begin_download!
         @file = File.open download_path, 'wb'
 
@@ -194,66 +194,66 @@ module Fargo
         # This is the thread for the timeout of a connection. The @exit_time
         # variable is reset to 20 after every bit of information is received.
         @exit_time = 20
-        @exit_thread = Thread.start { 
+        @exit_thread = Thread.start {
           while @exit_time > 0
             sleep 1
             @exit_time -= 1
             Fargo.logger.debug "#{self} time out in #{@exit_time} seconds"
           end
 
-          download_failed! 'Download timeout!' 
+          download_failed! 'Download timeout!'
         }
-        
+
         Fargo.logger.debug "#{self}: Beginning download of #{@download}"
       end
-      
+
       def download_failed! msg, opts = {}
         Fargo.logger.debug "#{self}: #{msg} #{@download}"
-        
+
         # cache because publishing must be at end of method and we're about to
         # clear these
         path, download = download_path, @download
 
         reset_download
 
-        publish :download_failed, opts.merge(:nick => @other_nick, 
-                                             :download   => download, 
-                                             :file       => path, 
+        publish :download_failed, opts.merge(:nick => @other_nick,
+                                             :download   => download,
+                                             :file       => path,
                                              :last_error => msg)
 
         @exit_thread = nil
       end
-      
+
       def download_finished!
         Fargo.logger.debug "#{self}: Finished download of #{@download}"
-        
+
         # cache because publishing must be at end of method and we're about to
         # clear these
         path, download = download_path, @download
-        
+
         reset_download
-        
-        publish :download_finished, :file => path, :download => download, 
+
+        publish :download_finished, :file => path, :download => download,
                                     :nick => @other_nick
       end
-      
+
       def disconnect
         Fargo.logger.debug "#{self} Disconnecting from: #{@other_nick}"
-        
+
         super
 
         if @download
           download_failed! @last_error, :recvd => @recvd, :length => @length
         end
-        
+
         reset_download
       end
-     
+
       private
       def reset_download
         @file.close unless @file.nil? || @file.closed?
         if @file_path && File.exists?(@file_path) && File.size(@file_path) == 0
-          File.delete(@file_path) 
+          File.delete(@file_path)
         end
 
         if @socket
@@ -262,18 +262,18 @@ module Fargo
         end
 
         # If this was called from exit thread, don't kill it
-        if @exit_thread != Thread.current 
+        if @exit_thread != Thread.current
           @exit_thread.exit if @exit_thread && @exit_thread.alive?
           @exit_thread = nil
         end
-        
+
         # clear out these variables
-        @zs = @file_path = @zlib = @download = @length = @recvd = nil        
+        @zs = @file_path = @zlib = @download = @length = @recvd = nil
 
         # Go back to the get step
         @handshake_step = 5
       end
-  
+
       def download_path
         return nil if @download.try(:file).nil?
 
