@@ -28,8 +28,8 @@ module Fargo
         download nick, 'files.xml.bz2'
       end
 
-      # Wait for the results, don't get them just yet
-      def file_list! nick
+      # Wait for the results to arrive, timed out after some time
+      def file_list! nick, timeout = 10
         @file_list ||= {}
         return parse_file_list(@file_list[nick]) if @file_list.has_key?(nick)
 
@@ -43,7 +43,7 @@ module Fargo
           end
         }
 
-        timeout_response(10, list_gotten){ file_list nick }
+        timeout_response(timeout, list_gotten){ file_list nick }
 
         parse_file_list list
       end
@@ -65,13 +65,14 @@ module Fargo
         list = {}
 
         node.each_element do |element|
+          element_name = element['Name']
           if element.name =~ /directory/i
-            list[element['Name']] = construct_file_list element
+            list[element_name] = construct_file_list element
           else
-            list[element['Name']] = Listing.new(
+            list[element_name] = Listing.new(
               element['TTH'],
               element['Size'],
-              element['Name']
+              element_name
             )
           end
         end
