@@ -32,7 +32,7 @@ module Fargo
     #   :passive
     #   :download_slots
     #   :download_dir
-    #   :slots    
+    #   :slots
     configure do |config|
       config.download_dir = '/tmp/fargo/downloads'
       config.version      = '0.75'
@@ -43,11 +43,11 @@ module Fargo
     end
 
     attr_reader :hub, :searcher, :active_server
-    
+
     def initialize
       @connection_timeout_threads = {}
     end
-    
+
     # Don't do this in initialization so we have time to set all the options
     def setup
       @hub = Fargo::Connection::Hub.new self
@@ -57,13 +57,13 @@ module Fargo
       unless config.passive
         # TODO: get this working again
         # Always create a search connection for this.
-        # searcher_options = new_options.merge :port => search_port, 
+        # searcher_options = new_options.merge :port => search_port,
         #                                      :connection => Fargo::Connection::Search
         # @searcher    = Fargo::Server.new searcher_options
-        # 
-        # # For now, being active means that you can only download things. Always make a 
+        #
+        # # For now, being active means that you can only download things. Always make a
         # # connection which downloads things.
-        # active_options     = new_options.merge :port => active_port, 
+        # active_options     = new_options.merge :port => active_port,
         #                                        :connection => Fargo::Connection::Download
         # @active_server = Fargo::Server.new active_options
       end
@@ -91,7 +91,7 @@ module Fargo
         hub.write "$ConnectToMe #{nick} #{config.address}:#{config.active_port}"
       end
     end
-    
+
     def connected_with! nick
       return unless @connection_timeout_threads.has_key?(nick)
       @connection_timeout_threads.delete(nick).exit
@@ -110,7 +110,7 @@ module Fargo
 
       true
     end
-    
+
     def connected?
       hub.try :connected?
     end
@@ -153,9 +153,9 @@ module Fargo
     private
 
     def connection_timeout! nick
-      @connection_timeout_threads.delete(nick).disconnect
+      @connection_timeout_threads.delete(nick)
       publish :connection_timeout, :nick => nick
     end
-    
+
   end
 end
