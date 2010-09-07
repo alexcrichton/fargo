@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.email       = 'alex@alexcrichton.com'
   s.homepage    = 'http://github.com/alexcrichton/fargo'
   s.summary     = 'A client for the DC protocol'
-  s.description = 'DC Client'
+  s.description = 'Direct Connect (DC) Client implemented in pure Ruby'
 
   s.files        = `git ls-files lib/*`.split("\n")
   s.require_path = 'lib'
