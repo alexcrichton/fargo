@@ -40,7 +40,7 @@ module Fargo
           @zs = Zlib::Inflate.new if @zs.nil?
           data = @zs.inflate data
         end
-        
+
         @file << data
         @recvd += data.length
 
@@ -157,7 +157,7 @@ module Fargo
       end
       
       def begin_download!
-        @file = File.new download_path, File::CREAT | File::WRONLY
+        @file = File.open download_path, 'wb'
 
         @file.seek @download.offset
         @file.sync      = true
