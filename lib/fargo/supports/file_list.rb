@@ -12,7 +12,7 @@ module Fargo
         @file_list ||= {}
         return parse_file_list(@file_list[nick]) if @file_list.has_key?(nick)
 
-        file_gotten = lambda{ |type, map| 
+        file_gotten = lambda{ |type, map|
           case type
             when :download_finished, :download_failed, :connection_timeout
               if map[:nick] == nick
@@ -34,7 +34,7 @@ module Fargo
         return parse_file_list(@file_list[nick]) if @file_list.has_key?(nick)
 
         list = nil
-        list_gotten = lambda{ |type, map| 
+        list_gotten = lambda{ |type, map|
           if type == :file_list && map[:nick] == nick
             list = map[:list]
             true
