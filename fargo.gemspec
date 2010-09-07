@@ -6,7 +6,7 @@ require 'fargo/version'
 Gem::Specification.new do |s|
   s.name     = 'fargo'
   s.version  = Fargo::VERSION
-  s.platform = Gem::Platform::RUBY  
+  s.platform = Gem::Platform::RUBY
 
   s.author      = 'Alex Crichton'
   s.email       = 'alex@alexcrichton.com'
