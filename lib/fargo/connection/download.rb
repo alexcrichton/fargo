@@ -148,6 +148,7 @@ module Fargo
 
           when :error
             error "#{self}: Error! #{message[:message]}"
+            download_failed! message[:message]
 
           # This wasn't handled by us, proxy it on up to the client
           else
