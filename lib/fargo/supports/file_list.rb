@@ -56,6 +56,7 @@ module Fargo
 
       def parse_file_list file, nick
         if file && File.exists?(file)
+          Fargo.logger.debug "Parsing file list for: '#{nick}' at '#{file}'"
           xml = Bzip2::Reader.open(file).read
           doc = LibXML::XML::Document.string xml
 
