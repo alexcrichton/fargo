@@ -10,19 +10,19 @@ module Fargo
           file == 'files.xml.bz2'
         end
       end
-      
+
       attr_reader :current_downloads, :finished_downloads, :queued_downloads,
                   :failed_downloads, :open_download_slots, :trying, :timed_out,
                   :download_slots
-      
+
       included do
         set_callback :setup, :after, :initialize_queues
       end
-      
+
       def clear_failed_downloads
         failed_downloads.clear
       end
-      
+
       def clear_finished_downloads
         finished_downloads.clear
       end
@@ -47,7 +47,7 @@ module Fargo
 
         raise 'File must not be nil!' if file.nil?
         unless nicks.include? nick
-          raise ConnectionException.new "User #{nick} does not exist!" 
+          raise ConnectionException.new "User #{nick} does not exist!"
         end
 
         tth = tth.gsub /^TTH:/, '' if tth
@@ -69,13 +69,13 @@ module Fargo
           Fargo.logger.warn "#{file} isn't a failed download for: #{nick}!"
           return
         end
-        
+
         @failed_downloads[nick].delete dl
         download dl.nick, dl.file, dl.tth, dl.size
       end
 
       def remove_download nick, file
-        # We need to synchronize this access, so append these arguments to a 
+        # We need to synchronize this access, so append these arguments to a
         # queue to be processed later
         @to_remove << [nick, file]
         true
@@ -110,10 +110,10 @@ module Fargo
         @downloading_lock.synchronize {
           # Find the first nick and download list
           arr = @queued_downloads.to_a.detect{ |nick, downloads|
-            downloads.size > 0 && 
-              !@current_downloads.has_key?(nick) && 
-              !@trying.include?(nick) && 
-              !@timed_out.include?(nick) && 
+            downloads.size > 0 &&
+              !@current_downloads.has_key?(nick) &&
+              !@trying.include?(nick) &&
+              !@timed_out.include?(nick) &&
               has_slot?(nick)
           }
 
@@ -148,7 +148,7 @@ module Fargo
           return nil
         end
 
-        download                 = @queued_downloads[user].shift 
+        download                 = @queued_downloads[user].shift
         @current_downloads[user] = download
         @trying.delete user
 
@@ -177,12 +177,14 @@ module Fargo
 
         download
       end
-      
+
       def download_finished! user, failed
         download = nil
-        @downloading_lock.synchronize{ 
+        @downloading_lock.synchronize{
           download = @current_downloads.delete user
           @open_download_slots += 1
+
+          # connection_for(user).disconnect if @queued_downloads[user].size == 0
         }
 
         if failed
@@ -193,7 +195,7 @@ module Fargo
 
         start_download # Start another download if possible
       end
-      
+
       def connection_failed_with! nick
         @trying.delete nick
         @timed_out << nick
@@ -241,7 +243,7 @@ module Fargo
         @download_removal_thread.exit
       end
 
-      # Both of these need access to the synchronization lock, so we use 
+      # Both of these need access to the synchronization lock, so we use
       # separate threads to do these processes.
       def start_download_queue_threads
         @to_download = Queue.new
@@ -273,6 +275,6 @@ module Fargo
         }
       end
 
-    end # Downloads  
+    end # Downloads
   end # Supports
 end # Fargo
