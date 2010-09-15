@@ -177,7 +177,7 @@ module Fargo
         if @client_extensions.include? 'ADCGet'
           download_query = @download.file
           if @download.tth && @client_extensions.include?('TTHF')
-            download_query = @download.tth.gsub ':', '/'
+            download_query = 'TTH/' + @download.tth
           end
 
           zlig = ''
