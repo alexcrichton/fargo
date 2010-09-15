@@ -27,13 +27,30 @@ module Fargo
         finished_downloads.clear
       end
 
-      def download nick, file, tth=nil, size=-1, offset=0
+      def download nick, file=nil, tth=nil, size=-1, offset=0
         raise ConnectionException.new 'Not connected yet!' unless hub
-        raise 'File cannot be nil!' if file.nil?
 
+        if nick.is_a?(Supports::FileList::Listing)
+          listing = nick
+          nick    = listing.nick
+          file    = listing.name
+          tth     = listing.tth
+          size    = listing.size
+        elsif nick.is_a?(Download)
+          dl     = nick
+          nick   = dl.nick
+          file   = dl.file
+          tth    = dl.tth
+          size   = dl.size || -1
+          offset = dl.offset || 0
+        end
+
+        raise 'File must not be nil!' if file.nil?
         unless nicks.include? nick
           raise ConnectionException.new "User #{nick} does not exist!" 
         end
+
+        tth = tth.gsub /^TTH:/, '' if tth
 
         download         = Download.new nick, file, tth, size, offset
         download.percent = 0
