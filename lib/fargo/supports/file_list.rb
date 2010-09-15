@@ -10,7 +10,9 @@ module Fargo
       # event :file_list to get notified.
       def file_list nick
         @file_list ||= {}
-        return parse_file_list(@file_list[nick]) if @file_list.has_key?(nick)
+        if @file_list.has_key?(nick)
+          return parse_file_list(@file_list[nick], nick)
+        end
 
         file_gotten = lambda{ |type, map|
           case type
@@ -31,7 +33,9 @@ module Fargo
       # Wait for the results to arrive, timed out after some time
       def file_list! nick, timeout = 10
         @file_list ||= {}
-        return parse_file_list(@file_list[nick]) if @file_list.has_key?(nick)
+        if @file_list.has_key?(nick)
+          return parse_file_list(@file_list[nick], nick)
+        end
 
         list = nil
         list_gotten = lambda{ |type, map|
