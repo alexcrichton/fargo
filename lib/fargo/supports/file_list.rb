@@ -4,7 +4,7 @@ require 'libxml'
 module Fargo
   module Supports
     module FileList
-      class Listing < Struct.new(:tth, :size, :name); end
+      class Listing < Struct.new(:tth, :size, :name, :nick); end
 
       # Lazily load the file list for the nick. Subscribe to the client for the
       # event :file_list to get notified.
@@ -45,35 +45,33 @@ module Fargo
 
         timeout_response(timeout, list_gotten){ file_list nick }
 
-        parse_file_list list
+        parse_file_list list, nick
       end
 
       private
 
-      def parse_file_list file
+      def parse_file_list file, nick
         if file && File.exists?(file)
           xml = Bzip2::Reader.open(file).read
           doc = LibXML::XML::Document.string xml
 
-          construct_file_list doc.root
+          construct_file_list doc.root, nil, nick
         else
           nil
         end
       end
 
-      def construct_file_list node
+      def construct_file_list node, prefix, nick
         list = {}
 
         node.each_element do |element|
-          element_name = element['Name']
+          path = prefix ? prefix + "\\" + element['Name'] : element['Name']
+
           if element.name =~ /directory/i
-            list[element_name] = construct_file_list element
+            list[element['Name']] = construct_file_list element, path, nick
           else
-            list[element_name] = Listing.new(
-              element['TTH'],
-              element['Size'],
-              element_name
-            )
+            list[element['Name']] = Listing.new(element['TTH'], element['Size'],
+              path, nick)
           end
         end
 
