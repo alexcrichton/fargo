@@ -255,8 +255,13 @@ module Fargo
               download.status = 'timeout'
               (@failed_downloads[download.nick] ||= []) << download
             else
-              (@queued_downloads[download.nick] ||= []) << download
-              start_download
+              @queued_downloads[download.nick] ||= []
+
+              unless @queued_downloads[download.nick].include?(download) ||
+                  @current_downloads[download.nick] == download
+                @queued_downloads[download.nick] << download
+                start_download
+              end
             end
           }
         }
