@@ -42,11 +42,10 @@ module Fargo
         end
 
         @file << data
+        @file.flush
         @recvd += data.length
 
-        if @recvd == @length
-          download_finished!
-        elsif @recvd > @length
+        if @recvd > @length
           error "#{self} #{@recvd} > #{@length}!!!"
           download_finished!
         else
@@ -56,6 +55,8 @@ module Fargo
                                       :download   => @download,
                                       :size       => @length,
                                       :compressed => @zlib
+
+          download_finished! if @recvd == @length
         end
       rescue IOError => e
         error "#{self}: IOError, disconnecting #{e}"
@@ -236,6 +237,7 @@ module Fargo
 
         publish :download_finished, :file => path, :download => download,
                                     :nick => @other_nick
+        disconnect if download.file_list?
       end
 
       def disconnect
