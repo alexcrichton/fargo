@@ -43,9 +43,7 @@ module Fargo
       end
 
       def connected?
-        val = !@socket.nil? && !@socket.closed?
-        Fargo.logger.debug "#{self} Testing if connected: #{val}"
-        val
+        !@socket.nil? && !@socket.closed?
       end
 
       def listen
