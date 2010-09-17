@@ -53,7 +53,7 @@ module Fargo
                                       :file       => download_path,
                                       :nick       => @other_nick,
                                       :download   => @download,
-                                      :size       => @length,
+                                      :size       => @recvd,
                                       :compressed => @zlib
 
           download_finished! if @recvd == @length
