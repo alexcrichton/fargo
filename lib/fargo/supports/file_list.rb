@@ -81,8 +81,11 @@ module Fargo
           if element.name =~ /directory/i
             list[element['Name']] = construct_file_list element, path, nick
           else
-            list[element['Name']] = Listing.new(element['TTH'], element['Size'],
-              path, nick)
+            # Why does this consistently segfault ruby 1.8.7 when I convert
+            # element['Size'] to an integer before the struct is created?!
+            element = list[element['Name']] = Listing.new(element['TTH'],
+              element['Size'], path, nick)
+            element.size = element.size.to_i
           end
         end
 
