@@ -13,30 +13,33 @@ module Fargo
 
       def connection_for nick
         c = @connection_cache.try :[], nick
-        return c if c.nil? || c.connected?
+        if c.nil? || c.connected?
+          Fargo.logger.debug "#{self} has connection with: #{nick}: #{c}"
+          return c
+        end
 
         # If it's present and not connected, remove it from the cache
         @connection_cache.try :delete, nick
         nil
       end
-      
+
       def connected_with? nick
         c = @connection_cache.try :[], nick
         c.connected? unless c.nil?
-      end 
-      
+      end
+
       def disconnect_from nick
         c = @connection_cache.try :delete, nick
         c.disconnect unless c.nil?
       end
-      
+
       def nicks_connected_with
         return [] if @connection_cache.nil?
 
         nicks = @connection_cache.keys
-        nicks.reject{ |n| !connected_with? n } 
+        nicks.reject{ |n| !connected_with? n }
       end
-      
+
       def setup_connection_cache
         @connection_cache = {}
 
