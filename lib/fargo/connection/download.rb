@@ -291,10 +291,12 @@ module Fargo
           filename = File.basename @download.file.gsub("\\", '/')
           path     = File.join(prefix, @other_nick, filename)
 
-          i = 0
-          while File.exists?(path)
-            i += 1
-            path = File.join(prefix, @other_nick, "#{i}-#{filename}")
+          unless @download.file_list?
+            i = 0
+            while File.exists?(path)
+              i += 1
+              path = File.join(prefix, @other_nick, "#{i}-#{filename}")
+            end
           end
 
           path
