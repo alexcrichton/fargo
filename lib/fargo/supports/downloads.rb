@@ -114,7 +114,7 @@ module Fargo
               !@current_downloads.has_key?(nick) &&
               !@trying.include?(nick) &&
               !@timed_out.include?(nick) &&
-              has_slot?(nick)
+              (connection_for(nick) || has_slot?(nick))
           }
 
           return false if arr.nil? || arr.size == 0
