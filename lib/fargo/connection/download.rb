@@ -42,19 +42,24 @@ module Fargo
         end
 
         @file << data
-        @file.flush
         @recvd += data.length
 
         if @recvd > @length
           error "#{self} #{@recvd} > #{@length}!!!"
           download_finished!
         else
-          publish :download_progress, :percent    => @recvd.to_f / @length,
-                                      :file       => download_path,
-                                      :nick       => @other_nick,
-                                      :download   => @download,
-                                      :size       => @recvd,
-                                      :compressed => @zlib
+          percent = @recvd.to_f / @length
+          if percent - @last_published > 0.05
+            @file.flush
+            publish :download_progress, :percent    => percent,
+                                        :file       => download_path,
+                                        :nick       => @other_nick,
+                                        :download   => @download,
+                                        :size       => @recvd,
+                                        :compressed => @zlib
+
+            @last_published = percent
+          end
 
           download_finished! if @recvd == @length
         end
@@ -165,6 +170,7 @@ module Fargo
         @file.sync      = true
         @socket.sync    = true
         @handshake_step = 5
+        @last_published = 0
 
         if @download.file_list?
           if @client_extensions.include? 'XmlBZList'
