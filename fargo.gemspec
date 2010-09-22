@@ -18,7 +18,7 @@ Gem::Specification.new do |s|
   s.require_path = 'lib'
   s.rdoc_options = ['--charset=UTF-8']
 
-  s.add_runtime_dependency 'activesupport', '>= 3.0.0'
-  s.add_runtime_dependency 'libxml-ruby'
-  s.add_runtime_dependency 'bzip2-ruby'
+  s.add_dependency 'activesupport', '>= 3.0.0'
+  s.add_dependency 'libxml-ruby'
+  s.add_dependency 'bzip2-ruby'
 end
