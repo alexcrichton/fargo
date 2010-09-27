@@ -21,7 +21,7 @@ module Fargo
             send_message 'MyPass', @client.config.password
           when :badpass, :hubfull
             Fargo.logger.warn "Disconnecting because of: #{message.inspect}"
-            close_connection
+            close_connection_after_writing
           when :hello
             if message[:who] == @client.config.nick
               Fargo.logger.info "Connected to DC Hub #{@hubname}"
@@ -41,27 +41,11 @@ module Fargo
               return
             end
 
-            @client_connections ||= []
-
-            connection = Fargo::Connection::Download.new @client
-            connection.config.address = message[:address]
-            connection.config.port    = message[:port]
-            # we're going to initiate the download
-            connection.config.first   = true
-
-            # proxy all messages from them back to the client and delete the
-            # connection if necessary
-            connection.subscribe { |*args|
-              @client.publish *args
-              @client_connections.delete connection unless connection.connected?
-            }
-
-            # establish the connection. This will also listen for data to be
-            # read/written
-            connection.connect
-
-            # keep track of who we're downloading from
-            @client_connections << connection
+            EventMachine.connect message[:address], message[:port],
+                Fargo::Connection::Download do |conn|
+              conn.client = @client
+              conn.nick   = message[:nick]
+            end
 
           when :search
             # Let the client handle the results

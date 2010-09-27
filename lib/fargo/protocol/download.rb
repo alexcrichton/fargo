@@ -7,17 +7,17 @@ module Fargo
       include Fargo::Utils
       include Fargo::Protocol::DC
 
-      attr_accessor :download
+      attr_accessor :download, :other_nick, :client
       attr_reader   :channel
 
-      def initialize
-        @channel = EventMachine::Channel.new
-      end
-
       def post_init
+        @channel = EventMachine::Channel.new
+
         set_comm_inactivity_timeout 20
+
         @lock, @pk      = generate_lock
         @handshake_step = 0
+
         send_message 'MyNick', @client.config.nick
         send_message 'Lock', "#{@lock} Pk=#{@pk}"
       end
@@ -58,9 +58,8 @@ module Fargo
       def receive_message type, message
         case type
           when :mynick
-            if @handshake_step == 0
+            if @handshake_step == 0 && @other_nick == message[:nick]
               @handshake_step  = 1
-              @other_nick      = message[:nick]
 
               @client.connected_with! @other_nick
               @client.lock_connection_with! @other_nick, self

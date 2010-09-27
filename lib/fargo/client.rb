@@ -28,9 +28,7 @@ module Fargo
     attr_reader :hub, :channel
 
     def initialize
-      @hub                 = Fargo::Protocol::Hub.new
       @channel             = EventMachine::Channel.new
-      @hub.client          = self
       @connection_timeouts = {}
     end
 
@@ -61,7 +59,13 @@ module Fargo
 
     def connect
       EventMachine.run do
-        EventMachine.start_server config.hub_address, config.hub_port, hub
+
+        EventMachine.start_server config.hub_address, config.hub_port,
+            Fargo::Protocol::Hub do |conn|
+          @hub        = conn
+          @hub.client = self
+        end
+
       end
     end
 
