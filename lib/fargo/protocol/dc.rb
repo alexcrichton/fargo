@@ -7,7 +7,6 @@ module Fargo
 
       def post_init
         @received_data = ''
-        Fargo.logger.debug 'init'
       end
 
       def receive_message type, message
@@ -41,8 +40,6 @@ module Fargo
       end
 
       def unbind
-        Fargo.logger.debug 'unbound'
-
         if client
           connection_type = self.class.name.split('::').last.downcase
           args = [:"#{connection_type}_disconnected", disconnect_publish_args]
