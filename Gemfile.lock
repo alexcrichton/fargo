@@ -4,6 +4,7 @@ PATH
     fargo (0.1.1)
       activesupport (>= 3.0.0)
       bzip2-ruby
+      eventmachine
       libxml-ruby
 
 GEM
@@ -12,6 +13,7 @@ GEM
     activesupport (3.0.0)
     bzip2-ruby (0.2.6)
     diff-lcs (1.1.2)
+    eventmachine (0.12.10)
     libxml-ruby (1.1.4)
     rake (0.8.7)
     rcov (0.9.8)
@@ -30,6 +32,7 @@ PLATFORMS
 DEPENDENCIES
   activesupport (>= 3.0.0)
   bzip2-ruby
+  eventmachine
   fargo!
   libxml-ruby
   rake
