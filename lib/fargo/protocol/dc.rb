@@ -26,10 +26,10 @@ module Fargo
       end
 
       def receive_data data
-        # Fargo.logger.debug "Receiving: #{data.inspect}"
         @received_data << data
 
-        while message = @received_data.slice!(/(.*)|/)
+        while message = @received_data.slice!(/[^\|]+\|/)
+          message.chomp! '|'
           Fargo.logger.debug "#{self}: Received: #{message.inspect}"
           hash = parse_message message
           receive_message hash[:type], hash
