@@ -20,7 +20,6 @@ module Fargo
 
     configure do |config|
       config.download_dir   = '/tmp/fargo/downloads'
-      config.version        = '0.75'
       config.address        = IPSocket.getaddress(Socket.gethostname)
       config.passive        = true
       config.nick           = 'fargo'
@@ -109,7 +108,7 @@ module Fargo
     end
 
     def description
-      "<++ V:#{config.version},M:#{config.passive ? 'P' : 'A'},H:1/0/0,S:#{open_slots},Dt:1.2.0/W>"
+      "<fargo V:#{Fargo::VERSION},M:#{config.passive ? 'P' : 'A'},H:1/0/0,S:#{open_slots},Dt:1.2.6/W>"
     end
 
     private
