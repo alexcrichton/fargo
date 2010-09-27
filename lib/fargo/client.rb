@@ -58,14 +58,16 @@ module Fargo
         @hub.client = self
       end
 
-      EventMachine.start_server '0.0.0.0', config.active_port,
-          Fargo::Protocol::Download do |conn|
-        conn.client = self
-      end
+      unless config.passive
+        EventMachine.start_server '0.0.0.0', config.active_port,
+            Fargo::Protocol::Download do |conn|
+          conn.client = self
+        end
 
-      EventMachine.open_datagram_socket '0.0.0.0', config.search_port,
-          Fargo::Protocol::DC do |conn|
-        conn.client = self
+        EventMachine.open_datagram_socket '0.0.0.0', config.search_port,
+            Fargo::Protocol::DC do |conn|
+          conn.client = self
+        end
       end
     end
 
