@@ -39,6 +39,10 @@ module Fargo
       run_callbacks :initialization do
         @channel             = EventMachine::Channel.new
         @connection_timeouts = {}
+
+        @channel.subscribe do |type, hash|
+          Fargo.logger.debug "Channel received: #{type} - #{hash.inspect}"
+        end
       end
     end
 

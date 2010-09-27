@@ -168,8 +168,6 @@ module Fargo
 
         subscribed_id = channel.subscribe do |type, map|
           if map[:nick] == user
-            Fargo.logger.debug "#{connection}: received: #{type.inspect} - #{map.inspect}"
-
             if type == :download_progress
               download.percent = map[:percent]
             elsif type == :download_started
