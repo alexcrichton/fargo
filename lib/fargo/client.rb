@@ -27,6 +27,9 @@ module Fargo
       config.hub_address    = '127.0.0.1'
       config.hub_port       = 7314
       config.download_slots = 4
+      config.password       = ''
+      config.speed          = 'DSL'
+      config.email          = nil
     end
 
     attr_reader :hub, :channel
@@ -65,6 +68,10 @@ module Fargo
 
     def connect
       EventMachine.run do
+        EventMachine.error_handler{ |e|
+          Fargo.logger.debug "Error raised during event loop: #{e.message}"
+          Fargo.logger.debug e.backtrace.join("\n")
+        }
 
         EventMachine.connect config.hub_address, config.hub_port,
             Fargo::Protocol::Hub do |conn|
@@ -112,7 +119,7 @@ module Fargo
 
     def connection_timeout! nick
       @connection_timeouts.delete(nick)
-      publish :connection_timeout, :nick => nick
+      channel.push [:connection_timeout, {:nick => nick}]
     end
 
   end
