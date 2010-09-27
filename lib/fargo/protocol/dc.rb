@@ -10,7 +10,7 @@ module Fargo
       end
 
       def receive_message type, message
-        raise 'Implement me please'
+        client.channel << [type, message] if client
       end
 
       def send_message method, args = nil

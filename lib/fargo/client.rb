@@ -65,9 +65,7 @@ module Fargo
 
       EventMachine.open_datagram_socket '0.0.0.0', config.search_port,
           Fargo::Protocol::DC do |conn|
-        def conn.receive_message *args
-          channel << args
-        end
+        conn.client = self
       end
     end
 
