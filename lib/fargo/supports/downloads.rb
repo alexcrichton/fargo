@@ -185,22 +185,24 @@ module Fargo
 
         Fargo.logger.debug "#{self}: Locking download: #{download}"
 
-        subscribed_id = connection.channel.subscribe do |type, map|
-          Fargo.logger.debug "#{connection}: received: #{type.inspect} - #{map.inspect}"
+        subscribed_id = channel.subscribe do |type, map|
+          if map[:nick] == user
+            Fargo.logger.debug "#{connection}: received: #{type.inspect} - #{map.inspect}"
 
-          if type == :download_progress
-            download.percent = map[:percent]
-          elsif type == :download_started
-            download.status = 'downloading'
-          elsif type == :download_finished
-            connection.channel.unsubscribe subscribed_id
-            download.percent = 1
-            download.status  = 'finished'
-            download_finished! user, false
-          elsif type == :download_failed || type == :download_disconnected
-            connection.channel.unsubscribe subscribed_id
-            download.status = 'failed'
-            download_finished! user, true
+            if type == :download_progress
+              download.percent = map[:percent]
+            elsif type == :download_started
+              download.status = 'downloading'
+            elsif type == :download_finished
+              channel.unsubscribe subscribed_id
+              download.percent = 1
+              download.status  = 'finished'
+              download_finished! user, false
+            elsif type == :download_failed || type == :download_disconnected
+              channel.unsubscribe subscribed_id
+              download.status = 'failed'
+              download_finished! user, true
+            end
           end
         end
 

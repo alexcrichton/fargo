@@ -14,7 +14,7 @@ module Fargo
 
       def initialize_file_lists
         @file_list = {}
-        @getting_file_list ||= {}
+        @getting_file_list = {}
       end
 
       # Lazily load the file list for the nick. Subscribe to the client for the
@@ -33,7 +33,7 @@ module Fargo
                 @file_list[nick] = map[:file]
 
                 channel.unsubscribe subscription_id
-                channel.publish [:file_list,
+                channel << [:file_list,
                     {:nick => nick, :list => @file_list[nick]}]
 
                 @getting_file_list.delete nick

@@ -8,12 +8,9 @@ module Fargo
       include Fargo::Protocol::DC
 
       attr_accessor :download, :client
-      attr_reader   :channel
 
       def post_init
         super
-
-        @channel = EventMachine::Channel.new
 
         set_comm_inactivity_timeout 20
 
@@ -48,7 +45,7 @@ module Fargo
           percent = @recvd.to_f / @length
           if percent - @last_published > 0.05
             @file.flush
-            channel.push [:download_progress, {:percent => percent,
+            @client.channel << [:download_progress, {:percent => percent,
                                         :file           => download_path,
                                         :nick           => @other_nick,
                                         :download       => @download,
@@ -129,7 +126,7 @@ module Fargo
 
               send_message 'Send' unless @client_extensions.include? 'ADCGet'
 
-              channel << [:download_started, {:file => download_path,
+              @client.channel << [:download_started, {:file => download_path,
                                          :download  => @download,
                                          :nick      => @other_nick}]
             else
@@ -149,7 +146,7 @@ module Fargo
 
           # This wasn't handled by us, proxy it on up to the client
           else
-            @client.publish [message[:type], message]
+            @client.channel << [message[:type], message]
 
         end
       end
@@ -201,7 +198,7 @@ module Fargo
 
         reset_download
 
-        channel << [:download_failed, opts.merge(:nick => @other_nick,
+        @client.channel << [:download_failed, opts.merge(:nick => @other_nick,
                                              :download   => download,
                                              :file       => path,
                                              :last_error => msg)]
@@ -216,8 +213,8 @@ module Fargo
 
         reset_download
 
-        channel << [:download_finished, {:file => path, :download => download,
-                                    :nick => @other_nick}]
+        @client.channel << [:download_finished,
+            {:file => path, :download => download, :nick => @other_nick}]
 
         close_connection_after_writing if download.file_list?
       end
