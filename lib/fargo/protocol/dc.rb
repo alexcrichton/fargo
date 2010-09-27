@@ -1,6 +1,3 @@
-require 'active_support/configurable'
-require 'active_support/callbacks'
-
 module Fargo
   module Protocol
     module DC
