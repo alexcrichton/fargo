@@ -7,7 +7,8 @@ module Fargo
         set_callback :initialization, :after, :initialize_search_caches
       end
 
-      # see hub/parser#@@search for what's passed in
+      # see parser#@@search for what's passed in
+      #
       # searches this client's files based on those options and returns an array
       # of SearchResult(s)
       def search_files options
@@ -51,7 +52,7 @@ module Fargo
         @search_objects.delete search.to_s
       end
 
-      private
+      protected
 
       def normalize search
         unless search.is_a? Fargo::Search
@@ -60,8 +61,6 @@ module Fargo
 
         search
       end
-
-      protected
 
       def initialize_search_caches
         @searches       = {}
