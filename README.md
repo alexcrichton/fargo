@@ -16,26 +16,31 @@ client = Fargo::Client.new
 client.configure do |config|
   config.hub_address = [address of the hub]   # Defaults to 127.0.0.1
   config.hub_port    = [port of the hub]      # Defaults to 7314
-  config.passive     = true                   # Probably shouldn't mess with...
+  config.passive     = true                   # Defaults to false
+  config.address     = '1.2.3.4'              # Defaults to machine IP
+  config.active_port = [port to listen on]    # Defaults to 7315
+  config.search_port = [port to listen on]    # Defaults to 7316
 end
 
-client.connect
+EventMachine.run {
+  client.connect
 
-client.nicks                # list of nicks registered
-client.download nick, file  # download a file from a user
-client.file_list nick       # get a list of files from a user
+  client.nicks                # list of nicks registered
+  client.download nick, file  # download a file from a user
+  client.file_list nick       # get a list of files from a user
 
-client.subscribe do |type, message|
-  # type is the type of message
-  # message is a hash of what was received
-end
+  client.channel.subscribe do |type, message|
+    # type is the type of message
+    # message is a hash of what was received
+  end
+}
 </pre>
+
+See `lib/fargo/client.rb` for a full list of configuration options
 
 ## Limitations
 
 As of this writing, uploading is not supported. This client can download whatever you would like, but hosting your own list of files and such isn't currently supported.
-
-Also, active mode is not supported. Currently, you must be in passive mode.
 
 ## MIT License
 
