@@ -1,4 +1,5 @@
 require 'fileutils'
+require 'eventmachine'
 require 'active_support/dependencies/autoload'
 require 'active_support/core_ext/module/attribute_accessors'
 require 'active_support/buffered_logger'
