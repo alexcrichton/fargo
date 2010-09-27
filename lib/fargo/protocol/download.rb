@@ -135,7 +135,7 @@ module Fargo
 
           when :noslots
             if @download
-              Fargo.logger.debug "#{self}: No Slots for #{self[:download]}"
+              Fargo.logger.debug "#{self}: No Slots for #{@download}"
 
               download_failed! 'No Slots'
             end
