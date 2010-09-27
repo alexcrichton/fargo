@@ -9,7 +9,8 @@ module Fargo
 
       def connect_with nick
         @connection_timeouts[nick] = EventMachine::Timer.new(10) do
-          connection_timeout! nick
+          @connection_timeouts.delete(nick)
+          channel.push [:connection_timeout, {:nick => nick}]
         end
 
         if config.passive
@@ -38,11 +39,6 @@ module Fargo
       end
 
       protected
-
-      def connection_timeout! nick
-        @connection_timeouts.delete(nick)
-        channel.push [:connection_timeout, {:nick => nick}]
-      end
 
       def initialize_connection_caches
         @connection_cache = {}
