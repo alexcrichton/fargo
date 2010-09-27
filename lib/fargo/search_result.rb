@@ -15,10 +15,10 @@ module Fargo
       end
 
       s << sprintf(" %d/%d\005%s (%s:%d)", @client.open_slots,
-                                           @client.slots,
+                                           @client.config.upload_slots,
                                            @client.hub.hubname,
-                                           @client.hub.config.ip,
-                                           @client.hub.config.port)
+                                           @client.config.hub_address,
+                                           @client.config.hub_port)
       s << "\005#{@target}" if @client.config.passive
     end
 

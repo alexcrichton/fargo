@@ -28,6 +28,7 @@ module Fargo
       config.active_port    = 7315
       config.search_port    = 7316
       config.download_slots = 4
+      config.upload_slots   = 4
       config.password       = ''
       config.speed          = 'DSL'
       config.email          = nil
