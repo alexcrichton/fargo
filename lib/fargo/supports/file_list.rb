@@ -6,7 +6,13 @@ module Fargo
     module FileList
       class Listing < Struct.new(:tth, :size, :name, :nick); end
 
-      def initialize *args
+      extend ActiveSupport::Concern
+
+      included do
+        set_callback :initialization, :after, :initialize_file_lists
+      end
+
+      def initialize_file_lists
         @file_list = {}
         @getting_file_list ||= {}
       end

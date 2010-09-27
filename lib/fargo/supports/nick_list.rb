@@ -1,12 +1,15 @@
 module Fargo
   module Supports
     module NickList
+      extend ActiveSupport::Concern
+
+      included do
+        set_callback :initialization, :after, :initialize_nick_lists
+      end
 
       attr_accessor :nicks
 
-      def initialize *args
-        super
-
+      def initialize_nick_lists
         @nicks     = []
         @nick_info = Hash.new{ |h, k| h[k] = {} }
 

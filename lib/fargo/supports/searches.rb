@@ -1,10 +1,13 @@
 module Fargo
   module Supports
     module Searches
+      extend ActiveSupport::Concern
 
-      def initialize *args
-        super
+      included do
+        set_callback :initialization, :after, :initialize_search_caches
+      end
 
+      def initialize_search_caches
         @searches       = {}
         @search_objects = {}
 

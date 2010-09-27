@@ -1,10 +1,13 @@
 module Fargo
   module Supports
     module Chat
+      extend ActiveSupport::Concern
 
-      def initialize *args
-        super
+      included do
+        set_callback :initialization, :after, :initialize_chats
+      end
 
+      def initialize_chats
         @public_chats = []
         @chats        = Hash.new{ |h, k| h[k] = [] }
 

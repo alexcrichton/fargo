@@ -1,9 +1,13 @@
 require 'active_support/core_ext/object/try'
+require 'active_support/callbacks'
 
 module Fargo
   class Client
 
     include ActiveSupport::Configurable
+    include ActiveSupport::Callbacks
+
+    define_callbacks :initialization
 
     include Fargo::Supports::Chat
     include Fargo::Supports::Uploads
@@ -20,16 +24,18 @@ module Fargo
       config.address        = IPSocket.getaddress(Socket.gethostname)
       config.passive        = true
       config.nick           = 'fargo'
-      config.hub_port       = 7314
       config.hub_address    = '127.0.0.1'
+      config.hub_port       = 7314
       config.download_slots = 4
     end
 
     attr_reader :hub, :channel
 
     def initialize
-      @channel             = EventMachine::Channel.new
-      @connection_timeouts = {}
+      run_callbacks :initialization do
+        @channel             = EventMachine::Channel.new
+        @connection_timeouts = {}
+      end
     end
 
     def get_info nick

@@ -1,8 +1,13 @@
 module Fargo
   module Supports
     module Persistence
+      extend ActiveSupport::Concern
 
-      def initialize *args
+      included do
+        set_callback :initialization, :after, :initialize_connection_caches
+      end
+
+      def initialize_connection_caches
         @connection_cache = {}
 
         channel.subscribe do |type, hash|
