@@ -21,7 +21,7 @@ module Fargo
       config.passive        = true
       config.nick           = 'fargo'
       config.hub_port       = 7314
-      config.hub_address    = '0.0.0.0'
+      config.hub_address    = '127.0.0.1'
       config.download_slots = 4
     end
 
@@ -60,7 +60,7 @@ module Fargo
     def connect
       EventMachine.run do
 
-        EventMachine.start_server config.hub_address, config.hub_port,
+        EventMachine.connect config.hub_address, config.hub_port,
             Fargo::Protocol::Hub do |conn|
           @hub        = conn
           @hub.client = self
