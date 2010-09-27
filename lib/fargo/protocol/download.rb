@@ -155,7 +155,6 @@ module Fargo
         @file = File.open download_path, 'wb'
 
         @file.seek @download.offset
-        @file.sync      = true
         @handshake_step = 5
         @last_published = 0
 
