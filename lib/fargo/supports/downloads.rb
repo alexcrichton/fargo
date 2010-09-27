@@ -37,7 +37,7 @@ module Fargo
         end
       end
 
-      def has_slot?
+      def has_download_slot?
         @current_downloads.size + @trying.size < config.download_slots
       end
 
@@ -137,7 +137,7 @@ module Fargo
 
       # Finds the next queued up download and begins downloading it.
       def start_download
-        return false unless has_slot?
+        return false unless has_download_slot?
 
         arr = nil
 
@@ -174,7 +174,7 @@ module Fargo
 
       # This method should only be called when synchronized by the mutex
       def get_next_download_with_lock! user, connection
-        raise 'No open slots!'                    unless has_slot?
+        raise 'No open slots!'                    unless has_download_slot?
         raise "Already downloading from #{user}!" if @current_downloads[user]
 
         return nil if @queued_downloads[user].size == 0
