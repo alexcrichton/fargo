@@ -64,8 +64,8 @@ module Fargo
               @handshake_step  = 1
               @other_nick      = message[:nick]
 
-              @client.connected_with! @other_nick
-              @client.lock_connection_with! @other_nick, self
+              client.channel << [:download_opened,
+                  publish_args.merge(:connection => self)]
               @download = @client.lock_next_download! @other_nick, self
 
               if @download.try(:file).nil?
@@ -218,7 +218,7 @@ module Fargo
         close_connection_after_writing if download.file_list?
       end
 
-      def disconnect_publish_args
+      def publish_args
         {:nick => @other_nick}
       end
 

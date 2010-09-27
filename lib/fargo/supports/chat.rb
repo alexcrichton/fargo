@@ -7,6 +7,16 @@ module Fargo
         set_callback :initialization, :after, :initialize_chats
       end
 
+      def messages
+        @public_chats
+      end
+
+      def messages_with nick
+        @chats[nick]
+      end
+
+      protected
+
       def initialize_chats
         @public_chats = []
         @chats        = Hash.new{ |h, k| h[k] = [] }
@@ -21,14 +31,6 @@ module Fargo
             @public_chats.clear
           end
         end
-      end
-
-      def messages
-        @public_chats
-      end
-
-      def messages_with nick
-        @chats[nick]
       end
 
     end

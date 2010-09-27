@@ -35,14 +35,14 @@ module Fargo
         end
       end
 
-      def disconnect_publish_args
+      def publish_args
         {}
       end
 
       def unbind
         if client
           connection_type = self.class.name.split('::').last.downcase
-          args = [:"#{connection_type}_disconnected", disconnect_publish_args]
+          args = [:"#{connection_type}_disconnected", publish_args]
           client.channel << args
         end
       end

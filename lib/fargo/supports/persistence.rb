@@ -7,20 +7,17 @@ module Fargo
         set_callback :initialization, :after, :initialize_connection_caches
       end
 
-      def initialize_connection_caches
-        @connection_cache = {}
-
-        channel.subscribe do |type, hash|
-          if type == :hub_disconnected
-            nicks_connected_with.each{ |n| disconnect_from n }
-          elsif type == :download_disconnected
-            @connection_cache.delete hash[:nick]
-          end
+      def connect_with nick
+        @connection_timeouts[nick] = EventMachine::Timer.new(10) do
+          connection_timeout! nick
         end
-      end
 
-      def lock_connection_with! nick, connection
-        @connection_cache[nick] = connection
+        if config.passive
+          hub.send_message 'RevConnectToMe', "#{self.config.nick} #{nick}"
+        else
+          hub.send_message 'ConnectToMe',
+            "#{nick} #{config.address}:#{config.active_port}"
+        end
       end
 
       def connection_for nick
@@ -38,6 +35,28 @@ module Fargo
 
       def nicks_connected_with
         @connection_cache.keys
+      end
+
+      protected
+
+      def connection_timeout! nick
+        @connection_timeouts.delete(nick)
+        channel.push [:connection_timeout, {:nick => nick}]
+      end
+
+      def initialize_connection_caches
+        @connection_cache = {}
+
+        channel.subscribe do |type, hash|
+          if type == :hub_disconnected
+            nicks_connected_with.each{ |n| disconnect_from n }
+          elsif type == :download_disconnected
+            @connection_cache.delete hash[:nick]
+          elsif type == :download_opened
+            @connection_timeouts.delete(hash[:nick]).try(:cancel)
+            @connection_cache[hash[:nick]] = hash[:connection]
+          end
+        end
       end
 
     end

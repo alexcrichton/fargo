@@ -18,25 +18,6 @@ module Fargo
       attr_reader :current_downloads, :finished_downloads, :queued_downloads,
                   :failed_downloads, :trying, :timed_out
 
-      def initialize_download_lists
-        FileUtils.mkdir_p config.download_dir, :mode => 0755
-
-        @downloading_lock = Mutex.new
-
-        @queued_downloads   = Hash.new{ |h, k| h[k] = [] }
-        @current_downloads  = {}
-        @failed_downloads   = Hash.new{ |h, k| h[k] = [] }
-        @finished_downloads = Hash.new{ |h, k| h[k] = [] }
-        @trying             = []
-        @timed_out          = []
-
-        channel.subscribe do |type, hash|
-          if type == :connection_timeout
-            connection_failed_with! hash[:nick] if @trying.include?(hash[:nick])
-          end
-        end
-      end
-
       def has_download_slot?
         @current_downloads.size + @trying.size < config.download_slots
       end
@@ -236,6 +217,27 @@ module Fargo
 
         # This one failed, try the next one
         EventMachine.defer{ start_download }
+      end
+
+      protected
+
+      def initialize_download_lists
+        FileUtils.mkdir_p config.download_dir, :mode => 0755
+
+        @downloading_lock = Mutex.new
+
+        @queued_downloads   = Hash.new{ |h, k| h[k] = [] }
+        @current_downloads  = {}
+        @failed_downloads   = Hash.new{ |h, k| h[k] = [] }
+        @finished_downloads = Hash.new{ |h, k| h[k] = [] }
+        @trying             = []
+        @timed_out          = []
+
+        channel.subscribe do |type, hash|
+          if type == :connection_timeout
+            connection_failed_with! hash[:nick] if @trying.include?(hash[:nick])
+          end
+        end
       end
 
     end

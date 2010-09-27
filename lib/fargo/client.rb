@@ -42,31 +42,6 @@ module Fargo
       end
     end
 
-    def get_info nick
-      hub.send_message 'GetINFO', "#{nick} #{config.nick}"
-    end
-
-    def get_ip *nicks
-      hub.send_message 'UserIP', nicks.flatten.join('$$')
-    end
-
-    def connect_with nick
-      @connection_timeouts[nick] = EventMachine::Timer.new(10) do
-        connection_timeout! nick
-      end
-
-      if config.passive
-        hub.send_message 'RevConnectToMe', "#{self.config.nick} #{nick}"
-      else
-        hub.send_message 'ConnectToMe',
-          "#{nick} #{config.address}:#{config.active_port}"
-      end
-    end
-
-    def connected_with! nick
-      @connection_timeouts.delete(nick).try(:cancel)
-    end
-
     def connect
       EventMachine.error_handler{ |e|
         Fargo.logger.debug "Error raised during event loop: #{e.message}"
@@ -101,35 +76,8 @@ module Fargo
       EventMachine.stop_event_loop
     end
 
-    def search_hub query
-      raise ConnectionError.new('Not connected Yet!') unless connected?
-
-      if config.passive
-        location = "Hub:#{config.nick}"
-      else
-        location = "#{config.address}:#{config.search_port}"
-      end
-
-      hub.send_message 'Search', "#{location} #{query.to_s}"
-    end
-
-    # see hub/parser#@@search for what's passed in
-    # searches this client's files based on those options and returns an array
-    # of SearchResult(s)
-    def search_files options
-      # TODO: implement me
-      []
-    end
-
     def description
       "<fargo V:#{Fargo::VERSION},M:#{config.passive ? 'P' : 'A'},H:1/0/0,S:#{open_slots},Dt:1.2.6/W>"
-    end
-
-    private
-
-    def connection_timeout! nick
-      @connection_timeouts.delete(nick)
-      channel.push [:connection_timeout, {:nick => nick}]
     end
 
   end

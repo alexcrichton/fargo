@@ -9,28 +9,12 @@ module Fargo
 
       attr_accessor :nicks
 
-      def initialize_nick_lists
-        @nicks     = []
-        @nick_info = Hash.new{ |h, k| h[k] = {} }
+      def get_info nick
+        hub.send_message 'GetINFO', "#{nick} #{config.nick}"
+      end
 
-        channel.subscribe do |type, map|
-          case type
-            when :hello
-              @nicks << map[:who] unless @nicks.include? map[:who]
-            when :myinfo
-              @nick_info[map[:nick]] = map
-            when :nick_list
-              @nicks = map[:nicks]
-            when :quit
-              @nicks.delete map[:who]
-              @nick_info.delete map[:who]
-            when :hub_disconnected
-              @nicks.clear
-              @nick_info.clear
-            when :userip
-              map[:users].each_pair{ |nick, ip| @nick_info[nick][:ip] = ip }
-          end
-        end
+      def get_ip *nicks
+        hub.send_message 'UserIP', nicks.flatten.join('$$')
       end
 
       def info nick
@@ -63,6 +47,32 @@ module Fargo
 
         Fargo.logger.debug "#{self} User: #{nick} has #{match[1]} open slots"
         match[1].to_i > 0
+      end
+
+      protected
+
+      def initialize_nick_lists
+        @nicks     = []
+        @nick_info = Hash.new{ |h, k| h[k] = {} }
+
+        channel.subscribe do |type, map|
+          case type
+            when :hello
+              @nicks << map[:who] unless @nicks.include? map[:who]
+            when :myinfo
+              @nick_info[map[:nick]] = map
+            when :nick_list
+              @nicks = map[:nicks]
+            when :quit
+              @nicks.delete map[:who]
+              @nick_info.delete map[:who]
+            when :hub_disconnected
+              @nicks.clear
+              @nick_info.clear
+            when :userip
+              map[:users].each_pair{ |nick, ip| @nick_info[nick][:ip] = ip }
+          end
+        end
       end
 
     end

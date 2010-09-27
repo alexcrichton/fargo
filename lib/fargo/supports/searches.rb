@@ -7,22 +7,24 @@ module Fargo
         set_callback :initialization, :after, :initialize_search_caches
       end
 
-      def initialize_search_caches
-        @searches       = {}
-        @search_objects = {}
+      # see hub/parser#@@search for what's passed in
+      # searches this client's files based on those options and returns an array
+      # of SearchResult(s)
+      def search_files options
+        # TODO: implement me
+        []
+      end
 
-        channel.subscribe do |type, map|
-          if type == :search_result
-            @searches.keys.each do |search|
-              if @search_objects[search].matches_result?(map)
-                @searches[search] << map
-              end
-            end
-          elsif type == :hub_disconnected
-            @searches.clear
-            @search_objects.clear
-          end
+      def search_hub query
+        raise ConnectionError.new('Not connected Yet!') unless connected?
+
+        if config.passive
+          location = "Hub:#{config.nick}"
+        else
+          location = "#{config.address}:#{config.search_port}"
         end
+
+        hub.send_message 'Search', "#{location} #{query.to_s}"
       end
 
       def search search
@@ -57,6 +59,26 @@ module Fargo
         end
 
         search
+      end
+
+      protected
+
+      def initialize_search_caches
+        @searches       = {}
+        @search_objects = {}
+
+        channel.subscribe do |type, map|
+          if type == :search_result
+            @searches.keys.each do |search|
+              if @search_objects[search].matches_result?(map)
+                @searches[search] << map
+              end
+            end
+          elsif type == :hub_disconnected
+            @searches.clear
+            @search_objects.clear
+          end
+        end
       end
 
     end

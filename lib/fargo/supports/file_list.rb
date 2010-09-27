@@ -12,11 +12,6 @@ module Fargo
         set_callback :initialization, :after, :initialize_file_lists
       end
 
-      def initialize_file_lists
-        @file_list = {}
-        @getting_file_list = {}
-      end
-
       # Lazily load the file list for the nick. Subscribe to the client for the
       # event :file_list to get notified.
       def file_list nick
@@ -99,6 +94,14 @@ module Fargo
 
         list
       end
+
+      protected
+
+      def initialize_file_lists
+        @file_list = {}
+        @getting_file_list = {}
+      end
+
     end
   end
 end
