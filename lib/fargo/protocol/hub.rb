@@ -62,8 +62,6 @@ module Fargo
             }
 
           when :revconnect
-            # TODO: Don't send RevConnectToMe when we're passive and
-            # receiving is passive
             if @client.config.passive
               send_message 'RevConnectToMe',
                   "#{@client.config.nick} #{message[:who]}"
@@ -73,7 +71,7 @@ module Fargo
 
           # proxy this message on up the stack if we don't handle it
           else
-            @client.channel << [message[:type], message]
+            super
 
         end
       end

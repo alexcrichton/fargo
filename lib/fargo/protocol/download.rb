@@ -146,7 +146,7 @@ module Fargo
 
           # This wasn't handled by us, proxy it on up to the client
           else
-            @client.channel << [message[:type], message]
+            super
 
         end
       end
