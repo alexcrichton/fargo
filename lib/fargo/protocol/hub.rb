@@ -1,8 +1,8 @@
 module Fargo
-  module Protocols
+  module Protocol
     class Hub < EventMachine::Connection
 
-      include Fargo::Protocols::DC
+      include Fargo::Protocol::DC
       include Fargo::Utils
 
       attr_reader :hubname

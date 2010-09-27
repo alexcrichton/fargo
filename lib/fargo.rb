@@ -13,9 +13,7 @@ module Fargo
   self.logger = ActiveSupport::BufferedLogger.new STDOUT
 
   autoload :Utils
-  autoload :Publisher
   autoload :Parser
-  autoload :Server
   autoload :Client
   autoload :Search
   autoload :SearchResult
@@ -34,14 +32,12 @@ module Fargo
     autoload :FileList
   end
 
-  module Connection
+  module Protocol
     extend ActiveSupport::Autoload
 
-    autoload :Base
+    autoload :DC
     autoload :Download
     autoload :Hub
-    autoload :Search
-    autoload :Upload
   end
 
 end

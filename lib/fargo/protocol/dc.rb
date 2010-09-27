@@ -2,7 +2,7 @@ require 'active_support/configurable'
 require 'active_support/callbacks'
 
 module Fargo
-  module Protocols
+  module Protocol
     module DC
 
       include Fargo::Parser

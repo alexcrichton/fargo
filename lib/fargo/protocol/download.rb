@@ -1,11 +1,11 @@
 require 'zlib'
 
 module Fargo
-  module Protocols
+  module Protocol
     class Download < EventMachine::Connection
 
       include Fargo::Utils
-      include Fargo::Protocols::DC
+      include Fargo::Protocol::DC
 
       attr_accessor :download
       attr_reader   :channel

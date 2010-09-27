@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    fargo (0.1.1)
+    fargo (0.2.0)
       activesupport (>= 3.0.0)
       bzip2-ruby
       eventmachine
