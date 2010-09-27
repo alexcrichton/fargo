@@ -26,15 +26,14 @@ module Fargo
       end
 
       def receive_data data
-        Fargo.logger.debug "Receiving: #{data.inspect}"
-        p data
+        # Fargo.logger.debug "Receiving: #{data.inspect}"
         @received_data << data
 
         messages       = @received_data.split '|'
         @received_data = @received_data.end_with?('|') ? '' : messages.pop
 
         messages.each do |message|
-          Fargo.logger.debug "#{self} Received: #{message}"
+          Fargo.logger.debug "#{self}: Received: #{message.inspect}"
           hash = parse_message message
           receive_message hash[:type], hash
         end
