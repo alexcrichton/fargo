@@ -193,12 +193,12 @@ module Fargo
           elsif type == :download_started
             download.status = 'downloading'
           elsif type == :download_finished
-            connection.unsubscribe subscribed_id
+            connection.channel.unsubscribe subscribed_id
             download.percent = 1
             download.status  = 'finished'
             download_finished! user, false
           elsif type == :download_failed || type == :download_disconnected
-            connection.unsubscribe subscribed_id
+            connection.channel.unsubscribe subscribed_id
             download.status = 'failed'
             download_finished! user, true
           end
