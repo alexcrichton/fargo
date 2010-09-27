@@ -12,11 +12,31 @@ module Fargo
       end
 
       attr_reader :current_downloads, :finished_downloads, :queued_downloads,
-                  :failed_downloads, :open_download_slots, :trying, :timed_out,
-                  :download_slots
+                  :failed_downloads, :trying, :timed_out
 
-      included do
-        set_callback :setup, :after, :initialize_queues
+      def initialize *args
+        super
+
+        FileUtils.mkdir_p config.download_dir, :mode => 0755
+
+        @downloading_lock = Mutex.new
+
+        @queued_downloads   = Hash.new{ |h, k| h[k] = [] }
+        @current_downloads  = {}
+        @failed_downloads   = Hash.new{ |h, k| h[k] = [] }
+        @finished_downloads = Hash.new{ |h, k| h[k] = [] }
+        @trying             = []
+        @timed_out          = []
+
+        channel.subscribe do |type, hash|
+          if type == :connection_timeout
+            connection_failed_with! hash[:nick] if @trying.include?(hash[:nick])
+          end
+        end
+      end
+
+      def has_slot?
+        @current_downloads.size + @trying.size < config.download_slots
       end
 
       def clear_failed_downloads
@@ -56,34 +76,45 @@ module Fargo
         download.percent = 0
         download.status  = 'idle'
 
-        # Append it to the queue of things to download. This will be processed
-        # elsewhere
-        @to_download << download
+        # Using the mutex can be expensive in start_download, defer this
+        if @timed_out.include? download.nick
+          download.status = 'timeout'
+          @failed_downloads[download.nick] << download
+        else
+          unless @queued_downloads[download.nick].include?(download) ||
+              @current_downloads[download.nick] == download
+            @queued_downloads[download.nick] << download
+
+            # This uses the lock and could be expensive, defer this for later
+            EventMachine.defer{ start_download }
+          end
+        end
+
         true
       end
 
       def retry_download nick, file
-        dl = (@failed_downloads[nick] ||= []).detect{ |h| h.file == file }
+        dl = @failed_downloads[nick].detect{ |h| h.file == file }
 
-        if dl.nil?
-          Fargo.logger.warn "#{file} isn't a failed download for: #{nick}!"
-          return
-        end
+        return if dl.nil?
 
         @failed_downloads[nick].delete dl
-        download dl.nick, dl.file, dl.tth, dl.size
+        download dl
       end
 
       def remove_download nick, file
         # We need to synchronize this access, so append these arguments to a
         # queue to be processed later
-        @to_remove << [nick, file]
-        true
+        EventMachine.defer do
+          @downloading_lock.synchronize {
+            @queued_downloads[nick].delete_if{ |h| h.file == file }
+          }
+        end
       end
 
       def lock_next_download! user, connection
         @downloading_lock.synchronize {
-          return get_next_download_with_lock! user, connection
+          get_next_download_with_lock! user, connection
         }
       end
 
@@ -94,6 +125,7 @@ module Fargo
         @timed_out.delete nick
         downloads = @failed_downloads[nick].dup
         @failed_downloads[nick].clear
+        # Reschedule all the failed downloads again
         downloads.each{ |d| download nick, d.file, d.tth, d.size }
 
         true
@@ -103,7 +135,7 @@ module Fargo
 
       # Finds the next queued up download and begins downloading it.
       def start_download
-        return false if open_download_slots == 0 || @current_downloads.size + @trying.size > download_slots
+        return false unless has_slot?
 
         arr = nil
 
@@ -114,7 +146,7 @@ module Fargo
               !@current_downloads.has_key?(nick) &&
               !@trying.include?(nick) &&
               !@timed_out.include?(nick) &&
-              (connection_for(nick) || has_slot?(nick))
+              (connection_for(nick) || nick_has_slot?(nick))
           }
 
           return false if arr.nil? || arr.size == 0
@@ -127,6 +159,7 @@ module Fargo
           if connection
             Fargo.logger.debug "Requesting previous connection downloads: #{arr[1].first}"
             download = get_next_download_with_lock! dl_nick, connection
+
             connection.download = download
             connection.begin_download!
           else
@@ -135,18 +168,14 @@ module Fargo
             connect_with dl_nick
           end
         }
-
-        arr
       end
 
       # This method should only be called when synchronized by the mutex
       def get_next_download_with_lock! user, connection
-        raise 'No open slots!'                    if @open_download_slots <= 0
+        raise 'No open slots!'                    unless has_slot?
         raise "Already downloading from #{user}!" if @current_downloads[user]
 
-        if @queued_downloads[user].nil? || @queued_downloads[user].size == 0
-          return nil
-        end
+        return nil if @queued_downloads[user].size == 0
 
         download                 = @queued_downloads[user].shift
         @current_downloads[user] = download
@@ -154,7 +183,7 @@ module Fargo
 
         Fargo.logger.debug "#{self}: Locking download: #{download}"
 
-        block = Proc.new{ |type, map|
+        subscribed_id = connection.channel.subscribe do |type, map|
           Fargo.logger.debug "#{connection}: received: #{type.inspect} - #{map.inspect}"
 
           if type == :download_progress
@@ -162,18 +191,16 @@ module Fargo
           elsif type == :download_started
             download.status = 'downloading'
           elsif type == :download_finished
-            connection.unsubscribe &block
+            connection.unsubscribe subscribed_id
             download.percent = 1
-            download.status = 'finished'
+            download.status  = 'finished'
             download_finished! user, false
           elsif type == :download_failed || type == :download_disconnected
-            connection.unsubscribe &block
+            connection.unsubscribe subscribed_id
             download.status = 'failed'
             download_finished! user, true
           end
-        }
-
-        connection.subscribe &block
+        end
 
         download
       end
@@ -182,104 +209,31 @@ module Fargo
         download = nil
         @downloading_lock.synchronize{
           download = @current_downloads.delete user
-          @open_download_slots += 1
-
-          # connection_for(user).disconnect if @queued_downloads[user].size == 0
         }
 
         if failed
-          (@failed_downloads[user] ||= []) << download
+          @failed_downloads[user] << download
         else
-          (@finished_downloads[user] ||= []) << download
+          @finished_downloads[user] << download
         end
 
-        start_download # Start another download if possible
+        # Start another download if possible
+        EventMachine.defer{ start_download }
       end
 
       def connection_failed_with! nick
-        @trying.delete nick
-        @timed_out << nick
-
         @downloading_lock.synchronize {
+          @trying.delete nick
+          @timed_out << nick
+
           @queued_downloads[nick].each{ |d| d.status = 'timeout' }
-          @failed_downloads[nick] ||= []
-          @failed_downloads[nick] = @failed_downloads[nick] | @queued_downloads[nick]
-          @queued_downloads[nick].clear
+          @failed_downloads[nick] |= @queued_downloads.delete(nick)
         }
 
-        start_download # This one failed, try the next one
+        # This one failed, try the next one
+        EventMachine.defer{ start_download }
       end
 
-      def initialize_queues
-        @download_slots ||= 4
-
-        FileUtils.mkdir_p config.download_dir, :mode => 0755
-
-        @downloading_lock = Mutex.new
-
-        # Don't use Hash.new{} because this can't be dumped by Marshal
-        @queued_downloads   = {}
-        @current_downloads  = {}
-        @failed_downloads   = {}
-        @finished_downloads = {}
-        @trying             = []
-        @timed_out          = []
-
-        @open_download_slots = download_slots
-
-        subscribe { |type, hash|
-          if type == :connection_timeout
-            connection_failed_with! hash[:nick] if @trying.include?(hash[:nick])
-          elsif type == :hub_disconnected
-            exit_download_queue_threads
-          elsif type == :hub_connection_opened
-            start_download_queue_threads
-          end
-        }
-      end
-
-      def exit_download_queue_threads
-        @download_starter_thread.exit
-        @download_removal_thread.exit
-      end
-
-      # Both of these need access to the synchronization lock, so we use
-      # separate threads to do these processes.
-      def start_download_queue_threads
-        @to_download = Queue.new
-        @download_starter_thread = Thread.start {
-          loop {
-            download = @to_download.pop
-
-            if @timed_out.include? download.nick
-              download.status = 'timeout'
-              (@failed_downloads[download.nick] ||= []) << download
-            else
-              @queued_downloads[download.nick] ||= []
-
-              unless @queued_downloads[download.nick].include?(download) ||
-                  @current_downloads[download.nick] == download
-                @queued_downloads[download.nick] << download
-                start_download
-              end
-            end
-          }
-        }
-
-        @to_remove = Queue.new
-        @download_removal_thread = Thread.start {
-          loop {
-            user, file = @to_remove.pop
-
-            @downloading_lock.synchronize {
-              @queued_downloads[user] ||= []
-              download = @queued_downloads[user].detect{ |h| h.file == file }
-              @queued_downloads[user].delete download unless download.nil?
-            }
-          }
-        }
-      end
-
-    end # Downloads
-  end # Supports
-end # Fargo
+    end
+  end
+end

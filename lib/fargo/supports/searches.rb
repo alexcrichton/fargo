@@ -1,10 +1,25 @@
 module Fargo
   module Supports
     module Searches
-      extend ActiveSupport::Concern
-      
-      included do
-        set_callback :setup, :after, :subscribe_to_searches
+
+      def initialize *args
+        super
+
+        @searches       = {}
+        @search_objects = {}
+
+        channel.subscribe do |type, map|
+          if type == :search_result
+            @searches.keys.each do |search|
+              if @search_objects[search].matches_result?(map)
+                @searches[search] << map
+              end
+            end
+          elsif type == :hub_disconnected
+            @searches.clear
+            @search_objects.clear
+          end
+        end
       end
 
       def search search
@@ -17,18 +32,18 @@ module Fargo
       end
 
       def searches
-        @searches.keys.map { |k| @search_objects[k] } if @searches
+        @searches.keys.map { |k| @search_objects[k] }
       end
 
       def search_results search
         search = normalize search
-        @searches[search.to_s] if @searches
+        @searches[search.to_s]
       end
 
       def remove_search search
         search = normalize search
-        @searches.delete search.to_s if @searches
-        @search_objects.delete search.to_s if @search_objects
+        @searches.delete search.to_s
+        @search_objects.delete search.to_s
       end
 
       private
@@ -39,24 +54,6 @@ module Fargo
         end
 
         search
-      end
-
-      def subscribe_to_searches
-        @searches       = {}
-        @search_objects = {}
-
-        subscribe do |type, map|
-          if type == :search_result
-            @searches.keys.each do |search|
-              if @search_objects[search].matches_result?(map)
-                @searches[search] << map
-              end
-            end
-          elsif type == :hub_disconnected
-            @searches.clear
-            @search_objects.clear
-          end
-        end
       end
 
     end

@@ -1,17 +1,20 @@
 module Fargo
   module Supports
     module Timeout
-      
+
       def timeout_response timeout, succeed_subscription
         thread = Thread.current
+
         subscribed_block = lambda do |*args|
           thread.wakeup if succeed_subscription.call(*args)
         end
 
-        subscribe &subscribed_block
-        yield
+        id = channel.subscribe subscribed_block
+
+        yield if block_given?
         sleep timeout
-        unsubscribe &subscribed_block
+
+        channel.unsubscribe id
       end
 
     end

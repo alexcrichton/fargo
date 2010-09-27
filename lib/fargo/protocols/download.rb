@@ -1,44 +1,34 @@
 require 'zlib'
 
 module Fargo
-  module Connection
-    class Download < Base
+  module Protocols
+    class Download < EventMachine::Connection
 
       include Fargo::Utils
-      include Fargo::Parser
-
-      set_callback :listen, :before, :pre_listen
-      set_callback :listen, :after do |connection|
-        send_lock if connection.config.first
-      end
+      include Fargo::Protocols::DC
 
       attr_accessor :download
+      attr_reader   :channel
 
-      def pre_listen
-        Fargo.logger.debug "Initiating connection on: #{config.address}:#{config.port}"
+      def initialize
+        @channel = EventMachine::Channel.new
+      end
 
-        config.quit_on_disconnect = false
-        @lock, @pk = generate_lock
+      def post_init
+        set_comm_inactivity_timeout 20
+        @lock, @pk      = generate_lock
         @handshake_step = 0
-
-        @buffer_size = (2 << 12).freeze
+        send_message 'MyNick', @client.config.nick
+        send_message 'Lock', "#{@lock} Pk=#{@pk}"
       end
 
-      def send_lock
-        write "$MyNick #{@client.config.nick}|$Lock #{@lock} Pk=#{@pk}"
-      end
-
-      def read_data
-        # only download if we're at the correct time
+      def receive_data data
+        # only download if we're at the correct handshake step
         return super if @handshake_step != 6
 
-        @exit_time = 20 # reset our timeout time
-
-        data = @socket.readpartial @buffer_size
-
         if @zlib
-          @zs = Zlib::Inflate.new if @zs.nil?
-          data = @zs.inflate data
+          @inflator = Zlib::Inflate.new if @inflator.nil?
+          data      = @inflator.inflate data
         end
 
         @file << data
@@ -63,14 +53,10 @@ module Fargo
 
           download_finished! if @recvd == @length
         end
-      rescue IOError => e
-        error "#{self}: IOError, disconnecting #{e}"
       end
 
-      def receive data
-        message = parse_message data
-
-        case message[:type]
+      def receive_message type, message
+        case type
           when :mynick
             if @handshake_step == 0
               @handshake_step  = 1
@@ -91,12 +77,10 @@ module Fargo
             if @handshake_step == 1
               @remote_lock = message[:lock]
               @handshake_step = 2
-              send_lock unless config.first
-              out = ''
-              out << '$Supports TTHF ADCGet ZLIG|'
-              out << "$Direction Download #{@my_num = rand(10000)}|"
-              out << "$Key #{generate_key @remote_lock}|"
-              write out
+
+              send_message 'Supports', 'TTHF ADCGet ZLIG'
+              send_message 'Direction', "Download #{@my_num = rand(10000)}"
+              send_message 'Key', generate_key(@remote_lock)
             else
               error 'Premature disconnect when lock received'
             end
@@ -136,7 +120,7 @@ module Fargo
               @zlib   = message[:zlib]
               @length = message[:size]
 
-              write "$Send" unless @client_extensions.include? 'ADCGet'
+              send_message 'Send' unless @client_extensions.include? 'ADCGet'
 
               publish :download_started, :file     => download_path,
                                          :download => @download,
@@ -168,7 +152,6 @@ module Fargo
 
         @file.seek @download.offset
         @file.sync      = true
-        @socket.sync    = true
         @handshake_step = 5
         @last_published = 0
 
@@ -194,23 +177,10 @@ module Fargo
             Fargo.logger.debug "Enabling zlib compression on: #{@download.file}"
           end
 
-          write "$ADCGET file #{download_query} #{@download.offset} #{@download.size} #{zlig}"
+          send_message 'ADCGET', "file #{download_query} #{@download.offset} #{@download.size} #{zlig}"
         else
-          write "$Get #{@download.file}$#{@download.offset + 1}"
+          send_message 'Get', "#{@download.file}$#{@download.offset + 1}"
         end
-
-        # This is the thread for the timeout of a connection. The @exit_time
-        # variable is reset to 20 after every bit of information is received.
-        @exit_time = 20
-        @exit_thread = Thread.start {
-          while @exit_time > 0
-            sleep 1
-            @exit_time -= 1
-            Fargo.logger.debug "#{self} time out in #{@exit_time} seconds"
-          end
-
-          download_failed! 'Download timeout!'
-        }
 
         Fargo.logger.debug "#{self}: Beginning download of #{@download}"
       end
@@ -228,8 +198,6 @@ module Fargo
                                              :download   => download,
                                              :file       => path,
                                              :last_error => msg)
-
-        @exit_thread = nil
       end
 
       def download_finished!
@@ -243,13 +211,18 @@ module Fargo
 
         publish :download_finished, :file => path, :download => download,
                                     :nick => @other_nick
-        disconnect if download.file_list?
+
+        close_connection_after_writing if download.file_list?
       end
 
-      def disconnect
-        Fargo.logger.debug "#{self} Disconnecting from: #{@other_nick}"
+      def disconnect_publish_args
+        {:nick => @other_nick}
+      end
 
+      def unbind
         super
+
+        Fargo.logger.debug "#{self} Disconnected from: #{@other_nick}"
 
         if @download
           download_failed! @last_error, :recvd => @recvd, :length => @length
@@ -259,25 +232,16 @@ module Fargo
       end
 
       private
+
       def reset_download
         @file.close unless @file.nil? || @file.closed?
+
         if @file_path && File.exists?(@file_path) && File.size(@file_path) == 0
           File.delete(@file_path)
         end
 
-        if @socket
-          @socket.sync = false
-          @socket.flush
-        end
-
-        # If this was called from exit thread, don't kill it
-        if @exit_thread != Thread.current
-          @exit_thread.exit if @exit_thread && @exit_thread.alive?
-          @exit_thread = nil
-        end
-
         # clear out these variables
-        @zs = @file_path = @zlib = @download = @length = @recvd = nil
+        @inflator = @file_path = @zlib = @download = @length = @recvd = nil
 
         # Go back to the get step
         @handshake_step = 5
@@ -305,7 +269,8 @@ module Fargo
 
       def error message
         Fargo.logger.warn @last_error = message
-        disconnect
+
+        close_connection
       end
 
     end

@@ -6,31 +6,34 @@ module Fargo
     module FileList
       class Listing < Struct.new(:tth, :size, :name, :nick); end
 
+      def initialize *args
+        @file_list = {}
+        @getting_file_list ||= {}
+      end
+
       # Lazily load the file list for the nick. Subscribe to the client for the
       # event :file_list to get notified.
       def file_list nick
-        @file_list ||= {}
-        @getting_file_list ||= {}
-
         if @file_list.has_key?(nick)
           return parse_file_list(@file_list[nick], nick)
         elsif @getting_file_list[nick]
           return true
         end
 
-        file_gotten = lambda{ |type, map|
+        subscription_id = channel.subscribe do |type, map|
           case type
             when :download_finished, :download_failed, :connection_timeout
               if map[:nick] == nick
                 @file_list[nick] = map[:file]
-                unsubscribe &file_gotten
-                publish :file_list, :nick => nick, :list => @file_list[nick]
+
+                channel.unsubscribe subscription_id
+                channel.publish [:file_list,
+                    {:nick => nick, :list => @file_list[nick]}]
+
                 @getting_file_list.delete nick
               end
           end
-        }
-
-        subscribe &file_gotten
+        end
 
         @getting_file_list[nick] = true
         download nick, 'files.xml.bz2'
@@ -38,7 +41,6 @@ module Fargo
 
       # Wait for the results to arrive, timed out after some time
       def file_list! nick, timeout = 10
-        @file_list ||= {}
         if @file_list.has_key?(nick)
           return parse_file_list(@file_list[nick], nick)
         end

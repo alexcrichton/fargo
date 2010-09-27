@@ -1,25 +1,14 @@
 module Fargo
   module Supports
     module Chat
-      extend ActiveSupport::Concern
-      
-      included do
-        set_callback :setup, :after, :subscribe_to_chats
-      end
 
-      def messages
-        @public_chats
-      end
+      def initialize *args
+        super
 
-      def messages_with nick
-        @chats[nick] if @chats
-      end
-
-      def subscribe_to_chats
         @public_chats = []
-        @chats = Hash.new{ |h, k| h[k] = [] }
+        @chats        = Hash.new{ |h, k| h[k] = [] }
 
-        subscribe do |type, map|
+        channel.subscribe do |type, map|
           if type == :chat
             @public_chats << map
           elsif type == :privmsg
@@ -30,6 +19,15 @@ module Fargo
           end
         end
       end
+
+      def messages
+        @public_chats
+      end
+
+      def messages_with nick
+        @chats[nick]
+      end
+
     end
   end
 end

@@ -1,10 +1,17 @@
 module Fargo
   module Supports
     module Persistence
-      extend ActiveSupport::Concern
 
-      included do
-        set_callback :setup, :after, :setup_connection_cache
+      def initialize *args
+        @connection_cache = {}
+
+        channel.subscribe do |type, hash|
+          if type == :hub_disconnected
+            nicks_connected_with.each{ |n| disconnect_from n }
+          elsif type == :download_disconnected
+            @connection_cache.delete hash[:nick]
+          end
+        end
       end
 
       def lock_connection_with! nick, connection
@@ -12,42 +19,20 @@ module Fargo
       end
 
       def connection_for nick
-        c = @connection_cache.try :[], nick
-        if c.nil? || c.connected?
-          Fargo.logger.debug "#{self} has connection with: #{nick}: #{c}"
-          return c
-        end
-
-        # If it's present and not connected, remove it from the cache
-        @connection_cache.try :delete, nick
-        nil
+        @connection_cache[nick]
       end
 
       def connected_with? nick
-        c = @connection_cache.try :[], nick
-        c.connected? unless c.nil?
+        @connection_cache.has_key? nick
       end
 
       def disconnect_from nick
-        c = @connection_cache.try :delete, nick
-        c.disconnect unless c.nil?
+        c = @connection_cache.delete nick
+        c.try :close_connection_after_writing
       end
 
       def nicks_connected_with
-        return [] if @connection_cache.nil?
-
-        nicks = @connection_cache.keys
-        nicks.reject{ |n| !connected_with? n }
-      end
-
-      def setup_connection_cache
-        @connection_cache = {}
-
-        subscribe { |type, hash|
-          if type == :hub_disconnected
-            nicks_connected_with.each{ |n| disconnect_from n }
-          end
-        }
+        @connection_cache.keys
       end
 
     end

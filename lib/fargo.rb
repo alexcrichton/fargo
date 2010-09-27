@@ -1,4 +1,3 @@
-require 'socket'
 require 'fileutils'
 require 'active_support/dependencies/autoload'
 require 'active_support/core_ext/module/attribute_accessors'
@@ -9,11 +8,11 @@ module Fargo
   extend ActiveSupport::Autoload
 
   class ConnectionException < RuntimeError; end
-  
+
   mattr_accessor:logger
   self.logger = ActiveSupport::BufferedLogger.new STDOUT
 
-  autoload :Utils  
+  autoload :Utils
   autoload :Publisher
   autoload :Parser
   autoload :Server
