@@ -23,9 +23,9 @@ module Fargo
     end
 
     def active_send nick, ip, port
-      socket = UDPSocket.new
-      socket.send "$SR #{nick} #{to_s}", 0, ip, port
-      socket.close
+      socket = EventMachine.open_datagram_socket '0.0.0.0', 0
+      socket.send_datagram "$SR #{nick} #{to_s}", ip, port
+      socket.close_connection_after_writing
     end
   end
 end
