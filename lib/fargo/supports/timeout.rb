@@ -5,7 +5,7 @@ module Fargo
       def timeout_response timeout, succeed_subscription
         thread = Thread.current
 
-        subscribed_block = lambda do |*args|
+        subscribed_block = lambda do |args|
           thread.wakeup if succeed_subscription.call(*args)
         end
 
