@@ -18,10 +18,8 @@ module Fargo
         @handshake_step = 0
       end
 
-      # This would be done in post_init, but it needs @client to be defined.
-      # Apparently when the connection is configured after it is yielded from
-      # a call to EM#connect post_init has already been called :(
-      def initialize_connection
+      def send_lock
+        @lock_sent = true
         send_message 'MyNick', @client.config.nick
         send_message 'Lock', "#{@lock} Pk=#{@pk}"
       end
@@ -81,6 +79,8 @@ module Fargo
             if @handshake_step == 1
               @remote_lock = message[:lock]
               @handshake_step = 2
+
+              send_lock unless @lock_sent
 
               send_message 'Supports', 'TTHF ADCGet ZLIG'
               send_message 'Direction', "Download #{@my_num = rand(10000)}"

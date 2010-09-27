@@ -44,7 +44,7 @@ module Fargo
             EventMachine.connect message[:address], message[:port],
                 Fargo::Protocol::Download do |conn|
               conn.client     = @client
-              conn.initialize_connection # see method doc for why called here
+              conn.send_lock # We connect first, we send lock first
             end
 
           when :search

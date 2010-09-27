@@ -21,10 +21,12 @@ module Fargo
     configure do |config|
       config.download_dir   = '/tmp/fargo/downloads'
       config.address        = IPSocket.getaddress(Socket.gethostname)
-      config.passive        = true
+      config.passive        = false
       config.nick           = 'fargo'
       config.hub_address    = '127.0.0.1'
       config.hub_port       = 7314
+      config.active_port    = 7315
+      config.search_port    = 7316
       config.download_slots = 4
       config.password       = ''
       config.speed          = 'DSL'
@@ -75,6 +77,18 @@ module Fargo
           Fargo::Protocol::Hub do |conn|
         @hub        = conn
         @hub.client = self
+      end
+
+      EventMachine.start_server '0.0.0.0', config.active_port,
+          Fargo::Protocol::Download do |conn|
+        conn.client = self
+      end
+
+      EventMachine.open_datagram_socket '0.0.0.0', config.search_port,
+          Fargo::Protocol::DC do |conn|
+        def conn.receive_message *args
+          channel << args
+        end
       end
     end
 
