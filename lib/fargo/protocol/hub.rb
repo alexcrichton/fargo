@@ -28,7 +28,7 @@ module Fargo
               @validated = true
 
               send_message 'Version', '1,0091'
-              send_message 'MyInfo', "$ALL #{@client.config.nick} " +
+              send_message 'MyINFO', "$ALL #{@client.config.nick} " +
                 "#{@client.description}$ $#{@client.config.speed}" +
                 "#{@status || 1.chr}$#{@client.config.email}" +
                 "$#{@client.share_size}$"
