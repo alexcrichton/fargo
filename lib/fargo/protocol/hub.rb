@@ -42,9 +42,9 @@ module Fargo
             end
 
             EventMachine.connect message[:address], message[:port],
-                Fargo::Connection::Download do |conn|
-              conn.client = @client
-              conn.nick   = message[:nick]
+                Fargo::Protocol::Download do |conn|
+              conn.client     = @client
+              conn.initialize_connection # see method doc for why called here
             end
 
           when :search
