@@ -3,16 +3,16 @@ module Fargo
     module Downloads
       extend ActiveSupport::Concern
 
-      included do
-        set_callback :initialization, :after, :initialize_download_lists
-      end
-
       class Download < Struct.new(:nick, :file, :tth, :size, :offset)
         attr_accessor :percent, :status
 
         def file_list?
           file == 'files.xml.bz2'
         end
+      end
+
+      included do
+        set_callback :initialization, :after, :initialize_download_lists
       end
 
       attr_reader :current_downloads, :finished_downloads, :queued_downloads,
@@ -114,7 +114,7 @@ module Fargo
         true
       end
 
-      private
+      protected
 
       # Finds the next queued up download and begins downloading it.
       def start_download
@@ -218,8 +218,6 @@ module Fargo
         # This one failed, try the next one
         EventMachine.defer{ start_download }
       end
-
-      protected
 
       def initialize_download_lists
         FileUtils.mkdir_p config.download_dir, :mode => 0755
