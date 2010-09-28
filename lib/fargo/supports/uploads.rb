@@ -27,6 +27,7 @@ module Fargo
 
       def initialize_upload_locks
         @upload_slot_lock = Mutex.new
+        @taken_slots      = 0
       end
 
     end
