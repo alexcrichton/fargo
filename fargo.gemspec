@@ -1,7 +1,6 @@
 # -*- encoding: utf-8 -*-
 
-$LOAD_PATH << File.expand_path('../lib', __FILE__)
-require 'fargo/version'
+require File.expand_path('../lib/fargo/version', __FILE__)
 
 Gem::Specification.new do |s|
   s.name     = 'fargo'
