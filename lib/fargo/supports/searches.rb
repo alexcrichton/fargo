@@ -69,7 +69,7 @@ module Fargo
         channel.subscribe do |type, map|
           if type == :search_result
             @searches.keys.each do |search|
-              if @search_objects[search].matches_result?(map)
+              if @search_objects[search].matches?(map)
                 @searches[search] << map
               end
             end

@@ -49,17 +49,39 @@ module Fargo
 
           when :search
             # Let the client handle the results
-            @results = @client.search_files message
+            search = Search.new message
+            @listings = @client.search_local_listings search
+
+            @results = @listings.map do |l|
+              file = l.name.gusb '/', "\\"
+              if File.directory? l.name
+                s = file
+              else
+                s = "#{file}\005#{@filesize}"
+              end
+
+              s + sprintf(" %d/%d\005%s (%s:%d)", @client.open_slots,
+                                                  @client.config.upload_slots,
+                                                  @client.hub.hubname,
+                                                  @client.config.hub_address,
+                                                  @client.config.hub_port)
+            end
 
             # Send all the results to the peer. Take care of active/passive
             # connections
-            @results.each { |r|
-              if message[:address]
-                r.active_send @client.config.nick, message[:ip], message[:port]
-              else
-                send_message 'SR', "#{@client.config.nick} #{r}"
-              end
-            }
+            if message[:address]
+              socket = EventMachine.open_datagram_socket '0.0.0.0', 0
+              @results.each{ |r|
+                socket.send_datagram "$SR #{@client.config.nick} #{r}|",
+                  message[:ip], message[:port]
+              }
+              socket.close_connection_after_writing
+            else
+              @results.each{ |r|
+                send_message 'SR',
+                  "#{@client.config.nick} #{r}\005#{message[:searcher]}"
+              }
+            end
 
           when :revconnect
             if @client.config.passive

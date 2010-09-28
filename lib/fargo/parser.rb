@@ -88,11 +88,11 @@ module Fargo
         when @@psearch        then {:type => :search, :searcher => $1,
                                     :restrict_size => $2, :min_size => $3.to_i,
                                     :size => $4.to_i, :filetype => $5,
-                                    :pattern => $6}
+                                    :query => $6}
         when @@search         then {:type => :search, :address => $1,
                                     :port => $2.to_i, :restrict_size => $3,
                                     :min_size => $4.to_i, :size => $5.to_i,
-                                    :filetype => $6, :pattern => $7}
+                                    :filetype => $6, :query => $7}
         when @@oplist         then {:type => :op_list,
                                     :nicks => $1.split('$$')}
         when @@oplist         then {:type => :bot_list,

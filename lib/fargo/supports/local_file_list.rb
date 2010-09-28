@@ -14,7 +14,7 @@ module Fargo
       end
 
       def share_directory dir
-        @shared_directories << dir
+        @shared_directories << dir unless @shared_directories.include? dir
 
         EventMachine.defer {
           update_tth dir
@@ -26,11 +26,27 @@ module Fargo
         config.override_share_size || @share_size
       end
 
-      def my_file_listing
+      def local_file_list
         @file_list
       end
 
+      def search_local_listings search
+        collect_local_listings @file_list, [], search
+      end
+
       protected
+
+      def collect_local_listings hash, arr, search
+        hash.each_pair do |k, v|
+          if v.is_a?(Listing)
+            arr << v if search.matches? v
+          else
+            collect_local_listings v, arr, search
+          end
+        end
+
+        arr
+      end
 
       def write_file_list
         doc      = LibXML::XML::Document.new
@@ -47,21 +63,27 @@ module Fargo
         end
       end
 
-      def update_tth directory, hash = nil
+      def update_tth root, directory = nil, hash = nil
+        if directory.nil?
+          directory = root
+          root      = File.dirname(root)
+        end
+
         hash ||= (@file_list[File.basename(directory)] ||= {})
 
         Pathname.glob(directory + '/*').each do |path|
           if path.directory?
-            update_tth_without_synchronization path.to_s,
+            update_tth_without_synchronization root, path.to_s,
               hash[path.basename.to_s] ||= {}
           elsif hash[path.basename.to_s].nil? ||
               path.mtime > hash[path.basename.to_s].mtime
             hash[path.basename.to_s] = Listing.new(
                 file_tth(path.to_s),
                 path.size,
-                path.to_s,
+                path.to_s.gsub(root + '/', ''),
                 config.nick,
-                path.mtime
+                path.mtime,
+                root
             )
 
             @share_size += path.size
@@ -92,7 +114,7 @@ module Fargo
             node << dir
           else
             file = LibXML::XML::Node.new 'File'
-            file['Name'] = v.name
+            file['Name'] = k
             file['Size'] = v.size.to_s
             file['TTH']  = v.tth
 

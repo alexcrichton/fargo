@@ -36,11 +36,24 @@ module Fargo
       pattern.gsub('$', ' ')
     end
 
-    def matches_result? map
+    def matches? map
+      if map.is_a?(Listing)
+        listing = map
+        map     = {
+          :file => listing.name,
+          :size => listing.size,
+          :tth  => listing.tth
+        }
+      end
+
       file = map[:file].downcase
 
-      matches_query = queries.inject(true) do |last, word|
-        last && file.index(word.downcase)
+      if @pattern =~ /^TTH:(\w+)$/
+        matches_query = map[:tth] == $1
+      else
+        matches_query = queries.inject(true) do |last, word|
+          last && file.index(word.downcase)
+        end
       end
 
       if size_restricted == 'T'

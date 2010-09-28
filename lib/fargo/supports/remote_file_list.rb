@@ -2,7 +2,7 @@ require 'bzip2'
 require 'libxml'
 
 module Fargo
-  class Listing < Struct.new(:tth, :size, :name, :nick, :mtime); end
+  class Listing < Struct.new(:tth, :size, :name, :nick, :mtime, :root); end
 
   module Supports
     module RemoteFileList
