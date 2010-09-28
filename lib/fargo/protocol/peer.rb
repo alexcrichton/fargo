@@ -24,6 +24,10 @@ module Fargo
         send_message 'Lock', "#{@lock} Pk=#{@pk}"
       end
 
+      def supports
+        'TTHF ADCGet ZLIG'
+      end
+
       def receive_data data
         # only download if we're at the correct handshake step
         return super if @handshake_step != 6
@@ -68,9 +72,7 @@ module Fargo
                   publish_args.merge(:connection => self)]
               @download = @client.lock_next_download! @other_nick, self
 
-              if @download.try(:file).nil?
-                error "Nothing to download from:#{@other_nick}!"
-              end
+              @direction = @download.nil? ? 'Upload' : 'Download'
             else
               error 'Premature disconnect when mynick received'
             end
@@ -82,8 +84,8 @@ module Fargo
 
               send_lock unless @lock_sent
 
-              send_message 'Supports', 'TTHF ADCGet ZLIG'
-              send_message 'Direction', "Download #{@my_num = rand(10000)}"
+              send_message 'Supports', supports
+              send_message 'Direction', "#{@direction} #{@my_num = rand(10000)}"
               send_message 'Key', generate_key(@remote_lock)
             else
               error 'Premature disconnect when lock received'
@@ -98,7 +100,7 @@ module Fargo
             end
 
           when :direction
-            if @handshake_step == 3 && message[:direction] == 'upload'
+            if @handshake_step == 3
               @client_num     = message[:number]
               @handshake_step = 4
             else
@@ -108,9 +110,7 @@ module Fargo
           when :key
             if @handshake_step == 4 && generate_key(@lock) == message[:key]
 
-              FileUtils.mkdir_p File.dirname(download_path), :mode => 0755
-
-              begin_download!
+              begin_download! if @direction == 'download'
 
             else
               error 'Premature disconnect when key received'
@@ -152,6 +152,7 @@ module Fargo
       end
 
       def begin_download!
+        FileUtils.mkdir_p File.dirname(download_path), :mode => 0755
         @file = File.open download_path, 'wb'
 
         @file.seek @download.offset
