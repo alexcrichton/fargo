@@ -11,7 +11,7 @@ module Fargo
 
   class ConnectionException < RuntimeError; end
 
-  mattr_accessor:logger
+  mattr_accessor :logger
   self.logger = ActiveSupport::BufferedLogger.new STDOUT
 
   autoload :Utils
@@ -42,6 +42,8 @@ module Fargo
 
     autoload :DC
     autoload :Peer
+    autoload :PeerDownload
+    autoload :PeerUpload
     autoload :Hub
   end
 

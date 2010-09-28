@@ -30,8 +30,21 @@ module Fargo
         @file_list
       end
 
+      def local_listings
+        collect_local_listings @file_list, [], nil
+      end
+
       def search_local_listings search
         collect_local_listings @file_list, [], search
+      end
+
+      def listing_for query
+        if query =~ /^TTH\/(\w+)$/
+          tth = $1
+          local_listings.detect{ |l| l.tth = tth }
+        else
+          local_listings.detect{ |l| l.name == query }
+        end
       end
 
       protected
@@ -39,7 +52,7 @@ module Fargo
       def collect_local_listings hash, arr, search
         hash.each_pair do |k, v|
           if v.is_a?(Listing)
-            arr << v if search.matches? v
+            arr << v if search.nil? || search.matches?(v)
           else
             collect_local_listings v, arr, search
           end

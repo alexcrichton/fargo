@@ -34,19 +34,22 @@ module Fargo
     @@rctm            = /^RevConnectToMe (.*?) (.*?)$/
 
     # Client to client commands
-    @@mynick        = /^MyNick (.*)$/
-    @@key           = /^Key (.*)$/
-    @@direction     = /^Direction (Download|Upload) (\d+)$/
-    @@get           = /^Get (.*)\$(\d+)$/
-    @@send          = /^Send$/
-    @@filelength    = /^FileLength (.*?)$/
-    @@getlistlen    = /^GetListLen$/
-    @@maxedout      = /^MaxedOut$/
-    @@supports      = /^Supports (.*)$/
-    @@error         = /^Error (.*)$/
-    @@ugetblock     = /^UGetBlock (.*?) (.*?) (.*)$/
-    @@adcsnd        = /^ADCSND (.*?) (.*?) (.*?) (.*?)$/
-    @@adcsnd_zl1    = /^ADCSND (.*?) (.*?) (.*?) (.*?) ZL1$/
+    @@mynick     = /^MyNick (.*)$/
+    @@key        = /^Key (.*)$/
+    @@direction  = /^Direction (Download|Upload) (\d+)$/
+    @@get        = /^Get (.*)\$(\d+)$/
+    @@getzblock  = /^U?GetZBlock (.*?) (.*?) (.*?)$/
+    @@send       = /^Send$/
+    @@filelength = /^FileLength (.*?)$/
+    @@getlistlen = /^GetListLen$/
+    @@maxedout   = /^MaxedOut$/
+    @@supports   = /^Supports (.*)$/
+    @@error      = /^Error (.*)$/
+    @@getblock   = /^U?GetBlock (.*?) (.*?) (.*)$/
+    @@adcsnd     = /^ADCSND (.*?) (.*?) (.*?) (.*?)$/
+    @@adcget     = /^ADCGET (.*?) (.*?) (.*?) (.*?)$/
+    @@adcsnd_zl1 = /^ADCSND (.*?) (.*?) (.*?) (.*?) ZL1$/
+    @@adcget_zl1 = /^ADCGET (.*?) (.*?) (.*?) (.*?) ZL1$/
 
     def parse_message text
       case text
@@ -109,8 +112,8 @@ module Fargo
         when @@direction      then {:type => :direction,
                                     :direction => $1.downcase,
                                     :number => $3.to_i}
-        when @@get            then {:type => :get, :path => $1,
-                                    :offset => $2.to_i - 1}
+        when @@get            then {:type => :get, :file => $1,
+                                    :offset => $2.to_i - 1, :size => -1}
         when @@send           then {:type => :send}
         when @@filelength     then {:type => :file_length, :size => $1.to_i}
         when @@getlistlen     then {:type => :getlistlen}
@@ -123,8 +126,16 @@ module Fargo
                                     :zlib => true}
         when @@adcsnd         then {:type => :adcsnd, :kind => $1, :tth => $2,
                                     :offset => $3.to_i, :size => $4.to_i}
-        when @@ugetblock      then {:type => :ugetblock, :start => $1.to_i,
-                                    :finish => $2.to_i, :path => $3}
+        when @@adcget_zl1     then {:type => :adcget, :kind => $1, :file => $2,
+                                    :offset => $3.to_i, :size => $4.to_i,
+                                    :zlib => true}
+        when @@adcget         then {:type => :adcget, :kind => $1, :file => $2,
+                                    :offset => $3.to_i, :size => $4.to_i}
+        when @@getzblock      then {:type => :getzblock, :file => $3,
+                                    :size => $2.to_i, :offset => $1.to_i,
+                                    :zlib => true}
+        when @@getblock       then {:type => :getblock, :start => $1.to_i,
+                                    :finish => $2.to_i, :file => $3}
         when @@userip         then
           h = {:type => :userip, :users => {}}
           $1.split('$$').map{ |s| h[:users][s.split(' ')[0]] = s.split(' ')[1]}
