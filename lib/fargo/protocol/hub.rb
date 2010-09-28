@@ -60,7 +60,7 @@ module Fargo
                 s = "#{file}\005#{@filesize}"
               end
 
-              s + sprintf(" %d/%d\005%s (%s:%d)", @client.open_slots,
+              s + sprintf(" %d/%d\005%s (%s:%d)", @client.open_upload_slots,
                                                   @client.config.upload_slots,
                                                   @client.hub.hubname,
                                                   @client.config.hub_address,

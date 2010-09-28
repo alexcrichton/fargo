@@ -45,6 +45,9 @@ module Fargo
     @@maxedout   = /^MaxedOut$/
     @@supports   = /^Supports (.*)$/
     @@error      = /^Error (.*)$/
+    @@cancel     = /^Cancel$/
+    @@canceled   = /^Canceled$/
+    @@failed     = /^Failed (.*)$/
     @@getblock   = /^U?GetBlock (.*?) (.*?) (.*)$/
     @@adcsnd     = /^ADCSND (.*?) (.*?) (.*?) (.*?)$/
     @@adcget     = /^ADCGET (.*?) (.*?) (.*?) (.*?)$/
@@ -121,6 +124,9 @@ module Fargo
         when @@supports       then {:type => :supports,
                                     :extensions => $1.split(' ')}
         when @@error          then {:type => :error, :message => $1}
+        when @@failed         then {:type => :error, :message => $1}
+        when @@cancel         then {:type => :cancel}
+        when @@canceled       then {:type => :canceled}
         when @@adcsnd_zl1     then {:type => :adcsnd, :kind => $1, :tth => $2,
                                     :offset => $3.to_i, :size => $4.to_i,
                                     :zlib => true}

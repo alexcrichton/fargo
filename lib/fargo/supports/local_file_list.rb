@@ -30,6 +30,10 @@ module Fargo
         @file_list
       end
 
+      def local_file_list_path
+        File.join config.config_dir, 'files.xml.bz2'
+      end
+
       def local_listings
         collect_local_listings @file_list, [], nil
       end
@@ -71,7 +75,7 @@ module Fargo
         create_entities @file_list, doc.root
 
         FileUtils.mkdir_p config.config_dir
-        Bzip2::Writer.open(config.config_dir + '/files.xml.bz2', 'w') do |f|
+        Bzip2::Writer.open(local_file_list_path, 'w') do |f|
           f << doc.to_s(:indent => false)
         end
       end

@@ -89,7 +89,7 @@ module Fargo
     end
 
     def description
-      "<fargo V:#{VERSION},M:#{config.passive ? 'P' : 'A'},H:1/0/0,S:#{open_slots},Dt:1.2.6/W>"
+      "<fargo V:#{VERSION},M:#{config.passive ? 'P' : 'A'},H:1/0/0,S:#{open_upload_slots},Dt:1.2.6/W>"
     end
 
   end
