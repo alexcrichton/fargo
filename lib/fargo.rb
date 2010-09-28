@@ -21,6 +21,7 @@ module Fargo
   autoload :SearchResult
   autoload :VERSION
   autoload :TTH
+  autoload :Listing, 'fargo/supports/remote_file_list'
 
   module Supports
     extend ActiveSupport::Autoload

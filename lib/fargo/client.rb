@@ -8,7 +8,7 @@ module Fargo
     include ActiveSupport::Configurable
     include ActiveSupport::Callbacks
 
-    define_callbacks :initialization
+    define_callbacks :initialization, :connect
 
     include Fargo::Supports::Chat
     include Fargo::Supports::Uploads
@@ -58,21 +58,23 @@ module Fargo
         Fargo.logger.debug e.backtrace.join("\n")
       }
 
-      EventMachine.connect config.hub_address, config.hub_port,
-          Fargo::Protocol::Hub do |conn|
-        @hub        = conn
-        @hub.client = self
-      end
-
-      unless config.passive
-        EventMachine.start_server '0.0.0.0', config.active_port,
-            Fargo::Protocol::Download do |conn|
-          conn.client = self
+      run_callbacks :connect do
+        EventMachine.connect config.hub_address, config.hub_port,
+            Fargo::Protocol::Hub do |conn|
+          @hub        = conn
+          @hub.client = self
         end
 
-        EventMachine.open_datagram_socket '0.0.0.0', config.search_port,
-            Fargo::Protocol::DC do |conn|
-          conn.client = self
+        unless config.passive
+          EventMachine.start_server '0.0.0.0', config.active_port,
+              Fargo::Protocol::Download do |conn|
+            conn.client = self
+          end
+
+          EventMachine.open_datagram_socket '0.0.0.0', config.search_port,
+              Fargo::Protocol::DC do |conn|
+            conn.client = self
+          end
         end
       end
     end
