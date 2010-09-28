@@ -17,8 +17,6 @@ module Fargo
               @offset = message[:offset]
               @zlib   = message[:zlib]
 
-              @handshake_step = 10
-
               if @listing.nil?
                 if type == :getblock
                   send_message 'Failed', 'File Not Available'
@@ -41,6 +39,8 @@ module Fargo
 
                 begin_streaming
               else
+                @handshake_step = 10
+
                 send_message 'FileLength', @size
               end
             else
