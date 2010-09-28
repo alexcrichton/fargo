@@ -8,6 +8,8 @@ module Fargo
       extend ActiveSupport::Concern
       include TTH
 
+      attr_reader :local_file_list
+
       included do
         set_callback :initialization, :after, :initialize_upload_lists
         set_callback :connect, :after, :schedule_update
@@ -26,20 +28,16 @@ module Fargo
         config.override_share_size || @share_size
       end
 
-      def local_file_list
-        @file_list
-      end
-
       def local_file_list_path
         File.join config.config_dir, 'files.xml.bz2'
       end
 
       def local_listings
-        collect_local_listings @file_list, [], nil
+        collect_local_listings @local_file_list, [], nil
       end
 
       def search_local_listings search
-        collect_local_listings @file_list, [], search
+        collect_local_listings @local_file_list, [], search
       end
 
       def listing_for query
@@ -72,7 +70,7 @@ module Fargo
         doc.root['Base']      = '/'
         doc.root['Generator'] = "fargo #{VERSION}"
 
-        create_entities @file_list, doc.root
+        create_entities @local_file_list, doc.root
 
         FileUtils.mkdir_p config.config_dir
         Bzip2::Writer.open(local_file_list_path, 'w') do |f|
@@ -86,7 +84,7 @@ module Fargo
           root      = File.dirname(root)
         end
 
-        hash ||= (@file_list[File.basename(directory)] ||= {})
+        hash ||= (@local_file_list[File.basename(directory)] ||= {})
 
         Pathname.glob(directory + '/*').each do |path|
           if path.directory?
@@ -151,7 +149,7 @@ module Fargo
 
       def initialize_upload_lists
         @shared_directories = []
-        @file_list          = {}
+        @local_file_list    = {}
         @share_size         = 0
         @update_lock        = Mutex.new
       end
