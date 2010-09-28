@@ -47,6 +47,11 @@ module Fargo
 
               send_message 'Send' if @get_sent
 
+              if @zlib
+                Fargo.logger.debug(
+                  "Enabling zlib compression on: #{@download.file}")
+              end
+
               @client.channel << [:download_started, {:file => download_path,
                                          :download  => @download,
                                          :nick      => @other_nick}]
@@ -91,11 +96,7 @@ module Fargo
             download_query = 'TTH/' + @download.tth
           end
 
-          zlig = ''
-          if @client_extensions.include? 'ZLIG'
-            zlig = 'ZL1'
-            Fargo.logger.debug "Enabling zlib compression on: #{@download.file}"
-          end
+          zlig = @client_extensions.include?('ZLIG') ? 'ZL1' : ''
 
           send_message 'ADCGET', "file #{download_query} #{@download.offset} #{@download.size} #{zlig}"
 
