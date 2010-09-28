@@ -6,9 +6,21 @@ module Fargo
     COMPRESSED = 3
     DOCUMENT   = 4
     EXECUTABLE = 5
+    PICTURE    = 6
     VIDEO      = 7
     FOLDER     = 8
     TTH        = 9
+
+    # See http://www.teamfair.info/wiki/index.php?title=$Search for the
+    # extensions
+    EXTENSIONS = {
+      AUDIO       => [/mp(2|3)/, 'wav', 'au', /(r|s)m/, 'mid', 'flac', 'm4a'],
+      COMPRESSED  => ['zip', 'arj', 'rar', 'lzh', 'gz', 'z', 'arc', 'pak'],
+      DOCUMENT    => [/docx?/, 'txt', 'wri', 'pdf', 'ps', 'tex'],
+      EXECUTABLE  => ['pm', 'exe', 'bat', 'com'],
+      PICTURE     => ['gif', /jpe?g/, 'bmp', 'pcx', 'png', 'wmf', 'psd'],
+      VIDEO       => [/mpe?g/, 'avi', 'asf', 'mov', 'mkv']
+    }
 
     attr_accessor :size_restricted, :is_minimum_size, :size, :filetype, :pattern
 
@@ -47,7 +59,7 @@ module Fargo
         }
       end
 
-      file = map[:file].downcase
+      file = map[:file].try(:downcase) || ''
 
       if @filetype == TTH
         matches_query = (@pattern =~ /^TTH:(\w+)$/ && map[:tth] == $1)
@@ -55,9 +67,16 @@ module Fargo
         matches_query = queries.inject(true) do |last, word|
           last && file.index(word.downcase)
         end
+
+        patterns = EXTENSIONS[@filetype]
+
+        if patterns && matches_query
+          ext = File.extname file
+          matches_query = patterns.any?{ |p| ext =~ /^\.#{p}$/i }
+        end
       end
 
-      if size_restricted == 'T'
+      if size_restricted
         if is_minimum_size
           matches_query && map[:size] > size
         else

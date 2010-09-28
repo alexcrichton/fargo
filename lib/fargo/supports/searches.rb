@@ -68,6 +68,8 @@ module Fargo
 
         channel.subscribe do |type, map|
           if type == :search_result
+            map[:tth] = map[:hub] if map[:hub] =~ /^TTH:/
+
             @searches.keys.each do |search|
               if @search_objects[search].matches?(map)
                 @searches[search] << map

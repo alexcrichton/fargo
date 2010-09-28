@@ -93,13 +93,16 @@ module Fargo
                                     :hub => $6, :address => $7,
                                     :port => $8.to_i}
         when @@psearch        then {:type => :search, :searcher => $1,
-                                    :restrict_size => $2, :min_size => $3.to_i,
-                                    :size => $4.to_i, :filetype => $5,
-                                    :query => $6}
+                                    :restrict_size => $2 == 'T',
+                                    :is_minimum_size => $3 == 'F',
+                                    :size => $4.to_i, :filetype => $5.to_i,
+                                    :pattern => $6}
         when @@search         then {:type => :search, :address => $1,
-                                    :port => $2.to_i, :restrict_size => $3,
-                                    :min_size => $4.to_i, :size => $5.to_i,
-                                    :filetype => $6, :query => $7}
+                                    :port => $2.to_i,
+                                    :restrict_size => $3 == 'T',
+                                    :is_minimum_size => $4 == 'F',
+                                    :size => $5.to_i,
+                                    :filetype => $6.to_i, :pattern => $7}
         when @@oplist         then {:type => :op_list,
                                     :nicks => $1.split('$$')}
         when @@oplist         then {:type => :bot_list,
@@ -108,7 +111,7 @@ module Fargo
         when @@sr             then {:type => :search_result, :nick => $2,
                                     :file => $3,:size => $4.to_i,
                                     :open_slots => $5.to_i, :slots => $6.to_i,
-                                    :hubname => $7}
+                                    :hub => $7}
         when @@rctm           then {:type => :revconnect, :who => $1}
 
         when @@mynick         then {:type => :mynick, :nick => $1}
