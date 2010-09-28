@@ -10,7 +10,7 @@ module Fargo
             if message[:file] == 'files.xml.bz2'
               @listing = 'filelist'
             else
-              @listing = @client.listing_for message[:file]
+              @listing = @client.listing_for message[:file].gsub("\\", '/')
             end
             @size   = message[:size] == -1 ? listing.size : message[:size]
             @offset = message[:offset]
