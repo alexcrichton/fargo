@@ -6,7 +6,7 @@ module Fargo
 
       def receive_message type, message
         case type
-          when :adcget, :getzblock, :getblock, :get
+          when :adcget, :getblock, :get
             if message[:file] == 'files.xml.bz2'
               @listing = 'filelist'
             else
@@ -14,11 +14,10 @@ module Fargo
             end
             @size   = message[:size] == -1 ? listing.size : message[:size]
             @offset = message[:offset]
-
-            @zlib = message[:zlib]
+            @zlib   = message[:zlib]
 
             if @listing.nil?
-              if type == :getzblock || type == :getblock
+              if type == :getblock
                 send_message 'Failed', 'File Not Available'
               else
                 send_message 'Error', 'File Not Available'
@@ -30,7 +29,7 @@ module Fargo
                   "#{message[:kind]} #{message[:file]} #{@offset} #{@size}"
 
               begin_streaming
-            elsif type == :getzblock || type == :getblock
+            elsif type == :getblock
               if message[:size] == -1
                 send_message 'Sending'
               else

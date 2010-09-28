@@ -139,11 +139,11 @@ module Fargo
                                     :zlib => true}
         when @@adcget         then {:type => :adcget, :kind => $1, :file => $2,
                                     :offset => $3.to_i, :size => $4.to_i}
-        when @@getzblock      then {:type => :getzblock, :file => $3,
+        when @@getzblock      then {:type => :getblock, :file => $3,
                                     :size => $2.to_i, :offset => $1.to_i,
                                     :zlib => true}
         when @@getblock       then {:type => :getblock, :start => $1.to_i,
-                                    :finish => $2.to_i, :file => $3}
+                                    :size => $2.to_i, :file => $3}
         when @@userip         then
           h = {:type => :userip, :users => {}}
           $1.split('$$').map{ |s| h[:users][s.split(' ')[0]] = s.split(' ')[1]}
