@@ -8,6 +8,7 @@ module Fargo
     EXECUTABLE = 5
     VIDEO      = 7
     FOLDER     = 8
+    TTH        = 9
 
     attr_accessor :size_restricted, :is_minimum_size, :size, :filetype, :pattern
 
