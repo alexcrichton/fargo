@@ -115,7 +115,7 @@ char* tth(const char* filename, char **tthl, size_t *tthl_len)
 
     if (*tthl_len) {
         if (*tthl_len != (tt.tthl - *(unsigned char **)tthl)) {
-            fprintf(stderr, "*tthl_len == %d, (tt.tthl - *(unsigned char **)tthl) == %d\n", *tthl_len, (tt.tthl - *(unsigned char **)tthl));
+            fprintf(stderr, "*tthl_len == %lu, (tt.tthl - *(unsigned char **)tthl) == %ld\n", *tthl_len, (tt.tthl - *(unsigned char **)tthl));
             fflush(stderr);
         }
         assert(*tthl_len == (tt.tthl - *(unsigned char **)tthl));
