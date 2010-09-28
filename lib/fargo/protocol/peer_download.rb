@@ -98,11 +98,20 @@ module Fargo
           end
 
           send_message 'ADCGET', "file #{download_query} #{@download.offset} #{@download.size} #{zlig}"
+
+        # See http://www.teamfair.info/wiki/index.php?title=XmlBZList for
+        # what the $Supports extensions mean for the U?GetZ?Block commands
         elsif @client_extensions.include? 'GetZBlock'
           @getblock_sent = true
           @zlib          = true
-          send_message 'GetZBlock',
+          send_message 'UGetZBlock',
             "#{@download.offset} #{@download.size} #{@download.file}"
+        elsif @client_extensions.include? 'XmlBZList'
+          @getblock_sent = true
+          @zlib          = false
+          send_message 'UGetBlock',
+            "#{@download.offset} #{@download.size} #{@download.file}"
+
         else
           @get_sent = true
           send_message 'Get', "#{@download.file}$#{@download.offset + 1}"
