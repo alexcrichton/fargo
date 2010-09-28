@@ -2,9 +2,10 @@ require 'bzip2'
 require 'libxml'
 
 module Fargo
+  class Listing < Struct.new(:tth, :size, :name, :nick, :mtime); end
+
   module Supports
-    module FileList
-      class Listing < Struct.new(:tth, :size, :name, :nick); end
+    module RemoteFileList
 
       extend ActiveSupport::Concern
 
@@ -61,7 +62,7 @@ module Fargo
         parse_file_list list, nick
       end
 
-      private
+      protected
 
       def parse_file_list file, nick
         if file && File.exists?(file)
@@ -94,8 +95,6 @@ module Fargo
 
         list
       end
-
-      protected
 
       def initialize_file_lists
         @file_list = {}

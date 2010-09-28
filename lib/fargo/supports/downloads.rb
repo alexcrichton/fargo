@@ -33,19 +33,19 @@ module Fargo
       def download nick, file=nil, tth=nil, size=-1, offset=0
         raise ConnectionException.new 'Not connected yet!' unless hub
 
-        if nick.is_a?(Supports::FileList::Listing)
-          listing = nick
-          nick    = listing.nick
-          file    = listing.name
-          tth     = listing.tth
-          size    = listing.size
-        elsif nick.is_a?(Download)
+        if nick.is_a?(Download)
           dl     = nick
           nick   = dl.nick
           file   = dl.file
           tth    = dl.tth
           size   = dl.size || -1
           offset = dl.offset || 0
+        elsif nick.is_a?(Struct) # i.e. a listing
+          listing = nick
+          nick    = listing.nick
+          file    = listing.name
+          tth     = listing.tth
+          size    = listing.size
         end
 
         raise 'File must not be nil!' if file.nil?

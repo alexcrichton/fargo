@@ -5,8 +5,6 @@
 #ifndef RUBY_19
 # define RSTRING_LEN(s) (RSTRING(s)->len)
 # define RSTRING_PTR(s) (RSTRING(s)->ptr)
-# define RARRAY_LEN(s) (RARRAY(s)->len)
-# define RARRAY_PTR(s) (RARRAY(s)->ptr)
 #endif
 
 VALUE rb_tth_file(VALUE self, VALUE filename) {

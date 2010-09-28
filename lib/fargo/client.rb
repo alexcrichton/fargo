@@ -17,10 +17,12 @@ module Fargo
     include Fargo::Supports::Downloads
     include Fargo::Supports::Persistence
     include Fargo::Supports::Timeout
-    include Fargo::Supports::FileList
+    include Fargo::Supports::RemoteFileList
+    include Fargo::Supports::LocalFileList
 
     configure do |config|
       config.download_dir   = '/tmp/fargo/downloads'
+      config.config_dir     = '/tmp/fargo/config'
       config.address        = IPSocket.getaddress(Socket.gethostname)
       config.passive        = false
       config.nick           = 'fargo'
@@ -33,6 +35,8 @@ module Fargo
       config.password       = ''
       config.speed          = 'DSL'
       config.email          = nil
+
+      config.override_share_size = 5368709121 # 5 GB + 1 byte
     end
 
     attr_reader :hub, :channel
