@@ -49,8 +49,8 @@ module Fargo
 
       file = map[:file].downcase
 
-      if @pattern =~ /^TTH:(\w+)$/
-        matches_query = map[:tth] == $1
+      if @filetype == TTH
+        matches_query = (@pattern =~ /^TTH:(\w+)$/ && map[:tth] == $1)
       else
         matches_query = queries.inject(true) do |last, word|
           last && file.index(word.downcase)
