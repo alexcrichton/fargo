@@ -37,15 +37,15 @@ module Fargo
 
       def receive_message type, message
         case type
-          when :file_length, :adcsnd
+          when :file_length, :adcsnd, :sending
             if @handshake_step == 5
               @recvd          = 0
               @handshake_step = 6
 
-              @zlib   = message[:zlib]
+              @zlib   = message[:zlib] unless @getblock_sent
               @length = message[:size]
 
-              send_message 'Send' unless @client_extensions.include? 'ADCGet'
+              send_message 'Send' if @get_sent
 
               @client.channel << [:download_started, {:file => download_path,
                                          :download  => @download,
@@ -98,7 +98,13 @@ module Fargo
           end
 
           send_message 'ADCGET', "file #{download_query} #{@download.offset} #{@download.size} #{zlig}"
+        elsif @client_extensions.include? 'GetZBlock'
+          @getblock_sent = true
+          @zlib          = true
+          send_message 'GetZBlock',
+            "#{@download.offset} #{@download.size} #{@download.file}"
         else
+          @get_sent = true
           send_message 'Get', "#{@download.file}$#{@download.offset + 1}"
         end
 
@@ -158,6 +164,7 @@ module Fargo
 
         # clear out these variables
         @inflator = @file_path = @zlib = @download = @length = @recvd = nil
+        @get_sent = @getblock_sent = false
 
         # Go back to the get step
         @handshake_step = 4

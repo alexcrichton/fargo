@@ -48,6 +48,7 @@ module Fargo
     @@cancel     = /^Cancel$/
     @@canceled   = /^Canceled$/
     @@failed     = /^Failed (.*)$/
+    @@sending    = /^Sending (.*)$/
     @@getblock   = /^U?GetBlock (.*?) (.*?) (.*)$/
     @@adcsnd     = /^ADCSND (.*?) (.*?) (.*?) (.*?)$/
     @@adcget     = /^ADCGET (.*?) (.*?) (.*?) (.*?)$/
@@ -127,6 +128,7 @@ module Fargo
         when @@failed         then {:type => :error, :message => $1}
         when @@cancel         then {:type => :cancel}
         when @@canceled       then {:type => :canceled}
+        when @@sending        then {:type => :sending, :size => $1.to_i}
         when @@adcsnd_zl1     then {:type => :adcsnd, :kind => $1, :tth => $2,
                                     :offset => $3.to_i, :size => $4.to_i,
                                     :zlib => true}
