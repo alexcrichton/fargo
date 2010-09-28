@@ -20,6 +20,7 @@ module Fargo
   autoload :Search
   autoload :SearchResult
   autoload :VERSION
+  autoload :TTH
 
   module Supports
     extend ActiveSupport::Autoload

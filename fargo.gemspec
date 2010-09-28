@@ -15,7 +15,8 @@ Gem::Specification.new do |s|
   s.description = 'Direct Connect (DC) Client implemented in pure Ruby'
 
   s.files        = `git ls-files lib/*`.split("\n")
-  s.require_path = 'lib'
+  s.extensions   = ['ext/fargo/extconf.rb']
+  s.require_paths = ['lib', 'ext']
   s.rdoc_options = ['--charset=UTF-8']
 
   s.add_dependency 'eventmachine'
