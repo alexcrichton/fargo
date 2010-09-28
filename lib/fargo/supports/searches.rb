@@ -55,8 +55,8 @@ module Fargo
       protected
 
       def normalize search
-        unless search.is_a? Fargo::Search
-          search = Fargo::Search.new :query => search
+        unless search.is_a? Search
+          search = Search.new :query => search
         end
 
         search

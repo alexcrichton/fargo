@@ -6,7 +6,7 @@ module Fargo
   module Supports
     module LocalFileList
       extend ActiveSupport::Concern
-      include Fargo::TTH
+      include TTH
 
       included do
         set_callback :initialization, :after, :initialize_upload_lists
@@ -53,7 +53,7 @@ module Fargo
         doc.root = LibXML::XML::Node.new 'FileListing'
         doc.root['Version']   = '1'
         doc.root['Base']      = '/'
-        doc.root['Generator'] = "fargo #{Fargo::VERSION}"
+        doc.root['Generator'] = "fargo #{VERSION}"
 
         create_entities @file_list, doc.root
 

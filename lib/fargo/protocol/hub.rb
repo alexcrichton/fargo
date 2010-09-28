@@ -2,8 +2,8 @@ module Fargo
   module Protocol
     class Hub < EventMachine::Connection
 
-      include Fargo::Protocol::DC
-      include Fargo::Utils
+      include Protocol::DC
+      include Utils
 
       attr_reader :hubname
 
@@ -42,7 +42,7 @@ module Fargo
             end
 
             EventMachine.connect message[:address], message[:port],
-                Fargo::Protocol::Download do |conn|
+                Protocol::Download do |conn|
               conn.client     = @client
               conn.send_lock # We connect first, we send lock first
             end

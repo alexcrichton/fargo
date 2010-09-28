@@ -4,8 +4,8 @@ module Fargo
   module Protocol
     class Download < EventMachine::Connection
 
-      include Fargo::Utils
-      include Fargo::Protocol::DC
+      include Utils
+      include Protocol::DC
 
       attr_accessor :download, :client
 

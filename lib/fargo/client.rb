@@ -10,15 +10,15 @@ module Fargo
 
     define_callbacks :initialization, :connect
 
-    include Fargo::Supports::Chat
-    include Fargo::Supports::Uploads
-    include Fargo::Supports::NickList
-    include Fargo::Supports::Searches
-    include Fargo::Supports::Downloads
-    include Fargo::Supports::Persistence
-    include Fargo::Supports::Timeout
-    include Fargo::Supports::RemoteFileList
-    include Fargo::Supports::LocalFileList
+    include Supports::Chat
+    include Supports::Uploads
+    include Supports::NickList
+    include Supports::Searches
+    include Supports::Downloads
+    include Supports::Persistence
+    include Supports::Timeout
+    include Supports::RemoteFileList
+    include Supports::LocalFileList
 
     configure do |config|
       config.download_dir   = '/tmp/fargo/downloads'
@@ -60,19 +60,19 @@ module Fargo
 
       run_callbacks :connect do
         EventMachine.connect config.hub_address, config.hub_port,
-            Fargo::Protocol::Hub do |conn|
+            Protocol::Hub do |conn|
           @hub        = conn
           @hub.client = self
         end
 
         unless config.passive
           EventMachine.start_server '0.0.0.0', config.active_port,
-              Fargo::Protocol::Download do |conn|
+              Protocol::Download do |conn|
             conn.client = self
           end
 
           EventMachine.open_datagram_socket '0.0.0.0', config.search_port,
-              Fargo::Protocol::DC do |conn|
+              Protocol::DC do |conn|
             conn.client = self
           end
         end
@@ -89,7 +89,7 @@ module Fargo
     end
 
     def description
-      "<fargo V:#{Fargo::VERSION},M:#{config.passive ? 'P' : 'A'},H:1/0/0,S:#{open_slots},Dt:1.2.6/W>"
+      "<fargo V:#{VERSION},M:#{config.passive ? 'P' : 'A'},H:1/0/0,S:#{open_slots},Dt:1.2.6/W>"
     end
 
   end

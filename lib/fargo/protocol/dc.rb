@@ -2,7 +2,7 @@ module Fargo
   module Protocol
     module DC
 
-      include Fargo::Parser
+      include Parser
       attr_accessor :client
 
       def post_init
