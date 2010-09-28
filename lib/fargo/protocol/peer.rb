@@ -79,7 +79,7 @@ module Fargo
           when :key
             if @handshake_step == 4 && generate_key(@lock) == message[:key]
 
-              begin_download! if @direction == 'download'
+              begin_download! if @direction == 'Download'
 
             else
               error 'Premature disconnect when key received'
