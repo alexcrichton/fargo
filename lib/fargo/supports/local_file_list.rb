@@ -27,7 +27,7 @@ module Fargo
       end
 
       def my_file_listing
-        @file_list.dup
+        @file_list
       end
 
       protected
