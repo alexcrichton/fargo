@@ -42,7 +42,7 @@ module Fargo
             end
 
             EventMachine.connect message[:address], message[:port],
-                Protocol::Download do |conn|
+                Protocol::Peer do |conn|
               conn.client     = @client
               conn.send_lock # We connect first, we send lock first
             end

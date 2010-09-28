@@ -67,7 +67,7 @@ module Fargo
 
         unless config.passive
           EventMachine.start_server '0.0.0.0', config.active_port,
-              Protocol::Download do |conn|
+              Protocol::Peer do |conn|
             conn.client = self
           end
 

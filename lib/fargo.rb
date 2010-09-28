@@ -41,7 +41,7 @@ module Fargo
     extend ActiveSupport::Autoload
 
     autoload :DC
-    autoload :Download
+    autoload :Peer
     autoload :Hub
   end
 
