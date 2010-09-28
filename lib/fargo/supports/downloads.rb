@@ -30,7 +30,7 @@ module Fargo
         finished_downloads.clear
       end
 
-      def download nick, file=nil, tth=nil, size=-1, offset=0
+      def download nick, file = nil, tth = nil, size = -1, offset = 0
         raise ConnectionException.new 'Not connected yet!' unless hub
 
         if nick.is_a?(Download)
@@ -40,7 +40,7 @@ module Fargo
           tth    = dl.tth
           size   = dl.size || -1
           offset = dl.offset || 0
-        elsif nick.is_a?(Struct) # i.e. a listing
+        elsif nick.is_a?(Listing) # i.e. a listing
           listing = nick
           nick    = listing.nick
           file    = listing.name
