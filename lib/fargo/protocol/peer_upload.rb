@@ -7,45 +7,59 @@ module Fargo
       def receive_message type, message
         case type
           when :adcget, :getblock, :get
-            if message[:file] == 'files.xml.bz2'
-              @listing = 'filelist'
-            else
-              @listing = @client.listing_for message[:file].gsub("\\", '/')
-            end
-            @size   = message[:size] == -1 ? listing.size : message[:size]
-            @offset = message[:offset]
-            @zlib   = message[:zlib]
-
-            if @listing.nil?
-              if type == :getblock
-                send_message 'Failed', 'File Not Available'
+            if @handshake_step == 5
+              if message[:file] == 'files.xml.bz2'
+                @listing = 'filelist'
               else
-                send_message 'Error', 'File Not Available'
+                @listing = @client.listing_for message[:file].gsub("\\", '/')
               end
-            elsif @client.open_upload_slots == 0
-              send_message 'MaxedOut'
-            elsif type == :adcget
-              send_message 'ADCSND',
-                  "#{message[:kind]} #{message[:file]} #{@offset} #{@size}"
+              @size   = message[:size] == -1 ? listing.size : message[:size]
+              @offset = message[:offset]
+              @zlib   = message[:zlib]
 
-              begin_streaming
-            elsif type == :getblock
-              if message[:size] == -1
-                send_message 'Sending'
+              @handshake_step = 10
+
+              if @listing.nil?
+                if type == :getblock
+                  send_message 'Failed', 'File Not Available'
+                else
+                  send_message 'Error', 'File Not Available'
+                end
+              elsif @client.open_upload_slots == 0
+                send_message 'MaxedOut'
+              elsif type == :adcget
+                send_message 'ADCSND',
+                    "#{message[:kind]} #{message[:file]} #{@offset} #{@size}"
+
+                begin_streaming
+              elsif type == :getblock
+                if message[:size] == -1
+                  send_message 'Sending'
+                else
+                  send_message 'Sending', @size
+                end
+
+                begin_streaming
               else
-                send_message 'Sending', @size
+                send_message 'FileLength', @size
               end
-
-              begin_streaming
             else
-              send_message 'FileLength', @size
+              error "Premature disconnect when #{type} received"
             end
 
           when :send
-            begin_streaming
+            if @handshake_step == 10
+              begin_streaming
+            else
+              error "Premature disconnect when #{type} received"
+            end
 
           when :cancel
-            cancel_streaming
+            if @handshake_step == 11
+              cancel_streaming
+            else
+              error "Premature disconnect when cancel received"
+            end
 
           else
             super
@@ -64,6 +78,8 @@ module Fargo
       protected
 
       def begin_streaming
+        @handshake_step = 11
+
         if @listing == 'filelist'
           @file = File.open @client.local_file_list_path, 'rb'
         else
@@ -90,6 +106,7 @@ module Fargo
 
         @deflator = @file = @sent = @size = @offset = @listing = @zlib = nil
         @looping = false
+        @handshake_step = 5
       end
 
       def cancel_streaming
@@ -119,6 +136,7 @@ module Fargo
 
         if !@looping # Set to false because $Cancel was sent
           send_message 'Canceled'
+          finish_streaming
         end
       end
 

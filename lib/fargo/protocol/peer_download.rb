@@ -177,7 +177,7 @@ module Fargo
         @get_sent = @getblock_sent = false
 
         # Go back to the get step
-        @handshake_step = 4
+        @handshake_step = 5
       end
 
       def download_path

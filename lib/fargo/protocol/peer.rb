@@ -78,6 +78,7 @@ module Fargo
 
           when :key
             if @handshake_step == 4 && generate_key(@lock) == message[:key]
+              @handshake_step = 5
 
               begin_download! if @direction == 'Download'
 
