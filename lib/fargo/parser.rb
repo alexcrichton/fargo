@@ -24,13 +24,13 @@ module Fargo
     @@hubto           = /^To: (.*?) From: Hub \$(.*)$/
     @@ctm             = /^ConnectToMe (.*?) (.*?):(.*?)$/
     @@nicklist        = /^NickList (.*?)$/
-    @@psr             = /^SR (.*?) (.*?)\005(.*?) (.*?)\/(.*?)\005(.*?) \((.*?):(.*?)\)$/
+    @@psr             = /^SR (.*?) (.*?)\005(.*?) (.*?)\/(.*?)\005(.*?) \((.*?):(.*?)\)(?:\005.*)?$/
+    @@psrd            = /^SR (.*?) (.*?) (.*?)\/(.*?)\005(.*?) \((.*?):(.*?)\)(?:\005.*)?$/
     @@psearch         = /^Search Hub:(.*) (.)\?(.)\?(.*)\?(.)\?(.*)$/
     @@search          = /^Search (.*):(.*) (.)\?(.)\?(.*)\?(.)\?(.*)$/
     @@oplist          = /^OpList (.*?)$/
     @@botlist         = /^BotList (.*?)$/
     @@quit            = /^Quit (.*)$/
-    @@sr              = /^SR (.*?) (.*?)\005(.*?) (.*?)\/(.*?)\005(.*?) (.*?):(.*?)$/
     @@rctm            = /^RevConnectToMe (.*?) (.*?)$/
 
     # Client to client commands
@@ -50,10 +50,8 @@ module Fargo
     @@failed     = /^Failed (.*)$/
     @@sending    = /^Sending (.*)$/
     @@getblock   = /^U?GetBlock (.*?) (.*?) (.*)$/
-    @@adcsnd     = /^ADCSND (.*?) (.*?) (.*?) (.*?)$/
-    @@adcget     = /^ADCGET (.*?) (.*?) (.*?) (.*?)$/
-    @@adcsnd_zl1 = /^ADCSND (.*?) (.*?) (.*?) (.*?) ZL1$/
-    @@adcget_zl1 = /^ADCGET (.*?) (.*?) (.*?) (.*?) ZL1$/
+    @@adcsnd     = /^ADCSND (.*?) (.*?) (.*?) (.*?)( ZL1)?$/
+    @@adcget     = /^ADCGET (.*?) (.*?) (.*?) (.*?)( ZL1)?$/
 
     def parse_message text
       case text
@@ -92,6 +90,11 @@ module Fargo
                                     :open_slots => $4.to_i, :slots => $5.to_i,
                                     :hub => $6, :address => $7,
                                     :port => $8.to_i}
+        when @@psrd           then {:type => :search_result, :nick => $1,
+                                    :dir => $2,
+                                    :open_slots => $3.to_i, :slots => $4.to_i,
+                                    :hub => $5, :address => $6,
+                                    :port => $7.to_i}
         when @@psearch        then {:type => :search, :searcher => $1,
                                     :restrict_size => $2 == 'T',
                                     :is_minimum_size => $3 == 'F',
@@ -108,10 +111,6 @@ module Fargo
         when @@oplist         then {:type => :bot_list,
                                     :nicks => $1.split('$$')}
         when @@quit           then {:type => :quit, :nick => $1}
-        when @@sr             then {:type => :search_result, :nick => $2,
-                                    :file => $3,:size => $4.to_i,
-                                    :open_slots => $5.to_i, :slots => $6.to_i,
-                                    :hub => $7}
         when @@rctm           then {:type => :revconnect, :who => $1}
 
         when @@mynick         then {:type => :mynick, :nick => $1}
@@ -132,16 +131,12 @@ module Fargo
         when @@cancel         then {:type => :cancel}
         when @@canceled       then {:type => :canceled}
         when @@sending        then {:type => :sending, :size => $1.to_i}
-        when @@adcsnd_zl1     then {:type => :adcsnd, :kind => $1, :tth => $2,
+        when @@adcsnd         then {:type => :adcsnd, :kind => $1, :file => $2,
                                     :offset => $3.to_i, :size => $4.to_i,
-                                    :zlib => true}
-        when @@adcsnd         then {:type => :adcsnd, :kind => $1, :tth => $2,
-                                    :offset => $3.to_i, :size => $4.to_i}
-        when @@adcget_zl1     then {:type => :adcget, :kind => $1, :file => $2,
-                                    :offset => $3.to_i, :size => $4.to_i,
-                                    :zlib => true}
+                                    :zlib => !$5.nil?}
         when @@adcget         then {:type => :adcget, :kind => $1, :file => $2,
-                                    :offset => $3.to_i, :size => $4.to_i}
+                                    :offset => $3.to_i, :size => $4.to_i,
+                                    :zlib => !$5.nil?}
         when @@getzblock      then {:type => :getblock, :file => $3,
                                     :size => $2.to_i, :offset => $1.to_i,
                                     :zlib => true}
