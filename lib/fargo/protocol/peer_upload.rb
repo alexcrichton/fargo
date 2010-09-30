@@ -23,7 +23,7 @@ module Fargo
                 else
                   send_message 'Error', 'File Not Available'
                 end
-              elsif @client.open_upload_slots == 0
+              elsif @client.open_upload_slots == 0 && @listing != 'listing'
                 send_message 'MaxedOut'
               elsif type == :adcget
                 send_message 'ADCSND',
