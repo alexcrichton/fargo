@@ -4,7 +4,7 @@ module Fargo
     #
     # See <http://www.teamfair.info/DC-Protocol.htm> for more information
     #
-    @@commandmatch    = /\$(.*)$/
+    @@commandmatch    = /^\$(.*)$/
     @@messagematch    = /^<(.*?)> (.*)$/
 
     # TODO: Supports, UserIP, ops command
