@@ -73,7 +73,7 @@ module Fargo
         when @@hubname        then {:type => :hubname, :name => $1}
         when @@hubname        then {:type => :hubfull}
         when @@hubtopic       then {:type => :hubtopic, :topic => $1}
-        when @@hello          then {:type => :hello, :who  => $1}
+        when @@hello          then {:type => :hello, :nick  => $1}
         when @@myinfo         then {:type => :myinfo, :nick => $1,
                                     :interest => $2, :speed => $3,
                                     :email => $4, :sharesize => $5.to_i}
@@ -107,7 +107,7 @@ module Fargo
                                     :nicks => $1.split('$$')}
         when @@oplist         then {:type => :bot_list,
                                     :nicks => $1.split('$$')}
-        when @@quit           then {:type => :quit, :who => $1}
+        when @@quit           then {:type => :quit, :nick => $1}
         when @@sr             then {:type => :search_result, :nick => $2,
                                     :file => $3,:size => $4.to_i,
                                     :open_slots => $5.to_i, :slots => $6.to_i,

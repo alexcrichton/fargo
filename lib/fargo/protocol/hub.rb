@@ -23,7 +23,7 @@ module Fargo
             Fargo.logger.warn "Disconnecting because of: #{message.inspect}"
             close_connection_after_writing
           when :hello
-            if message[:who] == @client.config.nick
+            if message[:nick] == @client.config.nick
               Fargo.logger.info "Connected to DC Hub #{@hubname}"
               @validated = true
 

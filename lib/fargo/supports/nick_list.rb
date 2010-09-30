@@ -58,14 +58,14 @@ module Fargo
         channel.subscribe do |type, map|
           case type
             when :hello
-              @nicks << map[:who] unless @nicks.include? map[:who]
+              @nicks << map[:nick] unless @nicks.include? map[:nick]
             when :myinfo
               @nick_info[map[:nick]] = map
             when :nick_list
               @nicks = map[:nicks]
             when :quit
-              @nicks.delete map[:who]
-              @nick_info.delete map[:who]
+              @nicks.delete map[:nick]
+              @nick_info.delete map[:nick]
             when :hub_disconnected
               @nicks.clear
               @nick_info.clear
