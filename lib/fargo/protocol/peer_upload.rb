@@ -93,7 +93,7 @@ module Fargo
         if @listing == 'filelist'
           @file = File.open @client.local_file_list_path, 'rb'
         else
-          @client.take_slot! self
+          @client.take_slot!
           @file = File.open File.join(@listing.root, @listing.name), 'rb'
         end
 
