@@ -18,10 +18,15 @@ module Fargo
       def share_directory dir
         @shared_directories << dir unless @shared_directories.include? dir
 
-        EventMachine.defer {
+        if connected?
+          EventMachine.defer {
+            update_tth dir
+            write_file_list
+          }
+        else
           update_tth dir
           write_file_list
-        }
+        end
       end
 
       def share_size

@@ -15,7 +15,11 @@ Fargo.logger.level = ActiveSupport::BufferedLogger::INFO
 RSpec.configure do |c|
   c.color_enabled = true
 
-  c.after(:each) do
+  c.before :each do
+    FileUtils.mkdir_p download_dir
+  end
+
+  c.after :each do
     FileUtils.rm_rf download_dir
   end
 
