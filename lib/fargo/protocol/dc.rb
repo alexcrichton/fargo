@@ -24,14 +24,27 @@ module Fargo
         send_data data
       end
 
-      def receive_data data
-        @received_data << data
+      def receive_data_chunk chunk
+        chunk.chomp! '|'
+        Fargo.logger.debug "#{self}: Received: #{chunk.inspect}"
+        hash = parse_message chunk
+        receive_message hash[:type], hash
+      end
 
-        while message = @received_data.slice!(/[^\|]+\|/)
-          message.chomp! '|'
-          Fargo.logger.debug "#{self}: Received: #{message.inspect}"
-          hash = parse_message message
-          receive_message hash[:type], hash
+      def parse_data?
+        true
+      end
+
+      def receive_data data
+        if parse_data?
+          @received_data << data
+
+          while parse_data? && chunk = @received_data.slice!(/[^\|]+\|/)
+            receive_data_chunk chunk
+          end
+        else
+          receive_data_chunk @received_data + data
+          @received_data = ''
         end
       end
 

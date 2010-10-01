@@ -2,7 +2,7 @@ module Fargo
   module Protocol
     module PeerDownload
 
-      def receive_data data
+      def receive_data_chunk data
         # only download if we're at the correct handshake step
         return super if @handshake_step != 6 || @download.nil?
 
@@ -33,6 +33,12 @@ module Fargo
 
           download_finished! if @recvd == @length
         end
+
+        true
+      end
+
+      def parse_data?
+        @handshake_step != 6
       end
 
       def receive_message type, message
@@ -66,6 +72,10 @@ module Fargo
               download_failed! 'No Slots'
             end
 
+          when :error
+            Fargo.logger.warn @last_error = "#{self}: Error! #{message[:message]}"
+            download_failed! message[:message]
+
           # This wasn't handled by us, proxy it on up to the client
           else
             super
@@ -96,9 +106,9 @@ module Fargo
             download_query = 'TTH/' + @download.tth
           end
 
-          zlig = @client_extensions.include?('ZLIG') ? 'ZL1' : ''
+          zlig = @client_extensions.include?('ZLIG') ? ' ZL1' : ''
 
-          send_message 'ADCGET', "file #{download_query} #{@download.offset} #{@download.size} #{zlig}"
+          send_message 'ADCGET', "file #{download_query} #{@download.offset} #{@download.size}#{zlig}"
 
         # See http://www.teamfair.info/wiki/index.php?title=XmlBZList for
         # what the $Supports extensions mean for the U?GetZ?Block commands
