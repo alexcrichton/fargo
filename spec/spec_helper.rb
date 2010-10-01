@@ -6,7 +6,7 @@ require 'fargo'
 
 download_dir = File.dirname(__FILE__) + '/../tmp'
 
-Fargo::Client.configure do |config|
+Fargo.configure do |config|
   config.download_dir = download_dir
 end
 
