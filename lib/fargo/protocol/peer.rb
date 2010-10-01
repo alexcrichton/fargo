@@ -2,7 +2,7 @@ require 'zlib'
 
 module Fargo
   module Protocol
-    class Peer < EventMachine::Connection
+    module Peer
 
       include Utils
       include Protocol::DC
