@@ -9,15 +9,6 @@ module Fargo
         set_callback :initialization, :after, :initialize_search_caches
       end
 
-      # see parser#@@search for what's passed in
-      #
-      # searches this client's files based on those options and returns an array
-      # of SearchResult(s)
-      def search_files options
-        # TODO: implement me
-        []
-      end
-
       def search_hub query
         raise ConnectionError.new('Not connected Yet!') unless connected?
 
