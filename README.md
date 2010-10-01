@@ -1,6 +1,6 @@
 # Fargo
 
-This gem is an implementation of the [Direct Connect (DC) protocol](http://en.wikipedia.org/wiki/Direct_Connect_\(file_sharing\)) in pure ruby.
+This gem is an implementation of the [Direct Connect (DC) protocol](http://en.wikipedia.org/wiki/Direct_Connect_\(file_sharing\)) in ruby.
 
 ## Installation
 
