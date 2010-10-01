@@ -1,4 +1,3 @@
-asami
 *.o
 ext/fargo/tth.bundle
 ext/fargo/Makefile
