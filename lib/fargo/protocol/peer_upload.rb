@@ -13,7 +13,17 @@ module Fargo
               else
                 @listing = @client.listing_for message[:file].gsub("\\", '/')
               end
-              @size   = message[:size] == -1 ? listing.size : message[:size]
+
+              if message[:size] == -1
+                if @listing == 'filelist'
+                  @size = File.size @client.local_file_list_path
+                else
+                  @size = @listing.try :size
+                end
+              else
+                @size = message[:size]
+              end
+
               @offset = message[:offset]
               @zlib   = message[:zlib]
 
