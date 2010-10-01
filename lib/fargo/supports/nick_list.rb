@@ -1,3 +1,5 @@
+require 'active_support/core_ext/numeric/time'
+
 module Fargo
   module Supports
     module NickList
