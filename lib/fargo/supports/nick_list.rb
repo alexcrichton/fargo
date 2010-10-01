@@ -33,9 +33,14 @@ module Fargo
         @nick_info[nick]
       end
 
+      # This query must be up to date so remove any cached information we have
+      # about the nick so we can get a fresh copy
       def nick_has_slot? nick
-        # This query must be up to date so remove any cached information we have
-        # about the nick so we can get a fresh copy
+        if @search_result_slots[nick] &&
+            @search_result_slots[nick][:updated_at] + 10.minutes > Time.now
+          return @search_result_slots[nick][:slots] > 0
+        end
+        p 'here'
         @nick_info.try :delete, nick
         info = info nick
 
@@ -54,6 +59,7 @@ module Fargo
       def initialize_nick_lists
         @nicks     = []
         @nick_info = Hash.new{ |h, k| h[k] = {} }
+        @search_result_slots = {}
 
         channel.subscribe do |type, map|
           case type
@@ -71,6 +77,11 @@ module Fargo
               @nick_info.clear
             when :userip
               map[:users].each_pair{ |nick, ip| @nick_info[nick][:ip] = ip }
+            when :search_result
+              @search_result_slots[map[:nick]] = {
+                :slots      => map[:open_slots],
+                :updated_at => Time.now
+              }
           end
         end
       end
