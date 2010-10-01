@@ -177,7 +177,7 @@ module Fargo
               download.percent = 1
               download.status  = 'finished'
               download_finished! user, false
-            elsif type == :download_failed || type == :download_disconnected
+            elsif type == :download_failed || type == :peer_disconnected
               channel.unsubscribe subscribed_id
               download.status = 'failed'
               download_finished! user, true

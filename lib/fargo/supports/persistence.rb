@@ -46,7 +46,7 @@ module Fargo
         channel.subscribe do |type, hash|
           if type == :hub_disconnected
             nicks_connected_with.each{ |n| disconnect_from n }
-          elsif type == :download_disconnected
+          elsif type == :peer_disconnected
             @connection_cache.delete hash[:nick]
           elsif type == :download_opened
             @connection_timeouts.delete(hash[:nick]).try(:cancel)
