@@ -131,7 +131,7 @@ module Fargo
               EventMachine.next_tick{ stream_file }
               break
             else
-              to_send = [CHUNKSIZE, @size - @read].min
+              to_send = [CHUNKSIZE, @size - @sent].min
 
               data = @file.read to_send
               data = @deflator.deflate data if @zlib
