@@ -86,34 +86,6 @@ module Fargo
               error 'Premature disconnect when key received'
             end
 
-          when :file_length, :adcsnd
-            if @handshake_step == 5
-              @recvd          = 0
-              @handshake_step = 6
-
-              @zlib   = message[:zlib]
-              @length = message[:size]
-
-              send_message 'Send' unless @client_extensions.include? 'ADCGet'
-
-              @client.channel << [:download_started, {:file => download_path,
-                                         :download  => @download,
-                                         :nick      => @other_nick}]
-            else
-              error "Premature disconnect when #{message[:type]} received"
-            end
-
-          when :noslots
-            if @download
-              Fargo.logger.debug "#{self}: No Slots for #{@download}"
-
-              download_failed! 'No Slots'
-            end
-
-          when :error
-            Fargo.logger.warn @last_error = "#{self}: Error! #{message[:message]}"
-            download_failed! message[:message]
-
           # This wasn't handled by us, proxy it on up to the client
           else
             super
