@@ -115,12 +115,13 @@ module Fargo
         end
 
         @deflator = @file = @sent = @size = @offset = @listing = @zlib = nil
-        @looping = false
+        @looping = @canceled = false
         @handshake_step = 5
       end
 
       def cancel_streaming
         @looping = false
+        @canceled = true
       end
 
       def stream_file
@@ -144,7 +145,7 @@ module Fargo
           end
         end
 
-        if !@looping # Set to false because $Cancel was sent
+        if @canceled
           send_message 'Canceled'
           finish_streaming
         end
