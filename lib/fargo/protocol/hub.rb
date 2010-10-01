@@ -88,7 +88,7 @@ module Fargo
               send_message 'RevConnectToMe',
                   "#{@client.config.nick} #{message[:who]}"
             else
-              send_message 'ConnectToMe', "#{@client.config.nick} #{@client.config.address}:#{@client.config.extport}"
+              send_message 'ConnectToMe', "#{message[:who]} #{@client.config.address}:#{@client.config.active_port}"
             end
 
           # proxy this message on up the stack if we don't handle it
