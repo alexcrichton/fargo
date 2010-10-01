@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Fargo::Supports::NickList do
+describe Fargo::Supports::NickList, :type => :em do
 
   before :each do
     @client = Fargo::Client.new

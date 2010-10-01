@@ -40,7 +40,7 @@ module Fargo
             @search_result_slots[nick][:updated_at] + 10.minutes > Time.now
           return @search_result_slots[nick][:slots] > 0
         end
-        p 'here'
+
         @nick_info.try :delete, nick
         info = info nick
 

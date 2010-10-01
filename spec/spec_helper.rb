@@ -19,7 +19,7 @@ RSpec.configure do |c|
     FileUtils.rm_rf download_dir
   end
 
-  c.around :each do |example|
+  c.around :each, :type => :em do |example|
     EventMachine.run {
       example.run
 
