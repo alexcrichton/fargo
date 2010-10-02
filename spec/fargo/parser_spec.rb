@@ -2,13 +2,7 @@ require 'spec_helper'
 
 describe Fargo::Parser do
 
-  let(:helper) {
-    o = Object.new
-    o.send(:class_eval) do
-      include Fargo::Parser
-    end
-    o
-  }
+  let(:helper) { helper_object described_class }
 
   it "correctly parses info strings" do
     helper.parse_message(

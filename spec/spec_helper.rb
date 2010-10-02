@@ -31,3 +31,11 @@ RSpec.configure do |c|
     }
   end
 end
+
+def helper_object mod
+  o = Object.new
+  o.send(:class_eval) do
+    include mod
+  end
+  o
+end
