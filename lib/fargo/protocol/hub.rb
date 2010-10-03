@@ -7,6 +7,10 @@ module Fargo
 
       attr_reader :hubname
 
+      def connection_type
+        :hub
+      end
+
       # See <http://www.teamfair.info/DC-Protocol.htm> for specifics on
       # the DC protocol
       def receive_message type, message

@@ -11,6 +11,10 @@ module Fargo
 
       attr_accessor :download, :client
 
+      def connection_type
+        :peer
+      end
+
       def post_init
         super
 
