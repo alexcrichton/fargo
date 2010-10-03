@@ -1,3 +1,9 @@
+GIT
+  remote: git://github.com/rspec/rspec-core
+  revision: 8cbf11bea147b7780743c181bef5ad4a7f9b76d9
+  specs:
+    rspec-core (2.0.0.beta.22)
+
 PATH
   remote: .
   specs:
@@ -21,7 +27,6 @@ GEM
       rspec-core (= 2.0.0.beta.22)
       rspec-expectations (= 2.0.0.beta.22)
       rspec-mocks (= 2.0.0.beta.22)
-    rspec-core (2.0.0.beta.22)
     rspec-expectations (2.0.0.beta.22)
       diff-lcs (>= 1.1.2)
     rspec-mocks (2.0.0.beta.22)
@@ -40,3 +45,4 @@ DEPENDENCIES
   rake
   rcov
   rspec (>= 2.0.0.beta.19)
+  rspec-core!

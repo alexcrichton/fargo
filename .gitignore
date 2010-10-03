@@ -1,4 +1,5 @@
 *.o
+coverage*
 ext/fargo/tth.bundle
 ext/fargo/Makefile
 .bundle
