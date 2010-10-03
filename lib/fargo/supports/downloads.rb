@@ -1,15 +1,15 @@
 module Fargo
+  class Download < Struct.new(:nick, :file, :tth, :size, :offset)
+    attr_accessor :percent, :status
+
+    def file_list?
+      file == 'files.xml.bz2'
+    end
+  end
+
   module Supports
     module Downloads
       extend ActiveSupport::Concern
-
-      class Download < Struct.new(:nick, :file, :tth, :size, :offset)
-        attr_accessor :percent, :status
-
-        def file_list?
-          file == 'files.xml.bz2'
-        end
-      end
 
       included do
         set_callback :initialization, :after, :initialize_download_lists

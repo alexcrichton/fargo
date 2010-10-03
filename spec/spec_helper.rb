@@ -4,10 +4,11 @@ require 'bundler/setup'
 require 'rspec/core'
 require 'fargo'
 
-download_dir = File.dirname(__FILE__) + '/../tmp'
+download_dir = File.expand_path '../tmp', __FILE__
 
 Fargo.configure do |config|
   config.download_dir = download_dir
+  config.config_dir   = download_dir + '/config'
 end
 
 Fargo.logger.level = ActiveSupport::BufferedLogger::INFO
@@ -31,6 +32,8 @@ RSpec.configure do |c|
     }
   end
 end
+
+Dir[File.dirname(__FILE__) + '/support/*.rb'].each { |f| load f }
 
 def helper_object mod
   o = Object.new

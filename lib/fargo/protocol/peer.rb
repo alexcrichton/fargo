@@ -9,7 +9,7 @@ module Fargo
       include PeerDownload
       include PeerUpload
 
-      attr_accessor :download, :client
+      attr_accessor :client
 
       def connection_type
         :peer

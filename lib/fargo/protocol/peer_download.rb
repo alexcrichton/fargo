@@ -2,6 +2,8 @@ module Fargo
   module Protocol
     module PeerDownload
 
+      attr_accessor :download
+
       def receive_data_chunk data
         # only download if we're at the correct handshake step
         return super if @handshake_step != 6 || @download.nil?

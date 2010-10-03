@@ -23,6 +23,7 @@ module Fargo
   autoload :VERSION
   autoload :TTH
   autoload :Listing, 'fargo/supports/remote_file_list'
+  autoload :Download, 'fargo/supports/downloads'
 
   module Supports
     extend ActiveSupport::Autoload
