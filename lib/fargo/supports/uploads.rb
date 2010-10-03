@@ -14,11 +14,11 @@ module Fargo
       end
 
       def take_slot!
-        @taken_slots -= 1
+        @taken_slots += 1
       end
 
       def release_slot!
-        @taken_slots += 1
+        @taken_slots -= 1
       end
 
       synchronize :take_slot!, :release_slot!, :with => :@upload_slot_lock

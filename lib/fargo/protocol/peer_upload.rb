@@ -36,8 +36,9 @@ module Fargo
               elsif @client.open_upload_slots == 0 && @listing != 'filelist'
                 send_message 'MaxedOut'
               elsif type == :adcget
+                zl = @zlib ? ' ZL1' : ''
                 send_message 'ADCSND',
-                    "#{message[:kind]} #{message[:file]} #{@offset} #{@size}"
+                  "#{message[:kind]} #{message[:file]} #{@offset} #{@size}#{zl}"
 
                 begin_streaming
               elsif type == :getblock
