@@ -24,6 +24,12 @@ describe Fargo::Protocol::PeerUpload do
       conn.receive_data '$Get tmp/file$1|'
     end
 
+    it "sends the $FileLength discounting the offset" do
+      conn.should_receive(:send_message).with('FileLength', 10)
+
+      conn.receive_data '$Get tmp/file$5|'
+    end
+
     it "uploads the file after receiving $Send" do
       conn.stub(:send_message)
       conn.receive_data '$Get tmp/file$1|'
