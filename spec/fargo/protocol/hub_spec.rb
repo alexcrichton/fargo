@@ -92,6 +92,13 @@ describe Fargo::Protocol::Hub do
     conn.receive_data '$NickList a$$b|'
   end
 
+  it "says that :hub_disconnected when the hub disconnects" do
+    conn.client.channel.should_receive(:<<).with(
+      [:hub_disconnected, instance_of(Hash)])
+
+    conn.unbind
+  end
+
   context "the hub handshake" do
     before :each do
       Fargo.configure do |config|
