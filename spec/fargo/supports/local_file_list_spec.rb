@@ -1,9 +1,6 @@
 require 'spec_helper'
 
 describe Fargo::Supports::LocalFileList do
-  # when shared directory has shared/c, make sure that when searching for
-  # shared/c something is returned (it's not just the name, it has a component)
-  # of the root
 
   before :each do
     @root = Fargo.config.download_dir + '/shared'
