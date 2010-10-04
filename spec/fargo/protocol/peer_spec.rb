@@ -6,6 +6,7 @@ describe Fargo::Protocol::Peer do
 
   let(:conn) {
     helper_object(described_class).tap do |conn|
+      conn.stub(:generate_lock).and_return ['lock', 'pk']
       conn.stub :set_comm_inactivity_timeout
       conn.post_init
       conn.client = client
@@ -29,6 +30,22 @@ describe Fargo::Protocol::Peer do
         "$Key #{generate_key('lock')}|").ordered
 
       conn.receive_data '$MyNick foobar|$Lock lock Pk=pk|'
+    end
+
+    it "responds correctly when the nick is sent first" do
+      conn.should_receive(:send_data).with('$MyNick fargo|').ordered
+      conn.should_receive(:send_data).with('$Lock lock Pk=pk|').ordered
+
+      conn.send_lock
+
+      conn.should_receive(:send_data).with(/^\$Supports (\w+ ?)+\|$/).ordered
+      conn.should_receive(:send_data).with(
+        /^\$Direction (Download|Upload) \d+\|$/).ordered
+      conn.should_receive(:send_data).with(
+        "$Key #{generate_key('lock')}|").ordered
+
+      conn.receive_data '$MyNick foobar|$Lock lock Pk=pk|$Supports a|' +
+        "$Direction Download 100|$Key #{generate_key('lock')}|"
     end
   end
 
