@@ -38,10 +38,6 @@ EventMachine.run {
 
 See `lib/fargo/client.rb` for a full list of configuration options
 
-## Limitations
-
-As of this writing, uploading is not supported. This client can download whatever you would like, but hosting your own list of files and such isn't currently supported.
-
 ## MIT License
 
 Copyright (c) 2010 Alex Crichton
