@@ -2,6 +2,7 @@ require 'spec_helper'
 
 describe Fargo::Protocol::DC do
   let(:conn) { helper_object described_class }
+  let(:client) { Fargo::Client.new }
 
   before :each do
     conn.post_init
@@ -64,5 +65,13 @@ describe Fargo::Protocol::DC do
       conn.should_receive(:send_data).with('$Foo bar baz|')
       conn.send_message 'Foo', 'bar baz'
     end
+  end
+
+  it "alerts the client when it's been disconnected" do
+    conn.client = client
+    client.channel.should_receive(:<<).with(
+      [:dc_disconnected, instance_of(Hash)])
+
+    conn.unbind
   end
 end

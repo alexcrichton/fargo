@@ -1,7 +1,12 @@
 require 'spec_helper'
 
 describe Fargo::Protocol::Hub do
-  let(:conn) { helper_object described_class }
+  let(:conn) {
+    helper_object(described_class).tap do |conn|
+      conn.client = Fargo::Client.new
+      conn.post_init
+    end
+  }
   include Fargo::TTH
 
   context "searches" do
@@ -53,6 +58,41 @@ describe Fargo::Protocol::Hub do
 
       query = Fargo::Search.new :query => 'file1'
       conn.receive_data "$Search 127.0.0.1:7000 #{query}|"
+    end
+  end
+
+  context "the hub handshake" do
+    before :each do
+      Fargo.configure do |config|
+        config.nick                = 'fargo'
+        config.speed               = 'DSL'
+        config.override_share_size = nil
+        config.email               = 'asdf'
+        config.passive             = false
+        config.upload_slots        = 5
+      end
+    end
+
+    it "replies with a valid key when the lock is sent" do
+      conn.should_receive(:send_data).with "$Key 4\220/%DCN000%/|"
+
+      conn.receive_data "$Lock FOO Pk=BAR|"
+    end
+
+    it "tries to validate the client's nick when the $HubName is received" do
+      conn.should_receive(:send_data).with "$ValidateNick fargo|"
+
+      conn.receive_data '$HubName foobar|'
+    end
+
+    it "sends $Version, $MyInfo, and $GetNickList upon confirmation of nick" do
+      conn.should_receive(:send_data).with('$Version 1,0091|').ordered
+      conn.should_receive(:send_data).with(
+        "$MyINFO $ALL fargo <fargo V:0.2.0,M:A,H:1/0/0,S:5,Dt:1.2.6/W>$ " +
+        "$DSL\001$asdf$0$|").ordered
+      conn.should_receive(:send_data).with('$GetNickList|').ordered
+
+      conn.receive_data '$Hello fargo|'
     end
   end
 end

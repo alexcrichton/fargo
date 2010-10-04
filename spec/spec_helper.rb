@@ -6,15 +6,20 @@ require 'fargo'
 
 download_dir = File.expand_path '../tmp', __FILE__
 
-Fargo.configure do |config|
-  config.download_dir = download_dir
-  config.config_dir   = download_dir + '/config'
-end
-
-Fargo.logger.level = ActiveSupport::BufferedLogger::INFO
+Fargo.logger.level = ActiveSupport::BufferedLogger::WARN
 
 RSpec.configure do |c|
   c.color_enabled = true
+
+  c.before :each do
+    Fargo.configure do |config|
+      config.download_dir        = download_dir
+      config.config_dir          = download_dir + '/config'
+      config.nick                = 'fargo'
+      config.override_share_size = nil
+      config.upload_slots        = 4
+    end
+  end
 
   c.around :each do |example|
     FileUtils.mkdir_p download_dir

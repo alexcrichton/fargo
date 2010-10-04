@@ -24,7 +24,7 @@ module Fargo
           when :getpass
             send_message 'MyPass', @client.config.password
           when :badpass, :hubfull
-            Fargo.logger.warn "Disconnecting because of: #{message.inspect}"
+            Fargo.logger.info "Disconnecting because of: #{message.inspect}"
             close_connection_after_writing
           when :hello
             if message[:nick] == @client.config.nick
