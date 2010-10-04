@@ -68,7 +68,7 @@ module Fargo
         when @@badpass        then {:type => :badpass}
         when @@lock           then {:type => :lock, :lock => $1}
         when @@hubname        then {:type => :hubname, :name => $1}
-        when @@hubname        then {:type => :hubfull}
+        when @@hubfull        then {:type => :hubfull}
         when @@hubtopic       then {:type => :hubtopic, :topic => $1}
         when @@hello          then {:type => :hello, :nick  => $1}
         when @@myinfo         then {:type => :myinfo, :nick => $1,

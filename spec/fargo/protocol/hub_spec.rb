@@ -94,5 +94,24 @@ describe Fargo::Protocol::Hub do
 
       conn.receive_data '$Hello fargo|'
     end
+
+    it "sends the configured password when requested" do
+      conn.client.config.password = 'foobar'
+      conn.should_receive(:send_data).with('$MyPass foobar|')
+
+      conn.receive_data '$GetPass|'
+    end
+
+    it "disconnects when the password was bad" do
+      conn.should_receive(:close_connection_after_writing)
+
+      conn.receive_data '$BadPass|'
+    end
+
+    it "disconnects when the hub is full" do
+      conn.should_receive(:close_connection_after_writing)
+
+      conn.receive_data '$HubIsFull|'
+    end
   end
 end
