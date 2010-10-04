@@ -77,7 +77,7 @@ module Fargo
               socket = EventMachine.open_datagram_socket '0.0.0.0', 0
               @results.each{ |r|
                 socket.send_datagram "$SR #{@client.config.nick} #{r}|",
-                  message[:ip], message[:port]
+                  message[:address], message[:port]
               }
               socket.close_connection_after_writing
             else

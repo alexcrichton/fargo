@@ -40,5 +40,19 @@ describe Fargo::Protocol::Hub do
       query = Fargo::Search.new :query => '3'
       conn.receive_data "$Search Hub:foobar #{query}|"
     end
+
+    it "sends active hits via EventMachine" do
+      stub = double 'connection'
+      stub.should_receive(:send_datagram).with('$SR ' +
+        "fargo tmp\\file12\0057 4/4\005TTH:#{file_tth file1} " +
+        "(127.0.0.1:7314)|", '127.0.0.1', 7000).ordered
+      stub.should_receive(:close_connection_after_writing).ordered
+
+      EventMachine.stub(:open_datagram_socket).with('0.0.0.0', 0).
+        and_return stub
+
+      query = Fargo::Search.new :query => 'file1'
+      conn.receive_data "$Search 127.0.0.1:7000 #{query}|"
+    end
   end
 end
