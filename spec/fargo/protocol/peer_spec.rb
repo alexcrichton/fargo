@@ -49,4 +49,10 @@ describe Fargo::Protocol::Peer do
     end
   end
 
+  it "disconnects with an appropriate message" do
+    client.channel.should_receive(:<<).with(
+      [:peer_disconnected, instance_of(Hash)])
+
+    conn.unbind
+  end
 end
