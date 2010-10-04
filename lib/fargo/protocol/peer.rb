@@ -31,7 +31,7 @@ module Fargo
       end
 
       def supports
-        'TTHF ADCGet ZLIG XmlBZList MiniSlots GetZBlock'
+        'MiniSlots XmlBZList ADCGet TTHF ZLIG GetZBlock'
       end
 
       def receive_message type, message
