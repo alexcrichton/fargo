@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
   s.summary     = 'A client for the DC protocol'
   s.description = 'Direct Connect (DC) Client implemented in pure Ruby'
 
-  s.files         = `git ls-files lib ext`.split("\n")
+  s.files         = `git ls-files lib ext`.split("\n") + ['README.md']
   s.test_files    = `git ls-files spec`.split("\n")
   s.extensions    = ['ext/fargo/extconf.rb']
   s.require_paths = ['lib', 'ext']
