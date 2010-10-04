@@ -86,6 +86,12 @@ describe Fargo::Protocol::Hub do
     conn.receive_data '$ConnectToMe fargo 1.2.3.4:500|'
   end
 
+  it "proxies specifically unhandled messages to the client" do
+    conn.client.channel.should_receive(:<<).with [:nick_list, instance_of(Hash)]
+
+    conn.receive_data '$NickList a$$b|'
+  end
+
   context "the hub handshake" do
     before :each do
       Fargo.configure do |config|
