@@ -126,8 +126,8 @@ describe Fargo::Protocol::Hub do
     it "sends $Version, $MyInfo, and $GetNickList upon confirmation of nick" do
       conn.should_receive(:send_data).with('$Version 1,0091|').ordered
       conn.should_receive(:send_data).with(
-        "$MyINFO $ALL fargo <fargo V:0.2.0,M:A,H:1/0/0,S:5,Dt:1.2.6/W>$ " +
-        "$DSL\001$asdf$0$|").ordered
+        "$MyINFO $ALL fargo <fargo V:#{Fargo::VERSION},M:A,H:1/0/0,S:5," +
+        "Dt:1.2.6/W>$ $DSL\001$asdf$0$|").ordered
       conn.should_receive(:send_data).with('$GetNickList|').ordered
 
       conn.receive_data '$Hello fargo|'
