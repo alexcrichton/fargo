@@ -107,7 +107,7 @@ module Fargo
       end
 
       def finish_streaming
-        @file.close
+        @file.try :close
 
         if @listing == 'filelist'
           close_connection_after_writing
