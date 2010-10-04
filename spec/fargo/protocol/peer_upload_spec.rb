@@ -107,6 +107,13 @@ describe Fargo::Protocol::PeerUpload do
     conn.receive_data '$Get files.xml.bz2$1|'
   end
 
+  it "closes the connection when a file list is finished uploading" do
+    conn.stub(:send_data)
+    conn.should_receive(:close_connection_after_writing)
+
+    conn.receive_data '$ADCGET file files.xml.bz2 0 -1|'
+  end
+
   it "sends $Error when the requested file does not exist" do
     conn.should_receive(:send_message).with('Error', 'File Not Available')
 
