@@ -79,6 +79,13 @@ describe Fargo::Protocol::Hub do
     end
   end
 
+  it "connects to a client when receiving $ConnectToMe" do
+    EventMachine.should_receive(:connect).with('1.2.3.4', 500,
+      Fargo::Protocol::Peer)
+
+    conn.receive_data '$ConnectToMe fargo 1.2.3.4:500|'
+  end
+
   context "the hub handshake" do
     before :each do
       Fargo.configure do |config|

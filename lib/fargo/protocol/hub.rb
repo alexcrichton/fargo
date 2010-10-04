@@ -40,11 +40,6 @@ module Fargo
             end
 
           when :connect_to_me
-            if !@client.nicks.include?(message[:nick])
-              Fargo.logger.info "Invalid connect_to_me request from: #{message[:nick]}"
-              return
-            end
-
             EventMachine.connect message[:address], message[:port],
                 Protocol::Peer do |conn|
               conn.client     = @client
