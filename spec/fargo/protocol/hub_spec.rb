@@ -61,6 +61,24 @@ describe Fargo::Protocol::Hub do
     end
   end
 
+  context "$RevConnectToMe" do
+    it "responds with $ConnectToMe when the client is active" do
+      conn.client.config.passive = false
+      conn.client.config.address = '1.2.3.4'
+      conn.client.config.active_port = 728
+      conn.should_receive(:send_data).with('$ConnectToMe foobar 1.2.3.4:728|')
+
+      conn.receive_data '$RevConnectToMe foobar fargo|'
+    end
+
+    it "responds with $RevConnectToMe when the client is passive" do
+      conn.client.config.passive = true
+      conn.should_receive(:send_data).with('$RevConnectToMe fargo foobar|')
+
+      conn.receive_data '$RevConnectToMe foobar fargo|'
+    end
+  end
+
   context "the hub handshake" do
     before :each do
       Fargo.configure do |config|
