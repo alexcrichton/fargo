@@ -1,6 +1,6 @@
 module Fargo
   module Protocol
-    class Hub < EventMachine::Connection
+    module Hub
 
       include Utils
       include Protocol::DC
@@ -57,16 +57,16 @@ module Fargo
             @listings = @client.search_local_listings search
 
             @results = @listings.map do |l|
-              file = l.name.gusb '/', "\\"
+              file = l.name.gsub '/', "\\"
               if File.directory? l.name
                 s = file
               else
-                s = "#{file}\005#{@filesize}"
+                s = "#{file}\005#{l.size}"
               end
 
               s + sprintf(" %d/%d\005%s (%s:%d)", @client.open_upload_slots,
                                                   @client.config.upload_slots,
-                                                  @client.hub.hubname,
+                                                  'TTH:' + l.tth,
                                                   @client.config.hub_address,
                                                   @client.config.hub_port)
             end
