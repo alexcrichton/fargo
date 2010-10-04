@@ -170,4 +170,29 @@ describe Fargo::Parser do
       }
     end
   end
+
+  it "parses a chat message correctly" do
+    helper.parse_message('<fargo> hello there!').should == {
+      :type => :chat,
+      :from => 'fargo',
+      :text => 'hello there!'
+    }
+  end
+
+  it "doesn't die on something which it does not match" do
+    helper.parse_message('$NoMatch here').should == {
+      :type => :mystery,
+      :text => '$NoMatch here'
+    }
+
+    helper.parse_message('NoMatch here').should == {
+      :type => :mystery,
+      :text => 'NoMatch here'
+    }
+
+    helper.parse_message('').should == {
+      :type => :mystery,
+      :text => ''
+    }
+  end
 end

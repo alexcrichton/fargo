@@ -57,7 +57,6 @@ module Fargo
       case text
         when @@commandmatch then parse_command_message $1
         when @@messagematch then {:type => :chat, :from => $1, :text => $2}
-        when ''             then {:type => :garbage}
         else                     {:type => :mystery, :text => text}
       end
     end
@@ -146,7 +145,7 @@ module Fargo
           h = {:type => :userip, :users => {}}
           $1.split('$$').map{ |s| h[:users][s.split(' ')[0]] = s.split(' ')[1]}
           h
-        else                       {:type => :mystery, :text => text}
+        else                       {:type => :mystery, :text => '$' + text}
       end
     end
   end
