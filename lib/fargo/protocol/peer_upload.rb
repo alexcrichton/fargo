@@ -133,12 +133,15 @@ module Fargo
               break
             else
               to_send = [CHUNKSIZE, @size - @sent].min
+              @sent += to_send
 
               data = @file.read to_send
-              data = @deflator.deflate data if @zlib
+              if @zlib
+                flush_flag = (@sent == @size ? Zlib::FINISH : Zlib::NO_FLUSH)
+                data = @deflator.deflate data, flush_flag
+              end
 
               send_data data
-              @sent += to_send
             end
           else
             finish_streaming

@@ -54,6 +54,39 @@ describe Fargo::Protocol::PeerUpload do
 
       conn.receive_data '$ADCGET file tmp/file 0 4|'
     end
+
+    it "compresses the sent data with zlib if requested" do
+      conn.stub(:send_message)
+      conn.should_receive(:send_data).with Zlib::Deflate.deflate('0123')
+
+      conn.receive_data '$ADCGET file tmp/file 0 4 ZL1|'
+    end
+  end
+
+  describe "huge files" do
+    let(:size) { 16 * 1024 * 2 + 100 }
+
+    before :each do
+      File.open(file + '2', 'w'){ |f| f << ('a' * size) }
+      conn.client.share_directory Fargo.config.download_dir
+    end
+
+    it "are uploaded efficiently" do
+      conn.stub(:send_message)
+      conn.should_receive(:send_data).with('a' * 16 * 1024).twice.ordered
+      conn.should_receive(:send_data).with('a' * 100).ordered
+
+      conn.receive_data '$ADCGET file tmp/file2 0 -1|'
+    end
+
+    it "compresses successfully" do
+      sent_data = ''
+      conn.stub(:send_message)
+      conn.stub(:send_data){ |d| sent_data << d }
+
+      conn.receive_data '$ADCGET file tmp/file2 0 -1 ZL1|'
+      sent_data.should == Zlib::Deflate.deflate('a' * size)
+    end
   end
 
   it "sends $MaxedOut when the client has no slots" do
