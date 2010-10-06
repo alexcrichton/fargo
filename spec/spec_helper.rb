@@ -28,10 +28,8 @@ RSpec.configure do |c|
   end
 
   c.around :each, :type => :em do |example|
-    EventMachine.run {
+    EventMachine.run_block {
       example.run
-
-      EventMachine.stop_event_loop
     }
   end
 end
