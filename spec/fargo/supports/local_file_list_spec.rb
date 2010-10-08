@@ -29,6 +29,16 @@ describe Fargo::Supports::LocalFileList do
     hash['shared']['c']['d'].name.should == 'shared/c/d'
   end
 
+  it "caches the file list so that another client can come along" do
+    @client.share_directory @root
+
+    client2 = Fargo::Client.new
+    client2.config.override_share_size = nil
+    client2.local_file_list.should     == @client.local_file_list
+    client2.share_size.should          == @client.share_size
+    client2.shared_directories.should  == @client.shared_directories
+  end
+
   it "caches the size of each file shared" do
     @client.share_directory @root
 
