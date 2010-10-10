@@ -19,7 +19,11 @@ module Fargo
                   :failed_downloads, :trying, :timed_out
 
       def has_download_slot?
-        @current_downloads.size + @trying.size < config.download_slots
+        open_download_slots > 0
+      end
+
+      def open_download_slots
+        config.download_slots - @trying.size - @current_downloads.size
       end
 
       def clear_failed_downloads
