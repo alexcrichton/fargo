@@ -91,8 +91,10 @@ module Fargo
         ws.onopen {
           Fargo.logger.debug('ws connected')
 
-          sid = channel.subscribe do |*args|
-            ws.send Marshal.dump(args)
+          sid = channel.subscribe do |type, hash|
+            if type != :download_opened
+              ws.send Marshal.dump([type, hash])
+            end
           end
 
           ws.onclose{ channel.unsubscribe sid }
