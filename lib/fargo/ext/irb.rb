@@ -21,6 +21,8 @@ module IRB
     @CONF[:IRB_RC].call(irb.context) if @CONF[:IRB_RC]
     @CONF[:MAIN_CONTEXT] = irb.context
 
+    yield if block_given?
+
     catch(:IRB_EXIT) do
       irb.eval_input
     end

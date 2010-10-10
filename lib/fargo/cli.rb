@@ -51,7 +51,23 @@ module Fargo
         Thread.start{ EventMachine.run streamer }
       end
 
-      IRB.start_session binding
+      IRB.start_session binding do
+        old_proc = Readline.completion_proc
+        Readline.basic_word_break_characters = " \t\n\\'`><=;|&{("
+        Readline.basic_quote_characters = ''
+
+        Readline.completion_proc = lambda { |str|
+          input = Readline.get_input
+
+          if input =~  /^who /
+            candidates = client.nicks + ['name', 'size']
+            str = str.gsub /^"/, ''
+            candidates.select{ |n| n.start_with? str }.map{ |s| s.inspect }
+          else
+            old_proc.call str
+          end
+        }
+      end
 
       EventMachine.stop
     end

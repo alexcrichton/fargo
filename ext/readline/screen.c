@@ -77,3 +77,10 @@ void clear_rl() {
 void restore_rl() {
   rl_forced_update_display();
 }
+
+char* get_readline_input() {
+  struct readline_state state;
+  rl_save_state(&state);
+
+  return state.buffer;
+}
