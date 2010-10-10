@@ -71,7 +71,8 @@ module Fargo
         @fargo_client = client
       end
 
-      def results str
+      def results str = nil
+        str ||= client.searches.last
         results = client.search_results(str).dup
 
         if results.nil?
