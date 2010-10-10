@@ -134,30 +134,6 @@ extern word64 table[4*256];
       feedforward
 #endif
 
-/*
-#define tiger_compress_macro(str, state) \
-{ \
-  register word64 a, b, c, tmpa; \
-  word64 aa, bb, cc; \
-  register word64 x0, x1, x2, x3, x4, x5, x6, x7; \
-  register word32 i; \
-  int pass_no; \
-\
-  a = state[0]; \
-  b = state[1]; \
-  c = state[2]; \
-\
-  x0=str[0]; x1=str[1]; x2=str[2]; x3=str[3]; \
-  x4=str[4]; x5=str[5]; x6=str[6]; x7=str[7]; \
-\
-  compress; \
-\
-  state[0] = a; \
-  state[1] = b; \
-  state[2] = c; \
-}
-*/
-
 #define tiger_compress_macro(str, state) \
 { \
   register word64 a, b, c, tmpa; \

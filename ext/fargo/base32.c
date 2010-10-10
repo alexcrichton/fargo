@@ -34,28 +34,3 @@ char* base32_encode(const unsigned char* buffer, int len)
     }
     return digest;
 }
-
-#if 0
-char* base32_decode(const unsigned char* buffer, int len)
-{
-    int i, j = 0;
-    int bits_remain = 0;
-    unsigned short value = 0;
-
-    for (i = 0; i < len; i++) {
-        value |= (buffer[i] << bits_remain);
-        bits_remain += 8;
-        while (bits_remain > 5 && j < 1023) {
-            base32_digest[j++] = (value & 0x1F) < 26 ? 'A'+(value & 0x1F) : '2' + (value & 0x1F);
-            value >>= 5;
-            bits_remain -= 5;
-        }
-    }
-    if (bits_remain > 0) {
-        base32_digest[j++] = (value & 0x1F) < 26 ? 'A'+(value & 0x1F) : '2' + (value & 0x1F);
-    }
-    base32_digest[j] = '\0';
-    return base32_digest;
-}
-
-#endif

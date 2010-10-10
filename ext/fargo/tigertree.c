@@ -109,43 +109,7 @@ void tt_digest(TT_CONTEXT *ctx, byte *s)
     word64 tmp, cnt;
     tt_final(ctx);
 
-    /*
-    dth_top0 = 0;
-    cnt = ctx->count;
-    tmp = cnt;
-    while(tmp == ((tmp >> 1)<<1)) {
-        dth_top0++;
-        tmp >>= 1;
-    }
-    cnt -= ((word64)1 << dth_top0);
-
-    TRACE(("ctx->top-TIGERSIZE - ctx->nodes == %d\n", ctx->top-TIGERSIZE - ctx->nodes));
-    */
-
     while( (ctx->top-TIGERSIZE) > ctx->nodes) {
-        /*
-        assert(cnt > 0);
-
-        dth_top1 = 0;
-        tmp = cnt;
-        while (tmp == ((tmp >> 1)<<1)) {
-            dth_top1++;
-            tmp >>= 1;
-        }
-        cnt -= ((word64)1 << dth_top1);
-
-        if ((ctx->depth <= dth_top1) && (ctx->depth >= dth_top0)) {
-            if ( dth_top1 == ctx->depth) {
-                TRACE(("depth = %d, dth_top0 == %d, dth_top1 == %d\n", ctx->depth, dth_top0, dth_top1));
-                memmove(ctx->tthl, ctx->top - 2*TIGERSIZE, 2*TIGERSIZE);
-                ctx->tthl += 2*TIGERSIZE;
-            } else {
-                TRACE(("depth = %d, dth_top0 == %d, dth_top1 == %d\n", ctx->depth, dth_top0, dth_top1));
-                memmove(ctx->tthl, ctx->top - TIGERSIZE, TIGERSIZE);
-                ctx->tthl += TIGERSIZE;
-            }
-        }
-        */
         tt_compose(ctx);
         dth_top0 = dth_top1 + 1;
     }
