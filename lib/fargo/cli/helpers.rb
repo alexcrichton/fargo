@@ -4,7 +4,26 @@ require 'em-http-request'
 module Fargo
   module CLI
     module Helpers
+      extend ActiveSupport::Concern
+
       attr_writer :client
+
+      included do
+        add_logger(:chat) do |_, message|
+          "<#{message[:from]}>: #{message[:text]}"
+        end
+      end
+
+      module ClassMethods
+        def add_logger type, &block
+          @logging ||= Hash.new{ |h, k| h[k] = [] }
+          @logging[type.to_s] << block
+        end
+
+        def logging_for type
+          @logging[type.to_s]
+        end
+      end
 
       def client
         @client ||= DRbObject.new_with_uri 'druby://127.0.0.1:8082'
@@ -20,19 +39,10 @@ module Fargo
             to_log = nil
             type, message = Marshal.load(msg)
 
-            case type
-              when :chat
-                to_log = "<#{message[:from]}>: #{message[:text]}"
-              when :search_result
-                obj = client.search_objects.detect{ |s| s.matches? message }
-                if obj
-                  to_log = "New search result for: #{obj.query.inspect}"
-                else
-                  to_log = "New search result"
-                end
-            end
-
-            Readline.above_prompt{ puts to_log } unless to_log.nil?
+            self.class.logging_for(type).each{ |l|
+              to_log = l.call self, message
+              Readline.above_prompt{ puts to_log } unless to_log.nil?
+            }
           }
         }
 

@@ -7,6 +7,15 @@ module Fargo
 
       included do
         add_completion(/^results\s+[^\s]+$/, &:searches)
+        add_logger(:search_result) do |console, message|
+          obj = console.client.search_objects.detect{ |s| s.matches? message }
+          if obj
+            "New search result for: #{obj.query.inspect}"
+          else
+            'New search result'
+          end
+        end
+
         delegate :search, :to => :client
       end
 
