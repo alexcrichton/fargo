@@ -57,11 +57,6 @@ module Fargo
     end
 
     def connect
-      EventMachine.error_handler{ |e|
-        Fargo.logger.debug "Error raised during event loop: #{e.message}"
-        Fargo.logger.debug e.backtrace.join("\n")
-      }
-
       run_callbacks :connect do
         EventMachine.connect config.hub_address, config.hub_port,
             Protocol::Hub do |conn|

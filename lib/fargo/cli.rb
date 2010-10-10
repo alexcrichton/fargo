@@ -17,6 +17,18 @@ module Fargo
 
       console = Console.new
 
+      EventMachine.error_handler { |e|
+        if e.message =~ /no acceptor/
+          puts "Couldn't open sockets for listening"
+          puts "  Ports in question:"
+          [console.client.config.active_port, console.client.config.search_port,
+              console.client.config.websocket_port].each do |p|
+            puts "\t#{p}"
+          end
+          exit
+        end
+      }
+
       begin
         console.client.connected?
       rescue DRb::DRbConnError
