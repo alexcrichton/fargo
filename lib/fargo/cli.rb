@@ -25,16 +25,17 @@ module Fargo
           :timeout => 0)
 
         ws.stream { |msg|
-          Readline.above_prompt{
-            type, message = Marshal.load(msg)
+          to_log = nil
+          type, message = Marshal.load(msg)
 
-            case type
-              when :chat
-                puts "<#{message[:from]}>: #{message[:text]}"
-              when :search_result
-                puts "New search result"
-            end
-          }
+          case type
+            when :chat
+              to_log = "<#{message[:from]}>: #{message[:text]}"
+            when :search_result
+              to_log = "New search result"
+          end
+
+          Readline.above_prompt{ puts to_log } unless to_log.nil?
         }
       }
 
@@ -101,7 +102,10 @@ module Fargo
       end
 
       def who
-        client.nicks.each{ |n| puts n }
+        client.nicks.each do |n|
+          printf "%10s %s\n", humanize_bytes(client.info(n)[:sharesize]), n
+        end
+
         true
       end
 
