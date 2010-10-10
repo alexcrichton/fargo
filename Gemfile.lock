@@ -4,6 +4,7 @@ PATH
     fargo (0.3.0)
       activesupport (>= 3.0.0)
       bzip2-ruby
+      em-websocket
       eventmachine
       libxml-ruby
 
@@ -11,8 +12,12 @@ GEM
   remote: http://rubygems.org/
   specs:
     activesupport (3.0.0)
+    addressable (2.2.1)
     bzip2-ruby (0.2.6)
     diff-lcs (1.1.2)
+    em-websocket (0.1.4)
+      addressable (>= 2.1.1)
+      eventmachine (>= 0.12.9)
     eventmachine (0.12.10)
     libxml-ruby (1.1.4)
     rake (0.8.7)
@@ -34,6 +39,7 @@ PLATFORMS
 DEPENDENCIES
   activesupport (>= 3.0.0)
   bzip2-ruby
+  em-websocket
   eventmachine
   fargo!
   libxml-ruby

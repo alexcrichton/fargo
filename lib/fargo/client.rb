@@ -1,6 +1,7 @@
 require 'socket'
 require 'active_support/core_ext/object/try'
 require 'active_support/callbacks'
+require 'em-websocket'
 
 module Fargo
   class Client
@@ -31,6 +32,8 @@ module Fargo
       config.hub_port       = 7314
       config.active_port    = 7315
       config.search_port    = 7316
+      config.websocket_port = 9091
+      config.websocket_host = '127.0.0.1'
       config.download_slots = 4
       config.upload_slots   = 4
       config.password       = ''
@@ -77,6 +80,23 @@ module Fargo
             conn.client = self
           end
         end
+      end
+
+      start_websocket_service
+    end
+
+    def start_websocket_service
+      EventMachine.start_server(config.websocket_host, config.websocket_port,
+          EventMachine::WebSocket::Connection, {}) do |ws|
+        ws.onopen {
+          Fargo.logger.debug('ws connected')
+
+          sid = channel.subscribe do |*args|
+            ws.send Marshal.dump(args)
+          end
+
+          ws.onclose{ channel.unsubscribe sid }
+        }
       end
     end
 
