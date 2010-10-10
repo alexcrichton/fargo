@@ -32,10 +32,13 @@ module Fargo
       begin
         console.client.connected?
       rescue DRb::DRbConnError
+        current = Thread.current
         Thread.start{ EventMachine.run{
           console.client = Fargo::Client.new
           console.client.connect
+          current.wakeup
         } }
+        sleep
       end
 
       console.log_published_messages
