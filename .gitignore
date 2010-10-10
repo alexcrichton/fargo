@@ -1,8 +1,7 @@
 *.o
 coverage*
-ext/fargo/tth.bundle
-ext/fargo/Makefile
-ext/readline/Makefile
-ext/readline/clear_rl.bundle
+ext/**/Makefile
+ext/**/*.bundle
+ext/**/*.log
 .bundle
 pkg

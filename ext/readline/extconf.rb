@@ -6,5 +6,5 @@ if RUBY_VERSION =~ /1\.9/
 end
 
 if have_header('readline/readline.h') || have_header('readline.h')
-  create_makefile('clear_rl')
+  create_makefile('extra_utils')
 end

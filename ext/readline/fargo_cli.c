@@ -19,7 +19,7 @@ VALUE rb_readline_input(VALUE self) {
   return rb_str_new(input, strlen(input));
 }
 
-Init_clear_rl() {
+Init_extra_utils() {
   VALUE cReadline = rb_define_module("Readline");
 
   rb_define_singleton_method(cReadline, "clear_rl", rb_readline_clear_rl, 0);

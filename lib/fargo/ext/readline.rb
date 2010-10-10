@@ -1,5 +1,5 @@
 require 'readline'
-require 'readline/clear_rl'
+require 'readline/extra_utils'
 
 module Readline
   def self.above_prompt
