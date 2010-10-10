@@ -32,7 +32,7 @@ module Fargo
       begin
         console.client.connected?
       rescue DRb::DRbConnError
-        current = Thread.current
+        current = Thread.current # Wait for the reactor to start
         Thread.start{ EventMachine.run{
           console.client = Fargo::Client.new
           console.client.connect
