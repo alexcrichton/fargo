@@ -12,6 +12,11 @@ module Fargo
         add_logger(:chat) do |_, message|
           "<#{message[:from]}>: #{message[:text]}"
         end
+
+        add_logger(:hub_disconnected) do |_, _|
+          puts "Hub disconnected, exiting..."
+          exit
+        end
       end
 
       module ClassMethods

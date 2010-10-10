@@ -98,7 +98,7 @@ module Fargo
     end
 
     def connected?
-      EventMachine.reactor_running?
+      EventMachine.reactor_running? && !hub.error?
     end
 
     def disconnect
