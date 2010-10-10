@@ -33,8 +33,8 @@ module Fargo
         max_nick = client.current_downloads.keys.map(&:size).max
         client.current_downloads.each_pair do |nick, download|
           printf "%#{max_nick}s %10s (%.2f%%) %10s -- %s\n", nick,
-            humanize_bytes(download.size), download.percent, download.status,
-            download.file
+            humanize_bytes(download.size), 100 * download.percent,
+            download.status, download.file
         end
 
         puts "Upload slots avail: " +
