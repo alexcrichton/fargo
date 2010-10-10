@@ -33,7 +33,12 @@ module Fargo
             when :chat
               to_log = "<#{message[:from]}>: #{message[:text]}"
             when :search_result
-              to_log = "New search result"
+              obj = client.search_objects.detect{ |s| s.matches? message }
+              if obj
+                to_log = "New search result for: #{obj.query.inspect}"
+              else
+                to_log = "New search result"
+              end
           end
 
           Readline.above_prompt{ puts to_log } unless to_log.nil?

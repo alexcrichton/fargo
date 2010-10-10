@@ -31,7 +31,11 @@ module Fargo
       end
 
       def searches
-        @searches.keys.map { |k| @search_objects[k].query }
+        search_objects.map{ |s| s.query }
+      end
+
+      def search_objects
+        @searches.keys.map { |k| @search_objects[k] }
       end
 
       def search_results search
