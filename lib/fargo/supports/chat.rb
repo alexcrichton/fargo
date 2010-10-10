@@ -5,6 +5,7 @@ module Fargo
 
       included do
         set_callback :initialization, :after, :initialize_chats
+        set_callback :connect, :after, :periodically_remove_chats
       end
 
       def messages
@@ -16,6 +17,16 @@ module Fargo
       end
 
       protected
+
+      def periodically_remove_chats
+        EventMachine.add_periodic_timer 60 do
+          @public_chats = @public_chats[0..100]
+
+          @chats.each_pair do |k, v|
+            @chats[k] = v[0..100]
+          end
+        end
+      end
 
       def initialize_chats
         @public_chats = []
