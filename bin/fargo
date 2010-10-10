@@ -1,94 +1,16 @@
 #!/usr/bin/env ruby
 
+require 'fargo'
 require 'drb'
 require 'irb'
-require 'hirb'
 require 'em-http-request'
-require 'readline/clear_rl'
 
 EventMachine.error_handler{ |e|
   puts "Error raised during event loop: #{e.message}"
   puts e.backtrace.join("\n")
 }
 
-module KBHandler
-  include EM::Protocols::LineText2
-  include Hirb::Console
-
-  def receive_line data
-    begin
-      @ret, @out, $stdout = :exception, $stdout, StringIO.new
-      @ret = eval data, scope, '(wtf)'
-    rescue StandardError, ScriptError, Exception, SyntaxError
-      $! = RuntimeError.new("unknown exception raised") unless $!
-      print $!.class, ": ", $!, "\n"
-
-      trace = []
-      $!.backtrace.each do |line|
-        trace << "\tfrom #{line}"
-        break if line =~ /\(rirb\)/
-      end
-
-      puts trace
-    ensure
-      $stdout, @out = @out, $stdout
-      @out.rewind
-      @out = @out.read
-    end
-
-    print @out unless @out.empty?
-    print "=> #{@ret.inspect}" unless @ret == :exception
-    print "\0\n>> \0"
-  end
-
-  def client
-    @client ||= DRbObject.new_with_uri 'druby://127.0.0.1:8082'
-  end
-
-  def scope
-    @scope ||= instance_eval{ binding }
-  end
-
-  def results str
-    results = client.search_results str
-
-    to_print = results.map do |r|
-      {
-        :nick => r[:nick],
-        :ext  => File.extname(r[:file]),
-        :file => File.basename(r[:file].gsub("\\", '/')),
-        :size => '%.2f' % [r[:size] / 1024.0 / 1024]
-      }
-    end
-
-    to_print.each_with_index do |r, i|
-      r[:index] = i
-    end
-
-    table to_print, :fields => [:index, :nick, :ext, :size, :file]
-  end
-
-  def search str
-    client.search str
-    sleep 1
-
-    results str
-  end
-
-  def download index, search = nil
-    search ||= client.searches[0]
-
-    item = client.search_results(search)[index]
-
-    if item.nil?
-      puts 'That is not something to download!'
-    else
-      client.download item[:nick], item[:file], item[:tth]
-    end
-  end
-end
-
-extend KBHandler
+extend Fargo::CLI
 
 Thread.start {
   EventMachine.run {

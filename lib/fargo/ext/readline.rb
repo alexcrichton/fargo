@@ -1,3 +1,4 @@
+require 'readline'
 require 'readline/clear_rl'
 
 module Readline

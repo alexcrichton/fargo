@@ -7,6 +7,7 @@ PATH
       em-http-request
       em-websocket
       eventmachine
+      hirb
       libxml-ruby
 
 GEM
@@ -23,6 +24,7 @@ GEM
       addressable (>= 2.1.1)
       eventmachine (>= 0.12.9)
     eventmachine (0.12.10)
+    hirb (0.3.4)
     libxml-ruby (1.1.4)
     rake (0.8.7)
     rcov (0.9.9)
@@ -47,6 +49,7 @@ DEPENDENCIES
   em-websocket
   eventmachine
   fargo!
+  hirb
   libxml-ruby
   rake
   rcov

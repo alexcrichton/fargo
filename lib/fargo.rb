@@ -15,6 +15,7 @@ module Fargo
   mattr_accessor :logger
   self.logger = ActiveSupport::BufferedLogger.new STDOUT
 
+  autoload :CLI
   autoload :Utils
   autoload :Parser
   autoload :Client
@@ -55,4 +56,3 @@ module Fargo
 end
 
 require 'fargo/ext/struct'
-require 'fargo/ext/readline'

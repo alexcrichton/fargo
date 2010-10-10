@@ -15,9 +15,9 @@ Gem::Specification.new do |s|
 
   s.files         = `git ls-files lib ext bin`.split("\n") + ['README.md']
   s.test_files    = `git ls-files spec`.split("\n")
+  s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
   s.extensions    = ['ext/fargo/extconf.rb', 'ext/readline/extconf.rb']
   s.require_paths = ['lib', 'ext']
-  s.rdoc_options  = ['--charset=UTF-8']
 
   s.add_dependency 'eventmachine'
   s.add_dependency 'em-websocket'
@@ -25,4 +25,5 @@ Gem::Specification.new do |s|
   s.add_dependency 'activesupport', '>= 3.0.0'
   s.add_dependency 'libxml-ruby'
   s.add_dependency 'bzip2-ruby'
+  s.add_dependency 'hirb'
 end
