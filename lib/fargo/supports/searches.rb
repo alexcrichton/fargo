@@ -26,6 +26,8 @@ module Fargo
         @searches[search.to_s]       = []
         @search_objects[search.to_s] = search
         search_hub search
+
+        EventMachine.add_timer(60) { remove_search search }
       end
 
       def searches
