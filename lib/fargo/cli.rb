@@ -1,7 +1,6 @@
 require 'drb'
 require 'irb'
 require 'em-http-request'
-require 'hirb'
 require 'fargo/ext/readline'
 require 'fargo/ext/irb'
 
@@ -27,7 +26,14 @@ module Fargo
 
         ws.stream { |msg|
           Readline.above_prompt{
-            puts "Recieved: #{Marshal.load(msg).inspect}"
+            type, message = Marshal.load(msg)
+
+            case type
+              when :chat
+                puts "<#{message[:from]}>: #{message[:text]}"
+              when :search_result
+                puts "New search result"
+            end
           }
         }
       }
@@ -49,9 +55,7 @@ module Fargo
       end
     end
 
-    module Methods
-      include Hirb::Console
-
+    module Helpers
       def client
         @fargo_client ||= DRbObject.new_with_uri 'druby://127.0.0.1:8082'
       end
@@ -61,31 +65,27 @@ module Fargo
       end
 
       def results str
-        results = client.search_results str
+        results = client.search_results(str).dup
 
-        to_print = results.map do |r|
-          {
-            :nick => r[:nick],
-            :ext  => File.extname(r[:file]),
-            :file => File.basename(r[:file].gsub("\\", '/')),
-            :size => '%.2f' % [r[:size] / 1024.0 / 1024]
-          }
+        if results.nil?
+          puts "No search results for: #{str.inspect}!"
+          return
         end
 
-        to_print.each_with_index do |r, i|
-          r[:index] = i
+        results.each{ |r| r[:file] = File.basename(r[:file].gsub("\\", '/')) }
+
+        max_nick_size = results.map{ |r| r[:nick].size }.max
+
+        results.each_with_index do |r, i|
+          printf "%3d: %#{max_nick_size}s %9s -- %s\n", i,
+            r[:nick], humanize_bytes(r[:size]), r[:file]
         end
 
-        Readline.above_prompt {
-          table to_print, :fields => [:index, :nick, :ext, :size, :file]
-        }
+        true
       end
 
       def search str
         client.search str
-        sleep 1
-
-        results str
       end
 
       def download index, search = nil
@@ -100,8 +100,31 @@ module Fargo
         end
       end
 
+      def who
+        client.nicks.each{ |n| puts n }
+        true
+      end
+
+      protected
+
+      def humanize_bytes bytes
+        suffix = 'B'
+        while bytes > 1024
+          suffix = case suffix
+            when 'B' then 'K'
+            when 'K' then 'M'
+            when 'M' then 'G'
+            when 'G' then 'T'
+            when 'T' then break
+          end
+
+          bytes /= 1024.0
+        end
+
+        '%.2f %s' % [bytes, suffix]
+      end
     end
 
-    extend Methods
+    extend Helpers
   end
 end

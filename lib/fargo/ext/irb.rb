@@ -14,6 +14,10 @@ module IRB
 
     irb = Irb.new(workspace)
 
+    trap('SIGINT') do
+      irb.signal_handle
+    end
+
     @CONF[:IRB_RC].call(irb.context) if @CONF[:IRB_RC]
     @CONF[:MAIN_CONTEXT] = irb.context
 

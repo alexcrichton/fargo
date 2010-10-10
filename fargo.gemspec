@@ -25,5 +25,4 @@ Gem::Specification.new do |s|
   s.add_dependency 'activesupport', '>= 3.0.0'
   s.add_dependency 'libxml-ruby'
   s.add_dependency 'bzip2-ruby'
-  s.add_dependency 'hirb'
 end
