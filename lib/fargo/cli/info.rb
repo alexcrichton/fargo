@@ -1,3 +1,5 @@
+require 'active_support/core_ext/module/delegation'
+
 module Fargo
   module CLI
     module Info
@@ -7,6 +9,8 @@ module Fargo
         add_completion(/^who\s+[^\s]*$/) { |client|
           client.nicks + ['size', 'name']
         }
+        delegate :send_chat, :to => :client
+        alias :say :send_chat
       end
 
       def who sort_by = nil
