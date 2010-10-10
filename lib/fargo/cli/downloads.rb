@@ -22,6 +22,11 @@ module Fargo
       def download index, search = nil
         search ||= client.searches[0]
 
+        if search.nil?
+          puts "Nothing to download!"
+          return
+        end
+
         item = client.search_results(search)[index]
 
         if item.nil?
