@@ -53,3 +53,5 @@ module Fargo
     delegate :config, :configure, :to => Client
   end
 end
+
+require 'fargo/ext/struct'
