@@ -26,7 +26,7 @@ module Fargo
             @client.channel << [:download_progress, {:percent => percent,
                                         :file           => download_path,
                                         :nick           => @other_nick,
-                                        :download       => @download,
+                                        :download       => @download.to_h,
                                         :size           => @recvd,
                                         :compressed     => @zlib}]
 
@@ -61,7 +61,7 @@ module Fargo
               end
 
               @client.channel << [:download_started, {:file => download_path,
-                                         :download  => @download,
+                                         :download  => @download.to_h,
                                          :nick      => @other_nick}]
             else
               error "Premature disconnect when #{message[:type]} received"
@@ -157,7 +157,7 @@ module Fargo
         reset_download
 
         @client.channel << [:download_failed, opts.merge(:nick => @other_nick,
-                                             :download   => download,
+                                             :download   => download.to_h,
                                              :file       => path,
                                              :last_error => msg)]
       end
@@ -172,7 +172,7 @@ module Fargo
         reset_download
 
         @client.channel << [:download_finished,
-            {:file => path, :download => download, :nick => @other_nick}]
+            {:file => path, :download => download.to_h, :nick => @other_nick}]
 
         close_connection_after_writing if download.file_list?
       end
