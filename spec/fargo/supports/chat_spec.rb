@@ -30,4 +30,11 @@ describe Fargo::Supports::Chat, :type => :em do
     client.messages.should == []
     client.messages_with('foo').should == []
   end
+
+  it "sends the correct message when chatting" do
+    client.instance_variable_set('@hub', hub = mock)
+    hub.should_receive(:send_data).with('<fargo> hello world!|')
+
+    client.send_chat 'hello world!'
+  end
 end

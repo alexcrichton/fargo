@@ -16,6 +16,10 @@ module Fargo
         @chats[nick]
       end
 
+      def send_chat text
+        hub.send_data "<#{config.nick}> #{text}|"
+      end
+
       protected
 
       def periodically_remove_chats
