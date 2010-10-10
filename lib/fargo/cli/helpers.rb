@@ -4,13 +4,10 @@ require 'em-http-request'
 module Fargo
   module CLI
     module Helpers
+      attr_writer :client
 
       def client
-        @fargo_client ||= DRbObject.new_with_uri 'druby://127.0.0.1:8082'
-      end
-
-      def client= client
-        @fargo_client = client
+        @client ||= DRbObject.new_with_uri 'druby://127.0.0.1:8082'
       end
 
       def log_published_messages
