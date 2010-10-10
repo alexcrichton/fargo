@@ -59,12 +59,18 @@ module Fargo
         Readline.completion_proc = lambda { |str|
           input = Readline.get_input
 
+          candidates = []
           if input =~  /^who /
             candidates = client.nicks + ['name', 'size']
+          elsif input =~ /^results /
+            candidates = client.searches
+          end
+
+          if candidates.empty?
+            old_proc.call str
+          else
             str = str.gsub /^"/, ''
             candidates.select{ |n| n.start_with? str }.map{ |s| s.inspect }
-          else
-            old_proc.call str
           end
         }
       end
@@ -87,7 +93,7 @@ module Fargo
         @fargo_client = client
       end
 
-      def results str = nil
+      def results str = nil, opts = {}
         str ||= client.searches.last
         results = client.search_results(str).dup
 
@@ -96,12 +102,26 @@ module Fargo
           return
         end
 
-        results.each{ |r| r[:file] = File.basename(r[:file].gsub("\\", '/')) }
+        results.each_with_index{ |r, i|
+          r[:file]  = File.basename(r[:file].gsub("\\", '/'))
+          r[:index] = i
+        }
 
         max_nick_size = results.map{ |r| r[:nick].size }.max
 
-        results.each_with_index do |r, i|
-          printf "%3d: %#{max_nick_size}s %9s -- %s\n", i,
+        if opts[:sort] == 'size'
+          results = results.sort_by{ |r| r[:size] }
+        elsif !opts[:sort].nil?
+          puts "Unknown sort value: #{opts[:sort]}"
+          results = []
+        end
+
+        if opts[:grep]
+          results = results.select{ |r| r[:file].match opts[:grep] }
+        end
+
+        results.each do |r|
+          printf "%3d: %#{max_nick_size}s %9s -- %s\n", r[:index],
             r[:nick], humanize_bytes(r[:size]), r[:file]
         end
 
