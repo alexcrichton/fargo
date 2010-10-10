@@ -21,8 +21,9 @@ module Fargo
       end
 
       streamer = proc {
-        ws = EventMachine::HttpRequest.new('ws://localhost:9091/').get(
-          :timeout => 0)
+        host = "ws://#{client.config.websocket_host}" +
+                  ":#{client.config.websocket_port}/"
+        ws = EventMachine::HttpRequest.new(host).get(:timeout => 0)
 
         ws.stream { |msg|
           to_log = nil
