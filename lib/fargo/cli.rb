@@ -111,7 +111,16 @@ module Fargo
       def who sort_by = nil
         print_nick = lambda{ |n, s| printf "%10s %s\n", humanize_bytes(s), n }
 
-        if sort_by.nil?
+        if client.nicks.include? sort_by
+          info = client.info(sort_by)
+          key_len = info.keys.map{ |k| k.to_s.length }.max
+
+          info.each_pair do |k, v|
+            next if k == :type
+            printf "%#{key_len}s: %s\n", k,
+              v.is_a?(Numeric) ? humanize_bytes(v) : v
+          end
+        elsif sort_by.nil?
           client.nicks.each do |n|
             print_nick.call n, client.info(n)[:sharesize]
           end
