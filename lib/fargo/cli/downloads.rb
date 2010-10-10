@@ -30,9 +30,9 @@ module Fargo
       end
 
       def transfers
-        max_nick = client.current_downloads.map{ |d| d.nick.size }.max
-        client.current_downloads.each do |download|
-          printf "%#{max_nick}s %10s (%.2f) %10s %s\n", download.nick,
+        max_nick = client.current_downloads.keys.map(&:size).max
+        client.current_downloads.each_pair do |nick, download|
+          printf "%#{max_nick}s %10s (%.2f%%) %10s -- %s\n", nick,
             humanize_bytes(download.size), download.percent, download.status,
             download.file
         end
