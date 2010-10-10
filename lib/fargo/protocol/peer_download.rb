@@ -21,6 +21,8 @@ module Fargo
           download_finished!
         else
           percent = @recvd.to_f / @length
+          @download.percent = percent
+
           if percent - @last_published > 0.05
             @file.flush
             @client.channel << [:download_progress, {:percent => percent,
