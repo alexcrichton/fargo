@@ -1,33 +1,5 @@
 #!/usr/bin/env ruby
 
 require 'fargo'
-require 'drb'
-require 'irb'
-require 'em-http-request'
 
-EventMachine.error_handler{ |e|
-  puts "Error raised during event loop: #{e.message}"
-  puts e.backtrace.join("\n")
-}
-
-extend Fargo::CLI
-
-Thread.start {
-  EventMachine.run {
-    ws = EventMachine::HttpRequest.new('ws://localhost:9091/').get :timeout => 0
-
-    ws.stream { |msg|
-      Readline.above_prompt{ puts "Recieved: #{Marshal.load(msg).inspect}" }
-    }
-
-    ws.disconnect { puts 'oops' }
-
-    ws.callback {
-      puts "WebSocket connected!"
-    }
-  }
-}
-
-IRB.start
-
-EventMachine.stop
+Fargo::CLI.start

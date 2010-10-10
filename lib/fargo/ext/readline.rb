@@ -2,7 +2,7 @@ require 'readline'
 require 'readline/clear_rl'
 
 module Readline
-  def above_prompt
+  def self.above_prompt
     Readline.clear_rl
     yield
     Readline.restore
