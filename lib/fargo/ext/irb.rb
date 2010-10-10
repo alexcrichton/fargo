@@ -1,3 +1,5 @@
+require 'irb'
+
 # See url below for where this came from
 # http://jameskilton.com/2009/04/02/embedding-irb-into-your-ruby-application/
 module IRB
