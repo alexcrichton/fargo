@@ -2,5 +2,7 @@
 coverage*
 ext/fargo/tth.bundle
 ext/fargo/Makefile
+ext/readline/Makefile
+ext/readline/clear_rl.bundle
 .bundle
 pkg

@@ -13,14 +13,15 @@ Gem::Specification.new do |s|
   s.summary     = 'A client for the DC protocol'
   s.description = 'Direct Connect (DC) Client implemented in pure Ruby'
 
-  s.files         = `git ls-files lib ext`.split("\n") + ['README.md']
+  s.files         = `git ls-files lib ext bin`.split("\n") + ['README.md']
   s.test_files    = `git ls-files spec`.split("\n")
-  s.extensions    = ['ext/fargo/extconf.rb']
+  s.extensions    = ['ext/fargo/extconf.rb', 'ext/readline/extconf.rb']
   s.require_paths = ['lib', 'ext']
   s.rdoc_options  = ['--charset=UTF-8']
 
   s.add_dependency 'eventmachine'
   s.add_dependency 'em-websocket'
+  s.add_dependency 'em-http-request'
   s.add_dependency 'activesupport', '>= 3.0.0'
   s.add_dependency 'libxml-ruby'
   s.add_dependency 'bzip2-ruby'
