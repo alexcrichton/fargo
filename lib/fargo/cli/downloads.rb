@@ -15,6 +15,8 @@ module Fargo
           "Download of #{message[:download]['file']} " +
           "finished into #{message[:file]}"
         end
+
+        alias :get :download
       end
 
       def download index, search = nil
