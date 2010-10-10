@@ -39,6 +39,11 @@ module Fargo
 
         @getting_file_list[nick] = true
         download nick, 'files.xml.bz2'
+
+        EventMachine.add_timer 60 do
+          @file_list.delete nick
+          @getting_file_list.delete nick
+        end
       end
 
       # Wait for the results to arrive, timed out after some time
