@@ -55,3 +55,4 @@ module Fargo
 end
 
 require 'fargo/ext/struct'
+require 'fargo/ext/readline'

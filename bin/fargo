@@ -95,9 +95,7 @@ Thread.start {
     ws = EventMachine::HttpRequest.new('ws://localhost:9091/').get :timeout => 0
 
     ws.stream { |msg|
-      Readline.clear_rl
-      puts "Recieved: #{Marshal.load(msg).inspect}"
-      Readline.restore
+      Readline.above_prompt{ puts "Recieved: #{Marshal.load(msg).inspect}" }
     }
 
     ws.disconnect { puts 'oops' }
