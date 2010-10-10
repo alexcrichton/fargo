@@ -43,6 +43,11 @@ module Fargo
 
       console.log_published_messages
 
+      if !console.client.connected?
+        puts "Client couldn't connect!"
+        exit
+      end
+
       IRB.start_session console.send(:binding) do
         console.setup_readline_completion
       end
