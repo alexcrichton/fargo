@@ -9,6 +9,7 @@ module Fargo
     autoload :Searches
     autoload :Info
     autoload :Downloads
+    autoload :Stats
 
     def self.start
       Fargo.logger = ActiveSupport::BufferedLogger.new WrappingLogger.new
@@ -46,6 +47,7 @@ module Fargo
       include Searches
       include Info
       include Downloads
+      include Stats
     end
 
   end
