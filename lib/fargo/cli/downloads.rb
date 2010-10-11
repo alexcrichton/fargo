@@ -5,7 +5,7 @@ module Fargo
       def setup_console
         super
 
-        add_completion(/^download\s+\d+,\s*[^\s]*$/) do
+        add_completion(/^(download|get)\s+\d+,\s*[^\s]*$/) do
           client.searches
         end
 

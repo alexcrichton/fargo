@@ -9,43 +9,23 @@ module Fargo
 
         @fixed_completions = {}
 
-        add_completion(/^browse\s+[^\s]*$/){ client.nicks }
+        add_completion(/^browse\s+[^\s]*$/) { client.nicks }
 
-        complete_dirs = lambda { |match|
-          Readline.above_prompt{ p 'here'; p @browsing }
-          if @browsing
-            all_input = Readline.get_input
-            dirs = []
-            while tmp = all_input.slice!(/[^\s]+?\s+/)
-              dirs << tmp.rstrip.gsub!(/"/, '')
-            end
-            dirs.shift # original command
-
-            resolved = resolve dirs.join('/'), false
-            hash = drilldown resolved, @file_list
-            keys = hash.keys + ['..'] rescue []
-            keys.select{ |k| k == '..' || hash[k].is_a?(Hash) }.map{ |k|
-              # Readline doesn't like completing words with spaces in the file
-              # name, so just display them as periods when in actuality we'll
-              # convert back to a space later
-              (k.gsub(' ', '.') + '/').tap do |str|
-                key = @cwd.join(*dirs).join(str).expand_path.to_s
-                @fixed_completions[key] = resolved.join k
-              end
-            }
-          else
-            []
-          end
-        }
-
-        add_completion(/^ls(?:\s+([^\s]*))+$/, &complete_dirs)
-
-        add_completion(/^cd(?:\s+([^\s]*))+$/, &complete_dirs)
+        file_regex = /(?:\s+(?:[^\s,]*))+/
+        add_completion(/^(?:get|download)#{file_regex}$/) { completion true }
+        add_completion(/^(?:ls|cd)#{file_regex}$/) { completion }
 
         add_logger(:download_finished) do |message|
           if message[:file].end_with? 'files.xml.bz2'
             begin_browsing message[:nick]
           end
+        end
+      end
+
+      def download file, other = nil
+        if file.is_a?(String)
+        else
+          super
         end
       end
 
@@ -98,6 +78,40 @@ module Fargo
       end
 
       protected
+
+      def completion include_files = false
+        if @browsing
+          all_input = Readline.get_input
+          dirs = []
+          while tmp = all_input.slice!(/[^\s]+?\s+/)
+            dirs << tmp.rstrip.gsub!(/"/, '')
+          end
+          dirs.shift # original command
+
+          resolved = resolve dirs.join('/'), false
+          hash     = drilldown resolved, @file_list
+
+          keys = hash.keys rescue []
+          keys = keys.select{ |k|
+            include_files || k == '..' || hash[k].is_a?(Hash)
+          }
+          keys << '..' unless keys.empty? && dirs.size != 0
+
+          keys.map{ |k|
+            suffix = hash[k].is_a?(Hash) ? '/' : ''
+
+            # Readline doesn't like completing words with spaces in the file
+            # name, so just display them as periods when in actuality we'll
+            # convert back to a space later
+            (k.gsub(' ', '.') + suffix).tap do |str|
+              key = @cwd.join(*dirs).join(str).expand_path.to_s
+              @fixed_completions[key] = resolved.join k
+            end
+          }
+        else
+          []
+        end
+      end
 
       def resolve dir, clear_cache = true
         return '' if @cwd.nil?
