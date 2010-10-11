@@ -3,20 +3,21 @@ require 'active_support/core_ext/module/delegation'
 module Fargo
   module CLI
     module Searches
-      extend ActiveSupport::Concern
+      delegate :search, :to => :client
 
-      included do
-        add_completion(/^results\s+[^\s]+$/, &:searches)
-        add_logger(:search_result) do |console, message|
-          obj = console.client.search_objects.detect{ |s| s.matches? message }
+      def setup_console
+        super
+
+        add_completion(/^results\s+[^\s]+$/){ client.searches }
+
+        add_logger(:search_result) do |message|
+          obj = client.search_objects.detect{ |s| s.matches? message }
           if obj
             "New search result for: #{obj.query.inspect}"
           else
             'New search result'
           end
         end
-
-        delegate :search, :to => :client
       end
 
       def results str = nil, opts = {}

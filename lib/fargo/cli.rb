@@ -4,12 +4,13 @@ module Fargo
   module CLI
     extend ActiveSupport::Autoload
 
-    autoload :Helpers
+    autoload :Logging
     autoload :Completion
     autoload :Searches
     autoload :Info
     autoload :Downloads
     autoload :Stats
+    autoload :NickBrowser
 
     def self.start
       Fargo.logger = ActiveSupport::BufferedLogger.new WrappingLogger.new
@@ -49,7 +50,7 @@ module Fargo
       end
 
       IRB.start_session console.send(:binding) do
-        console.setup_readline_completion
+        console.setup_console
       end
 
       EventMachine.stop
@@ -62,12 +63,15 @@ module Fargo
     end
 
     class Console
+
       include Completion
-      include Helpers
+      include Logging
       include Searches
       include Info
       include Downloads
       include Stats
+      include NickBrowser
+
     end
 
   end

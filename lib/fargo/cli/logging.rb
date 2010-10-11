@@ -3,31 +3,25 @@ require 'em-http-request'
 
 module Fargo
   module CLI
-    module Helpers
-      extend ActiveSupport::Concern
+    module Logging
 
       attr_writer :client
 
-      included do
-        add_logger(:chat) do |_, message|
+      def setup_console
+        super
+
+        add_logger(:chat) do |message|
           "<#{message[:from]}>: #{message[:text]}"
         end
 
-        add_logger(:hub_disconnected) do |_, _|
+        add_logger(:hub_disconnected) do |_|
           puts "Hub disconnected, exiting..."
           exit
         end
       end
 
-      module ClassMethods
-        def add_logger type, &block
-          @logging ||= Hash.new{ |h, k| h[k] = [] }
-          @logging[type.to_s] << block
-        end
-
-        def logging_for type
-          @logging[type.to_s]
-        end
+      def add_logger type, &block
+        @logging[type.to_s] << block
       end
 
       def client
@@ -35,6 +29,8 @@ module Fargo
       end
 
       def log_published_messages
+        @logging = Hash.new{ |h, k| h[k] = [] }
+
         streamer = proc {
           host = "ws://#{client.config.websocket_host}" +
                     ":#{client.config.websocket_port}/"
@@ -44,8 +40,8 @@ module Fargo
             to_log = nil
             type, message = Marshal.load(msg)
 
-            self.class.logging_for(type).each{ |l|
-              to_log = l.call self, message
+            @logging[type.to_s].each{ |l|
+              to_log = l.call message
               Readline.above_prompt{ puts to_log } unless to_log.nil?
             }
           }
@@ -57,6 +53,8 @@ module Fargo
           Thread.start{ EventMachine.run streamer }
         end
       end
+
+      protected
 
       def humanize_bytes bytes
         suffix = 'B'

@@ -1,22 +1,24 @@
 module Fargo
   module CLI
     module Downloads
-      extend ActiveSupport::Concern
 
-      included do
-        add_completion(/^download\s+\d+,\s*[^\s]*$/, &:searches)
-        add_logger(:download_started) do |console, message|
+      def setup_console
+        super
+
+        add_completion(/^download\s+\d+,\s*[^\s]*$/) do
+          client.searches
+        end
+
+        add_logger(:download_started) do |message|
           "Download of #{message[:download]['file']} " +
-          "(#{console.humanize_bytes message[:download]['size']}) " +
+          "(#{humanize_bytes message[:download]['size']}) " +
           "from #{message[:nick]} started"
         end
 
-        add_logger(:download_finished) do |console, message|
+        add_logger(:download_finished) do |message|
           "Download of #{message[:download]['file']} " +
           "finished into #{message[:file]}"
         end
-
-        alias :get :download
       end
 
       def download index, search = nil
@@ -35,6 +37,8 @@ module Fargo
           client.download item[:nick], item[:file], item[:tth], item[:size]
         end
       end
+
+      alias :get :download
 
       def transfers
         max_nick = client.current_downloads.keys.map(&:size).max

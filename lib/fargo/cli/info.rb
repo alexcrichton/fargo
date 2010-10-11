@@ -3,14 +3,14 @@ require 'active_support/core_ext/module/delegation'
 module Fargo
   module CLI
     module Info
-      extend ActiveSupport::Concern
 
-      included do
-        add_completion(/^who\s+[^\s]*$/) { |client|
-          client.nicks + ['size', 'name']
-        }
-        delegate :send_chat, :to => :client
-        alias :say :send_chat
+      delegate :send_chat, :to => :client
+      alias :say :send_chat
+
+      def setup_console
+        super
+
+        add_completion(/^who\s+[^\s]*$/) { client.nicks + ['size', 'name'] }
       end
 
       def who sort_by = nil
