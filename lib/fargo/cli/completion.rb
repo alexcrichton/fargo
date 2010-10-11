@@ -6,7 +6,7 @@ module Fargo
 
       def setup_console
         old_proc = Readline.completion_proc
-        Readline.basic_word_break_characters = " \t\n\\'`><=;|&{("
+        Readline.basic_word_break_characters = " \t\n\\'"
         Readline.basic_quote_characters = ''
 
         Readline.completion_proc = lambda { |str|

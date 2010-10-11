@@ -22,6 +22,7 @@ module IRB
 
     @CONF[:IRB_RC].call(irb.context) if @CONF[:IRB_RC]
     @CONF[:MAIN_CONTEXT] = irb.context
+    @CONF[:PROMPT][@CONF[:PROMPT_MODE]][:RETURN].replace ''
 
     yield if block_given?
 
