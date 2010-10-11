@@ -22,3 +22,14 @@ task :clobber do
   rm_rf 'tmp'
   rm_rf 'coverage'
 end
+
+desc "Build the C extensions"
+task :build_extensions do
+  ['fargo', 'readline'].each do |ext|
+    if File.exists? "ext/#{ext}/Makefile"
+      sh "cd ext/#{ext} && make distclean"
+    end
+
+    sh "cd ext/#{ext} && ruby extconf.rb && make"
+  end
+end
