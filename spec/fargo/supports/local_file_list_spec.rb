@@ -2,6 +2,8 @@ require 'spec_helper'
 
 describe Fargo::Supports::LocalFileList, :type => :emsync do
 
+  include Fargo::TTH
+
   before :each do
     @root = Fargo.config.download_dir + '/shared'
     FileUtils.mkdir_p @root
@@ -76,5 +78,24 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
     listing = @client.local_listings[0]
 
     @client.listing_for('TTH/' + listing.tth).should == listing
+  end
+
+  it "generates a correct file list" do
+    @client.share_directory @root
+    file = Bzip2::Reader.open(@client.config.config_dir + '/files.xml.bz2')
+    xml = file.read
+
+    xml.should == <<-XML
+<?xml version="1.0" encoding="utf-8"?>
+<FileListing Base="/" Version="1" Generator="fargo #{Fargo::VERSION}">
+  <Directory Name="shared">
+    <File Name="a" Size="1" TTH="#{file_tth(@root + '/a')}"/>
+    <File Name="b" Size="1" TTH="#{file_tth(@root + '/b')}"/>
+    <Directory Name="c">
+      <File Name="d" Size="1" TTH="#{file_tth(@root + '/c/d')}"/>
+    </Directory>
+  </Directory>
+</FileListing>
+XML
   end
 end

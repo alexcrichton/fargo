@@ -1,5 +1,5 @@
 require 'bzip2'
-require 'libxml'
+require 'nokogiri'
 
 module Fargo
   class Listing < Struct.new(:tth, :size, :name, :nick, :mtime, :root); end
@@ -73,7 +73,7 @@ module Fargo
         if file && File.exists?(file)
           Fargo.logger.debug "Parsing file list for: '#{nick}' at '#{file}'"
           xml = Bzip2::Reader.open(file).read
-          doc = LibXML::XML::Document.string xml
+          doc = Nokogiri::XML::Document.parse xml
 
           construct_file_list doc.root, nil, nick
         else
@@ -84,17 +84,14 @@ module Fargo
       def construct_file_list node, prefix, nick
         list = {}
 
-        node.each_element do |element|
+        node.children.each do |element|
           path = prefix ? prefix + "\\" + element['Name'] : element['Name']
 
           if element.name =~ /directory/i
             list[element['Name']] = construct_file_list element, path, nick
           else
-            # Why does this consistently segfault ruby 1.8.7 when I convert
-            # element['Size'] to an integer before the struct is created?!
             element = list[element['Name']] = Listing.new(element['TTH'],
-              element['Size'], path, nick)
-            element.size = element.size.to_i
+              element['Size'].to_i, path, nick)
           end
         end
 

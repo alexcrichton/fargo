@@ -1,5 +1,5 @@
 require 'bzip2'
-require 'libxml'
+require 'nokogiri'
 require 'active_support/core_ext/module/synchronization'
 
 module Fargo
@@ -70,17 +70,17 @@ module Fargo
       end
 
       def write_file_list
-        doc      = LibXML::XML::Document.new
-        doc.root = LibXML::XML::Node.new 'FileListing'
-        doc.root['Version']   = '1'
-        doc.root['Base']      = '/'
-        doc.root['Generator'] = "fargo #{VERSION}"
+        builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
+          xml.FileListing(:Base => '/', :Version => '1',
+            :Generator => "fargo #{VERSION}") {
 
-        create_entities local_file_list, doc.root
+            create_entities local_file_list, xml
+          }
+        end
 
         FileUtils.mkdir_p config.config_dir
         Bzip2::Writer.open(local_file_list_path, 'w') do |f|
-          f << doc.to_s(:indent => false)
+          f << builder.to_xml
         end
 
         File.open(cache_file_list_path, 'w'){ |f|
@@ -130,20 +130,12 @@ module Fargo
 
       synchronize :update_tth, :with => :@update_lock
 
-      def create_entities entity, node
+      def create_entities entity, xml
         entity.each_pair do |k, v|
           if v.is_a? Hash
-            dir = LibXML::XML::Node.new 'Directory'
-            dir['Name'] = k
-            create_entities v, dir
-            node << dir
+            xml.Directory(:Name => k) { create_entities v, xml }
           else
-            file = LibXML::XML::Node.new 'File'
-            file['Name'] = k
-            file['Size'] = v.size.to_s
-            file['TTH']  = v.tth
-
-            node << file
+            xml.File(:Name => k, :Size => v.size.to_s, :TTH => v.tth)
           end
         end
       end
