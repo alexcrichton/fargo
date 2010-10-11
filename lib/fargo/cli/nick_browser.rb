@@ -24,10 +24,19 @@ module Fargo
 
       def download file, other = nil
         if file.is_a?(String)
+          listing = drilldown resolve(file).to_s, @file_list
+
+          if listing.nil?
+            puts "No file to download!: #{file}"
+          else
+            client.download listing
+          end
         else
           super
         end
       end
+
+      alias :get :download
 
       def browse nick
         @browsing  = nick

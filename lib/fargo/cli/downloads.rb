@@ -38,8 +38,6 @@ module Fargo
         end
       end
 
-      alias :get :download
-
       def transfers
         max_nick = client.current_downloads.keys.map(&:size).max
         client.current_downloads.each_pair do |nick, download|
