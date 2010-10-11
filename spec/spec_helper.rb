@@ -32,6 +32,11 @@ RSpec.configure do |c|
       example.run
     }
   end
+
+  c.before :each, :type => :emsync do
+    EM.stub(:schedule).and_yield
+    EM.stub(:defer).and_yield
+  end
 end
 
 Dir[File.dirname(__FILE__) + '/support/*.rb'].each { |f| load f }

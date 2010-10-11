@@ -9,7 +9,7 @@ describe Fargo::Protocol::Hub do
   }
   include Fargo::TTH
 
-  context "searches" do
+  context "searches", :type => :emsync do
     let(:file1) { Fargo.config.download_dir + '/file12' }
     let(:file2) { Fargo.config.download_dir + '/file23' }
     let(:file3) { Fargo.config.download_dir + '/file34' }

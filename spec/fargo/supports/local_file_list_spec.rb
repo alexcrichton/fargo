@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Fargo::Supports::LocalFileList do
+describe Fargo::Supports::LocalFileList, :type => :emsync do
 
   before :each do
     @root = Fargo.config.download_dir + '/shared'
