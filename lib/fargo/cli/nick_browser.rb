@@ -3,40 +3,45 @@ require 'pathname'
 module Fargo
   module CLI
     module NickBrowser
+      extend ActiveSupport::Concern
 
-      def setup_console
-        super
-
-        @fixed_completions = {}
-
-        add_completion(/^browse\s+[^\s]*$/) { client.nicks }
-
-        file_regex = /(?:\s+(?:[^\s,]*))+/
-        add_completion(/^(?:get|download)#{file_regex}$/) { completion true }
-        add_completion(/^(?:ls|cd)#{file_regex}$/) { completion }
-
-        add_logger(:download_finished) do |message|
-          if message[:file].end_with? 'files.xml.bz2'
-            begin_browsing message[:nick]
-          end
-        end
+      included do
+        alias :get :download
       end
 
-      def download file, other = nil
-        if file.is_a?(String)
-          listing = drilldown resolve(file).to_s, @file_list
-
-          if listing.nil?
-            puts "No file to download!: #{file}"
-          else
-            client.download listing
-          end
-        else
+      module InstanceMethods
+        def setup_console
           super
+
+          @fixed_completions = {}
+
+          add_completion(/^browse\s+[^\s]*$/) { client.nicks }
+
+          file_regex = /(?:\s+(?:[^\s,]*))+/
+          add_completion(/^(?:get|download)#{file_regex}$/) { completion true }
+          add_completion(/^(?:ls|cd)#{file_regex}$/) { completion }
+
+          add_logger(:download_finished) do |message|
+            if message[:file].end_with? 'files.xml.bz2'
+              begin_browsing message[:nick]
+            end
+          end
+        end
+
+        def download file, other = nil
+          if file.is_a?(String)
+            listing = drilldown resolve(file).to_s, @file_list
+
+            if listing.nil?
+              puts "No file to download!: #{file}"
+            else
+              client.download listing
+            end
+          else
+            super
+          end
         end
       end
-
-      alias :get :download
 
       def browse nick
         @browsing  = nick
