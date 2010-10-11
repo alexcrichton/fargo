@@ -57,8 +57,13 @@ module Fargo
       end
 
       def cd dir = '/'
-        @cwd = resolve(dir)
-        pwd
+        cwd = resolve(dir)
+        if drilldown(cwd, @file_list).nil?
+          puts "#{dir.inspect} doesn't exist!"
+        else
+          @cwd = cwd
+          pwd
+        end
       end
 
       def pwd
