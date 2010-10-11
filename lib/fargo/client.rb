@@ -23,7 +23,7 @@ module Fargo
 
     configure do |config|
       config.download_dir   = '/tmp/fargo/downloads'
-      config.config_dir     = '/tmp/fargo/config'
+      config.config_dir     = ENV['HOME'] + '/.fargo'
       config.address        =
         (IPSocket.getaddress(Socket.gethostname) rescue '0.0.0.0')
       config.passive        = false
@@ -52,6 +52,11 @@ module Fargo
 
         @channel.subscribe do |type, hash|
           Fargo.logger.debug "Channel received: #{type} - #{hash.inspect}"
+        end
+
+        config_file = config.config_dir + '/config'
+        if File.exists? config_file
+          eval File.read(config_file)
         end
       end
     end
