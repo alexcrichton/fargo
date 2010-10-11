@@ -28,14 +28,6 @@ typedef u_int16_t  word16;
 typedef unsigned char  byte;
 #endif
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 void tiger(word64 *str, word64 length, word64 *res);
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif

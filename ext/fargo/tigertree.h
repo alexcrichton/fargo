@@ -35,14 +35,8 @@ typedef struct tt_context {
   unsigned char nodes[STACKSIZE]; /* stack of interim node values */
 } TT_CONTEXT;
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
 void tt_init(TT_CONTEXT *ctx, unsigned char *tthl, unsigned depth);
 //void tt_update(TT_CONTEXT *ctx, unsigned char *buffer, word32 len);
 void tt_block(TT_CONTEXT *ctx);
 void tt_digest(TT_CONTEXT *ctx, unsigned char *hash);
 void tt_copy(TT_CONTEXT *dest, TT_CONTEXT *src);
-#if defined(__cplusplus)
-}
-#endif
