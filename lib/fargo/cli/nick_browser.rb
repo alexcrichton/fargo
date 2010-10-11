@@ -30,10 +30,16 @@ module Fargo
 
         def download file, other = nil
           if file.is_a?(String)
-            listing = drilldown resolve(file).to_s, @file_list
+            resolved = resolve(file).to_s
+            listing = drilldown resolved, @file_list
 
             if listing.nil?
               puts "No file to download!: #{file}"
+            elsif listing.is_a? Hash
+              # Recursively download the entire directory
+              listing.keys.each do |k|
+                download File.join(resolved, k)
+              end
             else
               client.download listing
             end
