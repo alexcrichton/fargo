@@ -71,9 +71,11 @@ module Fargo
 
       def write_file_list
         builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
-          xml.FileListing(:Base => '/', :Version => '1',
-            :Generator => "fargo #{VERSION}") {
-
+          attrs = ActiveSupport::OrderedHash.new
+          attrs[:Base]      = '/'
+          attrs[:Version]   = '1'
+          attrs[:Generator] = "fargo #{VERSION}"
+          xml.FileListing(attrs) {
             create_entities local_file_list, xml
           }
         end
@@ -135,7 +137,12 @@ module Fargo
           if v.is_a? Hash
             xml.Directory(:Name => k) { create_entities v, xml }
           else
-            xml.File(:Name => k, :Size => v.size.to_s, :TTH => v.tth)
+            # Make sure they always show up in this order
+            attrs        = ActiveSupport::OrderedHash.new
+            attrs[:Name] = k
+            attrs[:Size] = v.size.to_s
+            attrs[:TTH]  = v.tth
+            xml.File attrs
           end
         end
       end
