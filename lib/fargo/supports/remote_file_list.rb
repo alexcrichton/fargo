@@ -84,7 +84,7 @@ module Fargo
       def construct_file_list node, prefix, nick
         list = {}
 
-        node.children.each do |element|
+        node.element_children.each do |element|
           path = prefix ? prefix + "\\" + element['Name'] : element['Name']
 
           if element.name =~ /directory/i
