@@ -100,7 +100,6 @@ module Fargo
 
       def initialize_file_lists
         @file_list = {}
-        @file_list['Jib'] = '/tmp/fargo/downloads/Jib/files.xml.bz2'
         @getting_file_list = {}
       end
 
