@@ -1,6 +1,7 @@
 require 'socket'
 require 'active_support/core_ext/object/try'
 require 'active_support/callbacks'
+require 'active_support/configurable'
 require 'em-websocket'
 
 module Fargo

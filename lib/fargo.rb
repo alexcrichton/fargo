@@ -5,7 +5,6 @@ require 'active_support/core_ext/module/attribute_accessors'
 require 'active_support/core_ext/module/delegation'
 require 'active_support/buffered_logger'
 require 'active_support/concern'
-require 'active_support/configurable'
 
 module Fargo
   extend ActiveSupport::Autoload
