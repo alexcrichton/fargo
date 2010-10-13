@@ -38,7 +38,7 @@ module Fargo
 
           ws.stream { |msg|
             to_log = nil
-            type, message = Marshal.load(msg)
+            type, message = Marshal.load(Base64.decode64(msg))
 
             @logging[type.to_s].each{ |l|
               to_log = l.call message

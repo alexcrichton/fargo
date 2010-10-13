@@ -1,4 +1,5 @@
 require 'socket'
+require 'base64'
 require 'active_support/core_ext/object/try'
 require 'active_support/callbacks'
 require 'active_support/configurable'
@@ -94,7 +95,7 @@ module Fargo
 
           sid = channel.subscribe do |type, hash|
             if type != :download_opened
-              ws.send Marshal.dump([type, hash])
+              ws.send Base64.encode64(Marshal.dump([type, hash]))
             end
           end
 
