@@ -1,4 +1,3 @@
-# This uses mkmf
 require 'mkmf'
 
 if RUBY_VERSION =~ /1\.9/

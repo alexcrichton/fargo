@@ -39,9 +39,6 @@
 
 void clear_rl() {
 
-  // struct readline_state st;
-  // rl_save_state(&st);
-
     extern char *rl_display_prompt;
 #if HAVE__RL_MARK_MODIFIED_LINES
     extern int _rl_mark_modified_lines;
@@ -51,8 +48,8 @@ void clear_rl() {
     char *old_prompt = rl_display_prompt;
 
     rl_end = 0;
-    rl_display_prompt = "";
-    rl_expand_prompt("");
+    rl_display_prompt = (char*) "";
+    rl_expand_prompt(rl_display_prompt);
 #if HAVE__RL_MARK_MODIFIED_LINES
     _rl_mark_modified_lines = 0;
 #endif
@@ -66,12 +63,6 @@ void clear_rl() {
 #endif
     if (rl_display_prompt == rl_prompt)
         rl_expand_prompt(rl_prompt);
-  // va_list args;
-
-  // printf("");
-  // fflush(stdout);
-  // rl_restore_state(&st);
-      // rl_forced_update_display();
 }
 
 void restore_rl() {
