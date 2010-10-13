@@ -49,7 +49,7 @@ module Fargo
         exit
       end
 
-      IRB.start_session console.send(:binding) do
+      IRB.start_session console.instance_eval{ binding } do
         console.setup_console
       end
 
