@@ -67,7 +67,7 @@ describe Fargo::Search do
     subject.query.should == 'a b c'
   end
 
-  it "only matches anything with a filetype of ANY" do
+  it "matches valid file names with a filetype of ANY" do
     subject.query = 'foo bar baz'
     subject.filetype = Fargo::Search::ANY
 
