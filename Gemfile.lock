@@ -36,6 +36,9 @@ GEM
     rspec-mocks (2.0.0)
       rspec-core (= 2.0.0)
       rspec-expectations (= 2.0.0)
+    simplecov (0.3.6)
+      simplecov-html (>= 0.3.7)
+    simplecov-html (0.3.8)
 
 PLATFORMS
   ruby
@@ -51,3 +54,4 @@ DEPENDENCIES
   rake
   rcov
   rspec (>= 2.0.0.rc)
+  simplecov
