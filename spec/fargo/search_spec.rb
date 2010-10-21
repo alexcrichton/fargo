@@ -62,6 +62,11 @@ describe Fargo::Search do
     subject.should_not match_hash(:tth => 'foobar')
   end
 
+  it "extracts the query from the pattern specified" do
+    subject.pattern = 'a$b$c'
+    subject.query.should == 'a b c'
+  end
+
   it "only matches anything with a filetype of ANY" do
     subject.query = 'foo bar baz'
     subject.filetype = Fargo::Search::ANY
