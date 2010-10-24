@@ -14,7 +14,9 @@ module Fargo
       end
 
       def who sort_by = nil
-        print_nick = lambda{ |n, s| printf "%10s %s\n", humanize_bytes(s), n }
+        print_nick = lambda{ |p|
+          printf "%10s %s\n", humanize_bytes(p[1]), p[0]
+        }
 
         if client.nicks.include? sort_by
           info = client.info(sort_by)
@@ -42,7 +44,7 @@ module Fargo
             pairs = []
             puts "Unknown sorting by: #{sort_by.inspect}"
           end
-
+          p pairs
           pairs.each &print_nick
         end
 
