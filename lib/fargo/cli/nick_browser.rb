@@ -80,7 +80,8 @@ module Fargo
 
         hash = drilldown(resolve(dir), @file_list)
 
-        hash.keys.sort_by{ |k| hash[k].is_a?(Hash) ? 0 : 1 }.each do |key|
+        hash.keys.sort_by(&:downcase).
+            sort_by{ |k| hash[k].is_a?(Hash) ? 0 : 1 }.each do |key|
           if hash[key].is_a?(Hash)
             puts "#{key}/"
           else
