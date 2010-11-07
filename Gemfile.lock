@@ -12,8 +12,8 @@ PATH
 GEM
   remote: http://rubygems.org/
   specs:
-    activesupport (3.0.0)
-    addressable (2.2.1)
+    activesupport (3.0.1)
+    addressable (2.2.2)
     bzip2-ruby (0.2.7)
     diff-lcs (1.1.2)
     em-http-request (0.2.14)
@@ -26,19 +26,17 @@ GEM
     nokogiri (1.4.3.1)
     rake (0.8.7)
     rcov (0.9.9)
-    rspec (2.0.0)
-      rspec-core (= 2.0.0)
-      rspec-expectations (= 2.0.0)
-      rspec-mocks (= 2.0.0)
-    rspec-core (2.0.0)
-    rspec-expectations (2.0.0)
-      diff-lcs (>= 1.1.2)
-    rspec-mocks (2.0.0)
-      rspec-core (= 2.0.0)
-      rspec-expectations (= 2.0.0)
-    simplecov (0.3.6)
+    rspec (2.1.0)
+      rspec-core (~> 2.1.0)
+      rspec-expectations (~> 2.1.0)
+      rspec-mocks (~> 2.1.0)
+    rspec-core (2.1.0)
+    rspec-expectations (2.1.0)
+      diff-lcs (~> 1.1.2)
+    rspec-mocks (2.1.0)
+    simplecov (0.3.7)
       simplecov-html (>= 0.3.7)
-    simplecov-html (0.3.8)
+    simplecov-html (0.3.9)
 
 PLATFORMS
   ruby
