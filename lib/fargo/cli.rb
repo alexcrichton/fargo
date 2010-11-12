@@ -6,6 +6,7 @@ module Fargo
 
     autoload :Completion
     autoload :Downloads
+    autoload :Help
     autoload :Info
     autoload :Logging
     autoload :NickBrowser
@@ -71,6 +72,7 @@ module Fargo
       include Downloads
       include Stats
       include NickBrowser
+      include Help
 
     end
 
