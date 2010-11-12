@@ -22,15 +22,18 @@ module Fargo
 
       def results str = nil, opts = {}
         str ||= client.searches.last
-        results = client.search_results(str).dup
+        results = client.search_results(str)
 
         if results.nil?
           puts "No search results for: #{str.inspect}!"
           return
         end
 
+        results = results.dup
+
         results.each_with_index{ |r, i|
-          r[:file]  = File.basename(r[:file].gsub("\\", '/'))
+          r[:file]  = r[:file].gsub("\\", '/')
+          r[:file]  = File.basename(r[:file]) unless opts[:full]
           r[:index] = i
         }
 
