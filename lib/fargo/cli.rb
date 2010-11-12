@@ -4,13 +4,13 @@ module Fargo
   module CLI
     extend ActiveSupport::Autoload
 
-    autoload :Logging
     autoload :Completion
-    autoload :Searches
-    autoload :Info
     autoload :Downloads
-    autoload :Stats
+    autoload :Info
+    autoload :Logging
     autoload :NickBrowser
+    autoload :Searches
+    autoload :Stats
 
     def self.start
       Fargo.logger = ActiveSupport::BufferedLogger.new WrappingLogger.new
