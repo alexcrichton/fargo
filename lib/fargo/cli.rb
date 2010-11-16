@@ -28,6 +28,10 @@ module Fargo
             puts "\t#{p}"
           end
           exit
+        else
+          Readline.above_prompt {
+            puts "ERROR!!!", e.message, e.backtrace.join("\n")
+          }
         end
       }
 

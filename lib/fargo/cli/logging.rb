@@ -34,14 +34,15 @@ module Fargo
         streamer = proc {
           host = "ws://#{client.config.websocket_host}" +
                     ":#{client.config.websocket_port}/"
+
           ws = EventMachine::HttpRequest.new(host).get(:timeout => 0)
 
           ws.disconnect {
-            Readline.above_prompt{ puts "Couldn't stream log messages!" }
+            Readline.above_prompt{ puts "Stopping logging stream." }
           }
 
-          ws.connect {
-            Readline.above_prompt{ puts "Streaming logging messages" }
+          ws.callback {
+            Readline.above_prompt{ puts "Streaming logging messages." }
           }
 
           ws.stream { |msg|
