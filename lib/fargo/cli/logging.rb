@@ -36,6 +36,14 @@ module Fargo
                     ":#{client.config.websocket_port}/"
           ws = EventMachine::HttpRequest.new(host).get(:timeout => 0)
 
+          ws.disconnect {
+            Readline.above_prompt{ puts "Couldn't stream log messages!" }
+          }
+
+          ws.connect {
+            Readline.above_prompt{ puts "Streaming logging messages" }
+          }
+
           ws.stream { |msg|
             to_log = nil
             type, message = Marshal.load(Base64.decode64(msg))

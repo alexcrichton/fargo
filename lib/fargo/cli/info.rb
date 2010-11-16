@@ -29,7 +29,7 @@ module Fargo
           end
         elsif sort_by.nil?
           client.nicks.each do |n|
-            print_nick.call n, client.info(n)[:sharesize]
+            print_nick.call [n, client.info(n)[:sharesize]]
           end
         else
           pairs = client.nicks.map{ |n|
@@ -44,7 +44,6 @@ module Fargo
             pairs = []
             puts "Unknown sorting by: #{sort_by.inspect}"
           end
-          p pairs
           pairs.each &print_nick
         end
 
