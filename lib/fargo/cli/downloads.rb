@@ -10,13 +10,13 @@ module Fargo
         end
 
         add_logger(:download_started) do |message|
-          "Download of #{message[:download]['file']} " +
-          "(#{humanize_bytes message[:download]['size']}) " +
+          "Download of #{message[:download][:file]} " +
+          "(#{humanize_bytes message[:length]}) " +
           "from #{message[:nick]} started"
         end
 
         add_logger(:download_finished) do |message|
-          "Download of #{message[:download]['file']} " +
+          "Download of #{message[:download][:file]} " +
           "finished into #{message[:file]}"
         end
       end

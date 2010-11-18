@@ -64,6 +64,7 @@ module Fargo
 
               @client.channel << [:download_started, {:file => download_path,
                                          :download  => @download.to_h,
+                                         :length    => @length,
                                          :nick      => @other_nick}]
             else
               error "Premature disconnect when #{message[:type]} received"
