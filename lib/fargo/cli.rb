@@ -15,7 +15,10 @@ module Fargo
 
     def self.start
       Fargo.logger = ActiveSupport::BufferedLogger.new WrappingLogger.new
-      Fargo.logger.level = ActiveSupport::BufferedLogger::INFO
+
+      unless ARGV.any?{ |s| s == '-d' }
+        Fargo.logger.level = ActiveSupport::BufferedLogger::INFO
+      end
 
       console = Console.new
 
