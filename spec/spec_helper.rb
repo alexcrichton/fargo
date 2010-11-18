@@ -21,14 +21,20 @@ RSpec.configure do |c|
 
   c.around :each do |example|
     FileUtils.mkdir_p download_dir
-    example.run
-    FileUtils.rm_rf download_dir
+    begin
+      example.run
+    ensure
+      FileUtils.rm_rf download_dir
+    end
   end
 
   c.around :each, :type => :em_different_thread do |example|
     t = Thread.start{ EventMachine.run }
-    example.run
-    t.kill
+    begin
+      example.run
+    ensure
+      t.kill
+    end
   end
 
   c.around :each, :type => :em do |example|
