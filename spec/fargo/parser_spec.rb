@@ -171,11 +171,95 @@ describe Fargo::Parser do
     end
   end
 
+  describe 'the :getblock specification' do
+    shared_examples_for 'a block specification' do |name, opts|
+      ['', 'U'].each do |prefix|
+        cmd = prefix + name
+
+        it "correctly parses the #{cmd} command" do
+          helper.parse_message("$#{cmd} 4 100 file.xml.bz2").should == {
+            :type   => :getblock,
+            :offset => 4,
+            :size   => 100,
+            :file   => 'file.xml.bz2'
+          }.merge(opts)
+        end
+      end
+    end
+
+    it_should_behave_like 'a block specification', 'GetBlock', {}
+    it_should_behave_like 'a block specification', 'GetZBlock', :zlib => true
+  end
+
   it "parses a chat message correctly" do
     helper.parse_message('<fargo> hello there!').should == {
       :type => :chat,
       :from => 'fargo',
       :text => 'hello there!'
+    }
+  end
+
+  it "parses private chat messages correctly" do
+    helper.parse_message(
+      '$To: fargo From: nasabot2 $<nasabot2> (Nov 18 12:47:03) a file!'
+    ).should == {
+      :type => :privmsg,
+      :to   => 'fargo',
+      :from => 'nasabot2',
+      :text => '(Nov 18 12:47:03) a file!'
+    }
+
+    helper.parse_message(
+      '$To: fargo From: Hub $(Nov 18 12:47:03) a file!'
+    ).should == {
+      :type => :privmsg,
+      :to   => 'fargo',
+      :from => 'Hub',
+      :text => '(Nov 18 12:47:03) a file!'
+    }
+  end
+
+  it "parses op/bot lists correctly" do
+    helper.parse_message('$OpList foo$$').should == {
+      :type => :op_list,
+      :nicks => ['foo']
+    }
+
+    helper.parse_message('$OpList *foo$$bar$$').should == {
+      :type => :op_list,
+      :nicks => ['*foo', 'bar']
+    }
+
+    helper.parse_message('$BotList foo$$').should == {
+      :type => :bot_list,
+      :nicks => ['foo']
+    }
+
+    helper.parse_message('$BotList *foo$$bar$$').should == {
+      :type => :bot_list,
+      :nicks => ['*foo', 'bar']
+    }
+  end
+
+  it "parses error messages correctly" do
+    helper.parse_message('$MaxedOut').should == {:type => :noslots}
+    helper.parse_message('$Cancel').should == {:type => :cancel}
+    helper.parse_message('$Canceled').should == {:type => :canceled}
+
+    helper.parse_message('$Error You have an error!').should == {
+      :type => :error,
+      :message => 'You have an error!'
+    }
+    helper.parse_message('$Failed You have an error!').should == {
+      :type => :error,
+      :message => 'You have an error!'
+    }
+  end
+
+  it "parses the $Sending command" do
+    helper.parse_message('$Sending 400').should == {
+      :type => :sending,
+      :size => 400
     }
   end
 

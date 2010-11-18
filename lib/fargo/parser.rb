@@ -107,7 +107,7 @@ module Fargo
                                     :filetype => $6.to_i, :pattern => $7}
         when @@oplist         then {:type => :op_list,
                                     :nicks => $1.split('$$')}
-        when @@oplist         then {:type => :bot_list,
+        when @@botlist        then {:type => :bot_list,
                                     :nicks => $1.split('$$')}
         when @@quit           then {:type => :quit, :nick => $1}
         when @@rctm           then {:type => :revconnect, :who => $1}
@@ -139,7 +139,7 @@ module Fargo
         when @@getzblock      then {:type => :getblock, :file => $3,
                                     :size => $2.to_i, :offset => $1.to_i,
                                     :zlib => true}
-        when @@getblock       then {:type => :getblock, :start => $1.to_i,
+        when @@getblock       then {:type => :getblock, :offset => $1.to_i,
                                     :size => $2.to_i, :file => $3}
         when @@userip         then
           h = {:type => :userip, :users => {}}
