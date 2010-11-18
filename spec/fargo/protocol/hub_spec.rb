@@ -80,8 +80,12 @@ describe Fargo::Protocol::Hub do
   end
 
   it "connects to a client when receiving $ConnectToMe" do
+    mock = double('connection')
+    mock.should_receive(:client=).with(conn.client)
+    mock.should_receive(:send_lock)
+
     EventMachine.should_receive(:connect).with('1.2.3.4', 500,
-      Fargo::Protocol::Peer)
+      Fargo::Protocol::Peer).and_yield mock
 
     conn.receive_data '$ConnectToMe fargo 1.2.3.4:500|'
   end
