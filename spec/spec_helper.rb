@@ -9,8 +9,6 @@ download_dir = File.expand_path '../tmp', __FILE__
 Fargo.logger.level = ActiveSupport::BufferedLogger::WARN
 
 RSpec.configure do |c|
-  c.color_enabled = true
-
   c.before :each do
     Fargo.configure do |config|
       config.download_dir        = download_dir
