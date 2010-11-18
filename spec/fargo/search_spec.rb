@@ -67,6 +67,34 @@ describe Fargo::Search do
     subject.query.should == 'a b c'
   end
 
+  describe "generating search strings" do
+    before :each do
+      subject.query = 'a'
+    end
+
+    it "includes each member of the query" do
+      subject.query = 'a b c'
+      subject.to_s.should == 'F?T?0?1?a$b$c'
+    end
+
+    it "includes the correct file type" do
+      subject.filetype = Fargo::Search::TTH
+      subject.to_s.should == 'F?T?0?9?a'
+    end
+
+    it "restricts sizes correctly" do
+      subject.size_restricted = true
+      subject.size = 100
+      subject.to_s.should == 'T?F?100?1?a'
+    end
+
+    it "detects when the specified size is the minimum size" do
+      subject.size_restricted = true
+      subject.is_minimum_size = true
+      subject.to_s.should == 'T?T?0?1?a'
+    end
+  end
+
   it "matches valid file names with a filetype of ANY" do
     subject.query = 'foo bar baz'
     subject.filetype = Fargo::Search::ANY
