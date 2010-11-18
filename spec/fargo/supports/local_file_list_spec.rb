@@ -100,22 +100,39 @@ XML
   end
 
   describe "updating the local file list" do
+
     before do
       subject.share_directory root
-    end
-
-    it "removes deleted files" do
       File.delete(root + '/a')
-      subject.share_directory root
-
-      subject.local_file_list['shared']['a'].should be_nil
     end
 
-    it "decrements the share size" do
-      File.delete(root + '/a')
-      subject.share_directory root
+    shared_examples_for 'an updated file list' do
+      it "removes deleted files" do
+        subject.local_file_list['shared']['a'].should be_nil
+      end
 
-      subject.share_size.should == 2
+      it "decrements the share size" do
+        subject.share_size.should == 2
+      end
     end
+
+    it_should_behave_like 'an updated file list' do
+      before do
+        subject.share_directory root
+      end
+    end
+
+    it_should_behave_like 'an updated file list' do
+      before do
+        EventMachine::Timer.should_receive(:new).with(60) { |time, blk|
+          # Make sure we recursively schedule another update
+          subject.should_receive(:schedule_update)
+          blk.call
+        }
+
+        subject.send(:schedule_update)
+      end
+    end
+
   end
 end
