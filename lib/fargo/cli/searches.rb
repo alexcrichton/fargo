@@ -29,7 +29,7 @@ module Fargo
           return
         end
 
-        results = results.dup
+        results = results.map{ |r| r.dup }
 
         results.each_with_index{ |r, i|
           r[:file]  = r[:file].gsub("\\", '/')
