@@ -3,7 +3,7 @@ PATH
   specs:
     fargo (0.4.0)
       activesupport (>= 3.0.0)
-      bzip2-ruby
+      bzip2-ruby (>= 0.2.7)
       em-http-request
       em-websocket
       eventmachine
@@ -43,7 +43,7 @@ PLATFORMS
 
 DEPENDENCIES
   activesupport (>= 3.0.0)
-  bzip2-ruby
+  bzip2-ruby (>= 0.2.7)
   em-http-request
   em-websocket
   eventmachine

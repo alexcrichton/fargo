@@ -24,5 +24,5 @@ Gem::Specification.new do |s|
   s.add_dependency 'em-http-request'
   s.add_dependency 'activesupport', '>= 3.0.0'
   s.add_dependency 'nokogiri'
-  s.add_dependency 'bzip2-ruby'
+  s.add_dependency 'bzip2-ruby', '>= 0.2.7'
 end
