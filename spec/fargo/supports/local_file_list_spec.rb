@@ -98,4 +98,24 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
 </FileListing>
 XML
   end
+
+  describe "updating the local file list" do
+    before do
+      subject.share_directory root
+    end
+
+    it "removes deleted files" do
+      File.delete(root + '/a')
+      subject.share_directory root
+
+      subject.local_file_list['shared']['a'].should be_nil
+    end
+
+    it "decrements the share size" do
+      File.delete(root + '/a')
+      subject.share_directory root
+
+      subject.share_size.should == 2
+    end
+  end
 end

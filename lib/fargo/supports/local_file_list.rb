@@ -123,7 +123,7 @@ module Fargo
           file = directory + '/' + k
           unless File.exists?(file)
             to_remove << k
-            @share_size -= File.size file if File.file?(file)
+            @share_size -= v.size
           end
         end
 
