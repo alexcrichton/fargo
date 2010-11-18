@@ -46,9 +46,5 @@ end
 Dir[File.dirname(__FILE__) + '/support/*.rb'].each { |f| load f }
 
 def helper_object mod
-  o = Object.new
-  o.send(:class_eval) do
-    include mod
-  end
-  o
+  Object.new.tap{ |o| o.class_eval{ include mod } }
 end
