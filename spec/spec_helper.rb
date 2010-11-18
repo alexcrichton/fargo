@@ -27,10 +27,14 @@ RSpec.configure do |c|
     FileUtils.rm_rf download_dir
   end
 
+  c.around :each, :type => :em_different_thread do |example|
+    t = Thread.start{ EventMachine.run }
+    example.run
+    t.kill
+  end
+
   c.around :each, :type => :em do |example|
-    EventMachine.run_block {
-      example.run
-    }
+    EventMachine.run_block{ example.run }
   end
 
   c.before :each, :type => :emsync do
