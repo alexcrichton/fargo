@@ -2,11 +2,12 @@ PATH
   remote: .
   specs:
     fargo (0.4.0)
-      activesupport (>= 3.0.0)
+      activesupport (>= 3.0.3)
       bzip2-ruby (>= 0.2.7)
       em-http-request
       em-websocket
       eventmachine
+      i18n
       nokogiri
 
 GEM
@@ -23,6 +24,7 @@ GEM
       addressable (>= 2.1.1)
       eventmachine (>= 0.12.9)
     eventmachine (0.12.10)
+    i18n (0.4.2)
     nokogiri (1.4.4)
     rake (0.8.7)
     rcov (0.9.9)
@@ -42,12 +44,13 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  activesupport (>= 3.0.0)
+  activesupport (>= 3.0.3)
   bzip2-ruby (>= 0.2.7)
   em-http-request
   em-websocket
   eventmachine
   fargo!
+  i18n
   nokogiri
   rake
   rcov
