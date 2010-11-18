@@ -33,7 +33,7 @@ describe Fargo::Supports::Timeout do
 
       t = Time.now
       client.timeout_response(1, mock_block)
-      (Time.now - t).should be_within(0.01).of(0.05)
+      (Time.now - t).should be_within(0.03).of(0.05)
     end
 
   end
