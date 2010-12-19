@@ -52,11 +52,11 @@ module Fargo
       protected
 
       def normalize search
-        unless search.is_a? Search
-          search = Search.new :query => search
+        if search.is_a? Search
+          search
+        else
+          Search.new :query => search
         end
-
-        search
       end
 
       def initialize_search_caches
