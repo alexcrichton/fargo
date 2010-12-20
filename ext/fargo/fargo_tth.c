@@ -23,7 +23,7 @@ VALUE rb_tth_file(VALUE self, VALUE filename) {
   }
 }
 
-Init_tth() {
+void Init_tth() {
   VALUE cFargo = rb_define_module("Fargo");
   VALUE cTTH = rb_define_module_under(cFargo, "TTH");
 
