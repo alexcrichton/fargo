@@ -37,13 +37,12 @@ task :clobber => :cleanup_coverage_files do
   rm_rf 'tmp'
 end
 
-desc "Build the C extensions"
+desc 'Build the C extensions'
 task :build_extensions do
   ['fargo', 'readline'].each do |ext|
-    if File.exists? "ext/#{ext}/Makefile"
-      sh "cd ext/#{ext} && make distclean"
+    Dir.chdir "ext/#{ext}" do
+      sh 'make distclean' if File.exists? 'Makefile'
+      sh 'ruby extconf.rb && make'
     end
-
-    sh "cd ext/#{ext} && ruby extconf.rb && make"
   end
 end
