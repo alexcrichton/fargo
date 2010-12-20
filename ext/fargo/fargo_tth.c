@@ -2,9 +2,8 @@
 #include <string.h>
 #include "tth.h"
 
-#ifndef RUBY_19
-# define RSTRING_LEN(s) (RSTRING(s)->len)
-# define RSTRING_PTR(s) (RSTRING(s)->ptr)
+#ifndef RSTRING_PTR
+#  define RSTRING_PTR(s) (RSTRING(s)->ptr)
 #endif
 
 VALUE rb_tth_file(VALUE self, VALUE filename) {
