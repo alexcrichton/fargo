@@ -13,6 +13,12 @@ module Fargo
     autoload :Searches
     autoload :Stats
 
+    # Start a CLI session in the current process. STDOUT will be used as the
+    # output. A local DRb server will be used as the Fargo client, but if it's
+    # unavailable a local instance of a client will be started.
+    #
+    # Command line flags should be in ARGV
+    #   -d : debug output
     def self.start
       Fargo.logger = ActiveSupport::BufferedLogger.new WrappingLogger.new
 
@@ -22,6 +28,7 @@ module Fargo
 
       console = Console.new
 
+      # Provide some nice debug output when we hit an error
       EventMachine.error_handler { |e|
         if e.message =~ /no acceptor/
           puts "Couldn't open sockets for listening"
@@ -38,32 +45,42 @@ module Fargo
         end
       }
 
+      # Try to use a client over DRb, fall back to a local EM reactor
       begin
+        console.client_uri = 'druby://127.0.0.1:8082'
         console.client.connected?
+        Fargo.logger.info "Using DRb server at: #{console.client_uri}"
       rescue DRb::DRbConnError
-        current = Thread.current # Wait for the reactor to start
-        thread  = Thread.start{ EventMachine.run{
-          console.client = Fargo::Client.new
+        console.client = Fargo::Client.new
+
+        mutex, cv = Mutex.new, ConditionVariable.new
+        mutex.lock
+        Thread.start{ EventMachine.run{
           console.client.connect
-          current.wakeup
+          mutex.synchronize { cv.signal }
         } }
-        sleep if thread.alive?
+        cv.wait mutex
+        Fargo.logger.info "Using local DC client"
       end
 
       console.log_published_messages
 
       if !console.client.connected?
-        puts "Client couldn't connect!"
+        puts "Client couldn't connect to hub on: #{console.client.hub_url}"
         exit
       end
 
+      # Run the actual IRB session, although before running the session, setup
+      # the console when IRB is almost ready.
       IRB.start_session console.instance_eval{ binding } do
         console.setup_console
       end
 
+      # Time to exit. Make sure EM is dead.
       EventMachine.stop
     end
 
+    # Wrapper class for logging messages to Readline.above_prompt
     class WrappingLogger
       def write str
         Readline.above_prompt{ puts str }

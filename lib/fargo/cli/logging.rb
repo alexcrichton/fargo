@@ -5,7 +5,7 @@ module Fargo
   module CLI
     module Logging
 
-      attr_writer :client
+      attr_accessor :client, :client_uri
 
       def setup_console
         super
@@ -25,7 +25,7 @@ module Fargo
       end
 
       def client
-        @client ||= DRbObject.new_with_uri 'druby://127.0.0.1:8082'
+        @client ||= DRbObject.new_with_uri client_uri
       end
 
       def log_published_messages

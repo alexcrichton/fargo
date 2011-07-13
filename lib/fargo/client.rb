@@ -63,6 +63,22 @@ module Fargo
       end
     end
 
+    def hub_url
+      "dc://#{config.hub_address}:#{config.hub_port}"
+    end
+
+    def active_server_url
+      "dc://#{config.address}:#{config.active_port}"
+    end
+
+    def search_server_url
+      "dc://#{config.address}:#{config.search_port}"
+    end
+
+    def websocket_url
+      "wd://#{config.websocket_host}:#{config.websocket_port}"
+    end
+
     def connect
       run_callbacks :connect do
         EventMachine.connect config.hub_address, config.hub_port,
