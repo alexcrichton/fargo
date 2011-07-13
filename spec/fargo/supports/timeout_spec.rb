@@ -26,7 +26,7 @@ describe Fargo::Supports::Timeout do
     let(:mock_block) { mock('block', :call => true) }
 
     it "calls the given block with the arguments sent to the channel" do
-      mock_block.should_receive(:call).with('a')
+      mock_block.should_receive(:call).with('a').and_return true
 
       client.timeout_response(0, mock_block) do
         client.channel << 'a'
