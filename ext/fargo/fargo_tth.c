@@ -6,6 +6,13 @@
 #  define RSTRING_PTR(s) (RSTRING(s)->ptr)
 #endif
 
+/*
+ * Calculates the TTH value for the specified file.
+ *
+ * @param [String] filename the file
+ * @return [String] the tth value for the specified file, or +nil+ if the file
+ *    didn't exist or couldn't be read
+ */
 VALUE rb_tth_file(VALUE self, VALUE filename) {
   char *file = RSTRING_PTR(filename);
 

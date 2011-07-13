@@ -1,8 +1,12 @@
 require 'irb'
 
-# See url below for where this came from
-# http://jameskilton.com/2009/04/02/embedding-irb-into-your-ruby-application/
 module IRB
+  # Starts a new IRB session within the binding provided. The functions of the
+  # binding will be available at the IRB prompt. This function does not return
+  # until the IRB session has ended.
+  #
+  # This code was adapted from:
+  # http://jameskilton.com/2009/04/02/embedding-irb-into-your-ruby-application/
   def self.start_session(binding)
     unless @__initialized
       args = ARGV
