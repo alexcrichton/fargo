@@ -110,7 +110,7 @@ module Fargo
           Fargo.logger.debug('ws connected')
 
           sid = channel.subscribe do |type, hash|
-            if type != :download_opened
+            if type != :peer_connected
               ws.send Base64.encode64(Marshal.dump([type, hash]))
             end
           end
