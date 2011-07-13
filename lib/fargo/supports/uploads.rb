@@ -14,7 +14,12 @@ module Fargo
       end
 
       def take_slot!
-        @taken_slots += 1
+        if config.upload_slots <= @taken_slots
+          false
+        else
+          @taken_slots += 1
+          true
+        end
       end
 
       def release_slot!
