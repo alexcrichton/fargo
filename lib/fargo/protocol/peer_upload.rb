@@ -6,6 +6,7 @@ module Fargo
     # initial handshake, but rather assumes that it's taken care of elsewhere.
     #
     # Files are uploaded in chunks of CHUNKSIZE and the upload is cancellable.
+    # This module publishes no events to its client's channel.
     module PeerUpload
 
       CHUNKSIZE = 16 * 1024

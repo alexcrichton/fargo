@@ -1,9 +1,26 @@
 module Fargo
   module Protocol
+    # Implementation of downloading files from peers. All known download
+    # implementations are available, but the ADC syntax is preferred.
+    #
+    # Published events to the client's channel are:
+    #     :download_progress => occurs when progress on a download is made. The
+    #                           hash has :percent, :file, :nick, :download,
+    #                           :size, and :compressed keys
+    #     :download_started  => published when a download starts. Contains the
+    #                           :file, :download, :length, and :nick keys
+    #     :download_failed   => if a download fails, then this event is fired.
+    #                           Contains the :file, :download, :nick, :nick,
+    #                           and :last_error keys.
+    #     :download_finished => published when a download finishes successfully.
+    #                           Contains the keys :file, :nick, and :download.
     module PeerDownload
 
       attr_accessor :download
 
+      # This method is overwritten because when receiving file data, the binary
+      # data shouldn't be parsed. This method delegates upward if we're not
+      # in the middle of downloading a file, however.
       def receive_data_chunk data
         # only download if we're at the correct handshake step
         return super if @handshake_step != 6 || @download.nil?
@@ -23,6 +40,8 @@ module Fargo
           percent = @recvd.to_f / @length
           @download.percent = percent
 
+          # Only periodically publish our download progress for better
+          # performance
           if percent - @last_published > 0.05
             @file.flush
             @client.channel << [:download_progress, {:percent => percent,
@@ -41,45 +60,44 @@ module Fargo
         true
       end
 
+      # Overload this method to tell that we don't want to parse when we're in
+      # the middle of a download.
       def parse_data?
         @handshake_step != 6
       end
 
+      # Implementation for receiving files of any protocol.
       def receive_message type, message
         case type
           when :file_length, :adcsnd, :sending
-            if @handshake_step == 5
-              @recvd          = 0
-              @handshake_step = 6
-
-              @zlib   = message[:zlib] unless @getblock_sent
-              @length = message[:size]
-
-              send_message 'Send' if @get_sent
-
-              if @zlib
-                Fargo.logger.debug(
-                  "Enabling zlib compression on: #{@download.file}")
-              end
-
-              @client.channel << [:download_started, {:file => download_path,
-                                         :download  => @download.to_h,
-                                         :length    => @length,
-                                         :nick      => @other_nick}]
-            else
-              error "Premature disconnect when #{message[:type]} received"
+            if @handshake_step != 5
+              error "#{type} received before handshake complete."
+              return
             end
+
+            @recvd          = 0
+            @handshake_step = 6
+
+            @zlib   = message[:zlib] unless @getblock_sent
+            @length = message[:size]
+
+            send_message 'Send' if @get_sent
+
+            if @zlib
+              Fargo.logger.debug(
+                "Enabling zlib compression on: #{@download.file}")
+            end
+
+            @client.channel << [:download_started, {:file => download_path,
+                                       :download  => @download.to_h,
+                                       :length    => @length,
+                                       :nick      => @other_nick}]
 
           when :noslots
-            if @download
-              Fargo.logger.debug "#{self}: No Slots for #{@download}"
-
-              download_failed! 'No Slots'
-            end
+            download_failed! 'No Slots' if @download
 
           when :error
-            Fargo.logger.warn @last_error = "#{self}: Error! #{message[:message]}"
-            download_failed! message[:message]
+            download_failed! message[:message] if @download
 
           # This wasn't handled by us, proxy it on up to the client
           else
@@ -87,6 +105,13 @@ module Fargo
         end
       end
 
+      # Begins download of the requested file. This requires that the handshake
+      # have been previously completed and that the @download instance variable
+      # (via the #download= method) be set to the Fargo::Download that is
+      # desired from the connected peer.
+      #
+      # This doesn't fire the :download_started event. That occurs when the
+      # response from the peer that the file will be sent is received.
       def begin_download!
         FileUtils.mkdir_p File.dirname(download_path), :mode => 0755
         @file = File.open download_path, 'wb'
@@ -95,6 +120,7 @@ module Fargo
         @handshake_step = 5
         @last_published = 0
 
+        # Figure out the correct file name to send
         if @download.file_list?
           if @client_extensions.include? 'XmlBZList'
             @download.file = 'files.xml.bz2'
@@ -105,6 +131,8 @@ module Fargo
           end
         end
 
+        # Prefer certain extensions, but support all of them depending on the
+        # extensions that the peer offers.
         if @client_extensions.include? 'ADCGet'
           download_query = @download.file
           if @download.tth && @client_extensions.include?('TTHF')
@@ -113,7 +141,8 @@ module Fargo
 
           zlig = @client_extensions.include?('ZLIG') ? ' ZL1' : ''
 
-          send_message 'ADCGET', "file #{download_query} #{@download.offset} #{@download.size}#{zlig}"
+          send_message 'ADCGET', "file #{download_query} " +
+            "#{@download.offset} #{@download.size}#{zlig}"
 
         # See http://www.teamfair.info/wiki/index.php?title=XmlBZList for
         # what the $Supports extensions mean for the U?GetZ?Block commands
@@ -136,6 +165,8 @@ module Fargo
         Fargo.logger.debug "#{self}: Beginning download of #{@download}"
       end
 
+      # When closing this connection, make sure that we've finished any
+      # current download and published all necessary events.
       def unbind
         super
 
@@ -150,8 +181,10 @@ module Fargo
 
       protected
 
+      # Fail a download for a specific reason. The current download will be
+      # finished and events will be published as necessary.
       def download_failed! msg, opts = {}
-        Fargo.logger.debug "#{self}: #{msg} #{@download}"
+        Fargo.logger.info "[download-failed] - #{msg} #{@download}"
 
         # cache because publishing must be at end of method and we're about to
         # clear these
@@ -165,6 +198,8 @@ module Fargo
                                              :last_error => msg)]
       end
 
+      # Called when a download finishes. Resets the download and the state of
+      # this connection so we're back to being able to download again.
       def download_finished!
         Fargo.logger.debug "#{self}: Finished download of #{@download}"
 
@@ -177,12 +212,17 @@ module Fargo
         @client.channel << [:download_finished,
             {:file => path, :download => download.to_h, :nick => @other_nick}]
 
+        # We don't want to keep around connections for file lists. It's not a
+        # high change we'll download anything from this peer anyway.
         close_connection_after_writing if download.file_list?
       end
 
+      # Reset all state information of this connection. The current download,
+      # if any, is cancelled afterwards.
       def reset_download
         @file.close unless @file.nil? || @file.closed?
 
+        # Clean up empty files to prevent litter.
         if @file_path && File.exists?(@file_path) && File.size(@file_path) == 0
           File.delete(@file_path)
         end
@@ -195,6 +235,8 @@ module Fargo
         @handshake_step = 5
       end
 
+      # Helper to generate a unique filename to download a file into. The result
+      # is cached in the @file_path variable.
       def download_path
         return nil if @download.try(:file).nil?
 
