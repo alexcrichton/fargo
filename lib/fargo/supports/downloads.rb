@@ -122,11 +122,11 @@ module Fargo
 
       # Finds the next queued up download and begins downloading it.
       def start_download
-        return false unless has_download_slot?
-
         arr = nil
 
         @downloading_lock.synchronize {
+          return false unless has_download_slot?
+
           # Find the first nick and download list
           arr = @queued_downloads.to_a.detect{ |nick, downloads|
             downloads.size > 0 &&
