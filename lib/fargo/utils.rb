@@ -1,7 +1,6 @@
 module Fargo
   module Utils
 
-    # Lord knows why they're doing this...
     def generate_key lock
       lock_bytes = lock.bytes.to_a
       bytes = []
@@ -24,13 +23,14 @@ module Fargo
       [lock + ('ABC' * 6), 'ABCD' * 4]
     end
 
-    # Watch out for those special ones...
     def encode_char c
+      # Watch out for those special ones...
       if [0, 5, 36, 96, 124, 126].include? c
         sprintf '/%%DCN%03d%%/', c
       else
         c.chr
       end
     end
+
   end
 end

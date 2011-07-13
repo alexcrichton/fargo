@@ -2,13 +2,7 @@ require 'spec_helper'
 
 describe Fargo::Utils do
 
-  let(:helper) {
-    o = Object.new
-    o.send(:class_eval) do
-      include Fargo::Utils
-    end
-    o
-  }
+  let(:helper) { helper_object Fargo::Utils }
 
   it "generates a correct key" do
     helper.generate_key('FOO').should == "4\220/%DCN000%/"

@@ -58,8 +58,7 @@ module Fargo
 
       def unbind
         if client
-          args = [:"#{connection_type}_disconnected", publish_args]
-          client.channel << args
+          client.channel << [:"#{connection_type}_disconnected", publish_args]
         end
       end
 

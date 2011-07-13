@@ -102,8 +102,10 @@ module Fargo
           if path.directory?
             update_tth_without_synchronization root, path.to_s,
               hash[path.basename.to_s] ||= {}
+
           elsif hash[path.basename.to_s].nil? ||
               path.mtime > hash[path.basename.to_s].mtime
+
             hash[path.basename.to_s] = Listing.new(
                 file_tth(path.to_s),
                 path.size,

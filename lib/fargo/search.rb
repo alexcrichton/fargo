@@ -11,8 +11,8 @@ module Fargo
     FOLDER     = 8
     TTH        = 9
 
-    # See http://www.teamfair.info/wiki/index.php?title=$Search for the
-    # extensions
+    # See http://www.teamfair.info/wiki/index.php?title=$Search for the full
+    # list of extensions and what they map to
     EXTENSIONS = {
       AUDIO       => [/mp(2|3)/, 'wav', 'au', /(r|s)m/, 'mid', 'flac', 'm4a'],
       COMPRESSED  => ['zip', 'arj', 'rar', 'lzh', 'gz', 'z', 'arc', 'pak'],
@@ -88,10 +88,12 @@ module Fargo
     end
 
     def to_s
+      suffix = "?#{size || 0}?#{filetype}?#{pattern}"
+
       if size_restricted
-        "#{size_restricted ? 'T' : 'F' }?#{!size_restricted || is_minimum_size ? 'T' : 'F'}?#{size || 0}?#{filetype}?#{pattern}"
+        "#{size_restricted ? 'T' : 'F' }?#{!size_restricted || is_minimum_size ? 'T' : 'F'}" + suffix
       else
-        "F?T?#{size || 0}?#{filetype}?#{pattern}"
+        "F?T" + suffix
       end
     end
 

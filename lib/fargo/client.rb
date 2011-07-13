@@ -41,8 +41,7 @@ module Fargo
       config.password       = ''
       config.speed          = 'DSL'
       config.email          = nil
-
-      config.override_share_size = 5368709121 # 5 GB + 1 byte
+      config.override_share_size = nil
     end
 
     attr_reader :hub, :channel
@@ -53,7 +52,8 @@ module Fargo
         @connection_timeouts = {}
 
         @channel.subscribe do |type, hash|
-          Fargo.logger.debug "Channel received: #{type} - #{hash.inspect}"
+          Fargo.logger.debug(
+            "#{Time.now}: Channel received: #{type} - #{hash.inspect}")
         end
 
         config_file = config.config_dir + '/config'
