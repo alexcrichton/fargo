@@ -29,7 +29,7 @@ describe Fargo::Protocol::PeerDownload do
 
   describe 'the standard DC protocol for downloading' do
     before :each do
-      conn.instance_variable_set '@client_extensions', []
+      conn.instance_variable_set '@peer_extensions', []
     end
 
     it "requests a download via the $Get command" do
@@ -51,12 +51,12 @@ describe Fargo::Protocol::PeerDownload do
 
   describe 'the ADC protocol for downloading' do
     before :each do
-      conn.instance_variable_set '@client_extensions', ['ADCGet']
+      conn.instance_variable_set '@peer_extensions', ['ADCGet']
     end
 
     context "with zlib compression" do
       before :each do
-        conn.instance_variable_get('@client_extensions') << 'ZLIG'
+        conn.instance_variable_get('@peer_extensions') << 'ZLIG'
       end
 
       it "requests a download via the $ADCGET command with ZL1" do
@@ -88,7 +88,7 @@ describe Fargo::Protocol::PeerDownload do
 
     context "with TTHF enabled" do
       before :each do
-        conn.instance_variable_get('@client_extensions') << 'TTHF'
+        conn.instance_variable_get('@peer_extensions') << 'TTHF'
       end
 
       it "requests a download via $ADCGET with the tth of the file" do

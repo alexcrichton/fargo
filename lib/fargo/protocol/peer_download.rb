@@ -122,9 +122,9 @@ module Fargo
 
         # Figure out the correct file name to send
         if @download.file_list?
-          if @client_extensions.include? 'XmlBZList'
+          if @peer_extensions.include? 'XmlBZList'
             @download.file = 'files.xml.bz2'
-          elsif @client_extensions.include? 'BZList'
+          elsif @peer_extensions.include? 'BZList'
             @download.file = 'MyList.bz2'
           else
             @download.file = 'MyList.DcLst' # TODO: support this?
@@ -133,25 +133,25 @@ module Fargo
 
         # Prefer certain extensions, but support all of them depending on the
         # extensions that the peer offers.
-        if @client_extensions.include? 'ADCGet'
+        if @peer_extensions.include? 'ADCGet'
           download_query = @download.file
-          if @download.tth && @client_extensions.include?('TTHF')
+          if @download.tth && @peer_extensions.include?('TTHF')
             download_query = 'TTH/' + @download.tth
           end
 
-          zlig = @client_extensions.include?('ZLIG') ? ' ZL1' : ''
+          zlig = @peer_extensions.include?('ZLIG') ? ' ZL1' : ''
 
           send_message 'ADCGET', "file #{download_query} " +
             "#{@download.offset} #{@download.size}#{zlig}"
 
         # See http://www.teamfair.info/wiki/index.php?title=XmlBZList for
         # what the $Supports extensions mean for the U?GetZ?Block commands
-        elsif @client_extensions.include? 'GetZBlock'
+        elsif @peer_extensions.include? 'GetZBlock'
           @getblock_sent = true
           @zlib          = true
           send_message 'UGetZBlock',
             "#{@download.offset} #{@download.size} #{@download.file}"
-        elsif @client_extensions.include? 'XmlBZList'
+        elsif @peer_extensions.include? 'XmlBZList'
           @getblock_sent = true
           @zlib          = false
           send_message 'UGetBlock',

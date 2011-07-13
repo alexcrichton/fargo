@@ -89,7 +89,7 @@ module Fargo
 
           when :supports
             if @handshake_step == 2
-              @client_extensions = message[:extensions]
+              @peer_extensions = message[:extensions]
               @handshake_step    = 3
             else
               error "#{type} received at wrong step of handshake"
