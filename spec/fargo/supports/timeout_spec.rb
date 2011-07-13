@@ -2,18 +2,23 @@ require 'spec_helper'
 
 describe Fargo::Supports::Timeout do
   let(:client) { Fargo::Client.new }
+  let!(:mock_counter) { Fargo::BlockingCounter.new 1 }
+
+  before :each do
+    Fargo::BlockingCounter.stub(:new).and_return mock_counter
+  end
 
   it "calls sleep with the specified timeout interval" do
-    client.should_receive(:sleep).with 10
+    mock_counter.should_receive(:wait).with(10)
 
     client.timeout_response(10, lambda{ true })
   end
 
   it "yields to the given block before sleep is called" do
-    client.stub(:sleep).and_raise(Exception.new("Shouldn't be called!"))
+    mock_counter.stub(:wait).and_raise(Exception.new("Shouldn't be called!"))
 
     client.timeout_response(10, lambda{ true }) do
-      client.stub(:sleep)
+      mock_counter.stub(:wait)
     end
   end
 
@@ -26,14 +31,6 @@ describe Fargo::Supports::Timeout do
       client.timeout_response(0, mock_block) do
         client.channel << 'a'
       end
-    end
-
-    it "actually times out correctly" do
-      Thread.start{ sleep 0.05; client.channel << 'foobar' }
-
-      t = Time.now
-      client.timeout_response(1, mock_block)
-      (Time.now - t).should be_within(0.03).of(0.05)
     end
 
   end

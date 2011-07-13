@@ -14,16 +14,17 @@ module Fargo
   mattr_accessor :logger
   self.logger = ActiveSupport::BufferedLogger.new STDOUT
 
+  autoload :BlockingCounter, 'fargo/ext/blocking_counter'
   autoload :CLI
-  autoload :Utils
-  autoload :Parser
   autoload :Client
+  autoload :Download, 'fargo/supports/downloads'
+  autoload :Listing, 'fargo/supports/remote_file_list'
+  autoload :Parser
   autoload :Search
   autoload :SearchResult
-  autoload :VERSION
   autoload :TTH
-  autoload :Listing, 'fargo/supports/remote_file_list'
-  autoload :Download, 'fargo/supports/downloads'
+  autoload :Utils
+  autoload :VERSION
 
   module Supports
     extend ActiveSupport::Autoload
