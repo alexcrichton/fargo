@@ -52,14 +52,12 @@ module Fargo
         Fargo.logger.info "Using DRb server at: #{console.client_uri}"
       rescue DRb::DRbConnError
         console.client = Fargo::Client.new
-
-        mutex, cv = Mutex.new, ConditionVariable.new
-        mutex.lock
+        counter = Fargo::BlockingCounter.new 1
         Thread.start{ EventMachine.run{
           console.client.connect
-          mutex.synchronize { cv.signal }
+          counter.decrement
         } }
-        cv.wait mutex
+        counter.wait 5
         Fargo.logger.info "Using local DC client"
       end
 
