@@ -61,27 +61,31 @@ module Fargo
             if @handshake_step == 0
               @handshake_step  = 1
               @other_nick      = message[:nick]
-
-              client.channel << [:peer_connected,
-                  publish_args.merge(:connection => self)]
-              @download = @client.lock_next_download! @other_nick, self
-
-              @direction = @download.nil? ? 'Upload' : 'Download'
             else
               error "#{type} received at wrong step of handshake"
             end
 
           when :lock
             if @handshake_step == 1
+              # According to this url:
+              # http://www.teamfair.info/wiki/index.php?title=$Direction, if we
+              # choose a number higher than 0x7fff, then other clients can
+              # just automatically disconnect.
               @remote_lock    = message[:lock]
               @handshake_step = 2
+              @download       = @client.next_download_for @other_nick
+              @my_num         = rand(0x7fff)
+              @my_direction   = @download ? 'Download' : 'Upload'
 
               # Depending on who connected first, we might have already sent
               # our lock information.
               send_lock unless @lock_sent
 
               send_message 'Supports', supports
-              send_message 'Direction', "#{@direction} #{@my_num = rand(10000)}"
+              # Always indicate that we want to Upload. We can just download
+              # on this connection later so long as nothing is requested from
+              # the other side.
+              send_message 'Direction', "#{@my_direction} #{@my_num}"
               send_message 'Key', generate_key(@remote_lock)
             else
               error "#{type} received at wrong step of handshake"
@@ -89,15 +93,16 @@ module Fargo
 
           when :supports
             if @handshake_step == 2
-              @peer_extensions = message[:extensions]
-              @handshake_step    = 3
+              @peer_extensions  = message[:extensions]
+              @handshake_step   = 3
             else
               error "#{type} received at wrong step of handshake"
             end
 
           when :direction
             if @handshake_step == 3
-              @client_num     = message[:number]
+              @peer_num       = message[:number]
+              @peer_direction = message[:direction]
               @handshake_step = 4
             else
               error "#{type} received at wrong step of handshake"
@@ -106,8 +111,21 @@ module Fargo
           when :key
             if @handshake_step == 4 && generate_key(@lock) == message[:key]
               @handshake_step = 5
+              client.channel << [:peer_connected,
+                  publish_args.merge(:connection => self)]
 
-              begin_download! if @direction == 'Download'
+              if @download
+                # If we've both requested downloads, then we fall back to
+                # the numbers we generated to figure out who goes first. If we
+                # sent the same numbers, then we're supposed to terminate the
+                # connection.
+                if @peer_direction == 'Upload' || @peer_num < @my_num
+                  client.lock_download! @download
+                  begin_download!
+                elsif @peer_num == @my_num
+                  close_connection_after_writing
+                end
+              end
 
             else
               error "#{type} received at wrong step of handshake" +

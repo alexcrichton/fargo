@@ -9,11 +9,9 @@ module Fargo
     #                           :size, and :compressed keys
     #     :download_started  => published when a download starts. Contains the
     #                           :file, :download, :length, and :nick keys
-    #     :download_failed   => if a download fails, then this event is fired.
-    #                           Contains the :file, :download, :nick, :nick,
-    #                           and :last_error keys.
     #     :download_finished => published when a download finishes successfully.
-    #                           Contains the keys :file, :nick, and :download.
+    #                           Contains the keys :file, :nick, :download,
+    #                           :failed, and :last_error keys.
     module PeerDownload
 
       attr_accessor :download
@@ -34,8 +32,7 @@ module Fargo
         @recvd += data.length
 
         if @recvd > @length
-          error "#{self} #{@recvd} > #{@length}!!!"
-          download_finished!
+          download_finished "#{self} #{@recvd} > #{@length}!!!"
         else
           percent = @recvd.to_f / @length
           @download.percent = percent
@@ -54,7 +51,7 @@ module Fargo
             @last_published = percent
           end
 
-          download_finished! if @recvd == @length
+          download_finished if @recvd == @length
         end
 
         true
@@ -94,10 +91,10 @@ module Fargo
                                        :nick      => @other_nick}]
 
           when :noslots
-            download_failed! 'No Slots' if @download
+            download_finished 'No Slots' if @download
 
           when :error
-            download_failed! message[:message] if @download
+            download_finished message[:message] if @download
 
           # This wasn't handled by us, proxy it on up to the client
           else
@@ -170,57 +167,35 @@ module Fargo
       def unbind
         super
 
-        Fargo.logger.debug "#{self} Disconnected from: #{@other_nick}"
-
-        if @download
-          download_failed! @last_error, :recvd => @recvd, :length => @length
-        end
-
-        reset_download
+        download_finished @last_error
       end
 
       protected
 
-      # Fail a download for a specific reason. The current download will be
-      # finished and events will be published as necessary.
-      def download_failed! msg, opts = {}
-        Fargo.logger.info "[download-failed] - #{msg} #{@download}"
-
-        # cache because publishing must be at end of method and we're about to
-        # clear these
-        path, download = download_path, @download
-
-        reset_download
-
-        @client.channel << [:download_failed, opts.merge(:nick => @other_nick,
-                                             :download   => download.to_h,
-                                             :file       => path,
-                                             :last_error => msg)]
-      end
-
-      # Called when a download finishes. Resets the download and the state of
-      # this connection so we're back to being able to download again.
-      def download_finished!
-        Fargo.logger.debug "#{self}: Finished download of #{@download}"
-
-        # cache because publishing must be at end of method and we're about to
-        # clear these
-        path, download = download_path, @download
-
-        reset_download
-
-        @client.channel << [:download_finished,
-            {:file => path, :download => download.to_h, :nick => @other_nick}]
-
-        # We don't want to keep around connections for file lists. It's not a
-        # high change we'll download anything from this peer anyway.
-        close_connection_after_writing if download.file_list?
-      end
-
       # Reset all state information of this connection. The current download,
-      # if any, is cancelled afterwards.
-      def reset_download
-        @file.close unless @file.nil? || @file.closed?
+      # if any, is cancelled afterwards. This should be called on a download
+      # failure along with a download successfully finishing.
+      #
+      # @param [String] error_msg if provided, then this reset is considered
+      #   an error and the error_msg will be provided in the published data.
+      #   Otherwise, the download is considered successfully.
+      def download_finished error_msg = nil
+        if @download
+          if error_msg
+            Fargo.logger.debug "#{self}: Download error: #{error_msg}"
+          end
+          Fargo.logger.debug "#{self}: Finished download of #{@download}"
+
+          @file.close
+          @client.channel << [:download_finished,
+              {:file => @file_path, :download => @download.to_h,
+               :nick => @other_nick, :failed => !@error_message.nil?,
+               :last_error => error_msg}]
+
+          # We don't want to keep around connections for file lists. It's not a
+          # high change we'll download anything from this peer anyway.
+          close_connection_after_writing if @download.file_list?
+        end
 
         # Clean up empty files to prevent litter.
         if @file_path && File.exists?(@file_path) && File.size(@file_path) == 0

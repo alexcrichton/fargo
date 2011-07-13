@@ -6,7 +6,11 @@ module Fargo
     # initial handshake, but rather assumes that it's taken care of elsewhere.
     #
     # Files are uploaded in chunks of CHUNKSIZE and the upload is cancellable.
-    # This module publishes no events to its client's channel.
+    # Published events from this module are:
+    #   :upload_started  => happens when an upload is initiated with a peer.
+    #                       Keys are :nick, and :file
+    #   :upload_finished => happens when an upload completes with a peer.
+    #                       Keys are :nick, :file, and :canceled
     module PeerUpload
 
       CHUNKSIZE = 16 * 1024
@@ -124,6 +128,9 @@ module Fargo
         @sent     = 0
         @looping  = true
 
+        client.channel << [:upload_started,
+            {:nick => @other_nick, :file => @file.path}]
+
         stream_file
       end
 
@@ -131,7 +138,13 @@ module Fargo
       # releasing our upload slot back to the client. All other state variables
       # are reset as well.
       def finish_streaming
-        @file.close unless @file.nil?
+        if @file
+          @file.close
+
+          client.channel << [:upload_finished,
+              {:nick => @other_nick, :file => @file.path,
+               :canceled => @canceled}]
+        end
 
         if @listing != 'filelist'
           @client.release_slot!

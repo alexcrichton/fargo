@@ -99,9 +99,36 @@ module Fargo
         end
       end
 
-      def lock_next_download! user, connection
+      # This is meant to get the Fargo::Download struct representing the next
+      # download for a nick. A download should not initiate based off of this
+      # information. This function exists to peek into the queue and see if we
+      # have a download for the nick to send them the correct Upload or
+      # Download direction. The Fargo::Download instance must later be locked
+      # via {#lock_download!} to actually download the file.
+      #
+      # @param [String] nick the nick to get a download for
+      # @return [Fargo::Download] a struct representing the next file that
+      #    should be downloaded from this peer. This download should not
+      #    actually be downloaded, but rather just used for information purposes
+      def next_download_for nick
+        @queued_downloads[nick].first
+      end
+
+      # This is intended to be used for when a download has been previously
+      # fetched via {#next_download_for}. This function then locks the download
+      # so it's listed internally as being downloaded.
+      #
+      # @param [Fargo::Download] download object returned from the previous call
+      #     to {#next_download_for}
+      def lock_download! download
+        connection = connection_for download.nick
+        raise "We should be connected with: #{download.nick}" if connection.nil?
+
         @downloading_lock.synchronize {
-          get_next_download_with_lock! user, connection
+          if next_download_for(download.nick) != download
+            raise 'Download is stale'
+          end
+          get_next_download_with_lock! download.nick, connection
         }
       end
 
@@ -178,13 +205,9 @@ module Fargo
               download.status = 'downloading'
             elsif type == :download_finished
               channel.unsubscribe subscribed_id
-              download.percent = 1
-              download.status  = 'finished'
-              download_finished! user, false
-            elsif type == :download_failed || type == :peer_disconnected
-              channel.unsubscribe subscribed_id
-              download.status = 'failed'
-              download_finished! user, true
+              download.percent = 1 unless map[:fialed]
+              download.status  = map[:failed] ? 'failed' : 'finished'
+              download_finished! user, map[:failed]
             end
           end
         end
@@ -235,7 +258,21 @@ module Fargo
 
         channel.subscribe do |type, hash|
           if type == :connection_timeout
+            # Time out this connection with the remote user and remember that
+            # we have timed out with them
             connection_failed_with! hash[:nick] if @trying.include?(hash[:nick])
+
+          elsif type == :upload_finished
+            # If we just finished uploading something, try downloading something
+            # from the other user.
+            connection = connection_for hash[:nick]
+            @downloading_lock.synchronize {
+              download = get_next_download_with_lock! hash[:nick], connection
+              if download
+                connection.download = download
+                connection.begin_download!
+              end
+            }
           end
         end
       end
