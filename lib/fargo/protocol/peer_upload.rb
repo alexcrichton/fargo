@@ -109,9 +109,7 @@ module Fargo
       def finish_streaming
         @file.try :close
 
-        if @listing == 'filelist'
-          close_connection_after_writing
-        else
+        if @listing != 'filelist'
           @client.release_slot!
         end
 
