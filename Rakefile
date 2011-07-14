@@ -46,3 +46,5 @@ task :build_extensions do
     end
   end
 end
+
+task :default => [:build_extensions, :spec]
