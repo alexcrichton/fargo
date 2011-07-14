@@ -6,14 +6,14 @@ describe Fargo::Supports::Chat, :type => :em do
   let(:chat2) { {:from => 'bar', :text => 'another'} }
 
   def flush_channel
+    token = rand
     counter = Fargo::BlockingCounter.new 1
     sid = client.channel.subscribe do |type, message|
-      if type == :synchronize
-        client.channel.unsubscribe sid
+      if type == token
         counter.decrement
       end
     end
-    client.channel << [:synchronize, {}]
+    client.channel << [token, {}]
     counter.wait
   end
 
