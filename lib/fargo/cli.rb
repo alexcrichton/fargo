@@ -1,3 +1,4 @@
+require 'logger'
 require 'fargo/ext/irb'
 
 module Fargo
@@ -20,7 +21,7 @@ module Fargo
     # Command line flags should be in ARGV
     #   -d : debug output
     def self.start
-      Fargo.logger = ActiveSupport::BufferedLogger.new WrappingLogger.new
+      Fargo.logger = Logger.new WrappingLogger.new
 
       unless ARGV.any?{ |s| s == '-d' }
         Fargo.logger.level = ActiveSupport::BufferedLogger::INFO
@@ -82,6 +83,8 @@ module Fargo
     class WrappingLogger
       def write str
         Readline.above_prompt{ puts str }
+      end
+      def close
       end
     end
 
