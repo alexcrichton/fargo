@@ -57,13 +57,7 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
   it "correctly creates an array of listings that it's sharing" do
     subject.share_directory root
 
-    listings = subject.local_listings
-
-    listings.size.should == 3
-
-    listings.shift.name.should == 'shared/a'
-    listings.shift.name.should == 'shared/b'
-    listings.shift.name.should == 'shared/c/d'
+    subject.local_listings.map(&:name) =~ ['shared/a', 'shared/b', 'shared/c/d']
   end
 
   it "finds listings correctly when given their name" do
