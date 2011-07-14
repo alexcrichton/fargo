@@ -26,7 +26,7 @@ describe Fargo::BlockingCounter do
   it "respects the timeout specified" do
     t = Time.now
     subject.wait 0.05
-    (Time.now - t).should be_within(0.01).of(0.05)
+    (Time.now - t).should > 0.05
   end
 
 end
