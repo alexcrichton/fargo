@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Fargo::Supports::Chat, :type => :em_different_thread do
+describe Fargo::Supports::Chat, :type => :em do
   let(:client) { Fargo::Client.new }
   let(:chat) { {:from => 'foo', :text => 'this is a chat!'} }
   let(:chat2) { {:from => 'bar', :text => 'another'} }
