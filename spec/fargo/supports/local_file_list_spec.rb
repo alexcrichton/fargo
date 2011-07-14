@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'active_support/core_ext/string/strip'
 
 describe Fargo::Supports::LocalFileList, :type => :emsync do
   subject { Fargo::Client.new }
@@ -81,22 +82,24 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
   end
 
   it "generates a correct file list" do
+    LibXML::XML.default_warnings = false
     subject.share_directory root
     file = Bzip2::Reader.open(subject.config.config_dir + '/files.xml.bz2')
-    xml = file.read
+    xml = LibXML::XML::Document.io(file).canonicalize
 
-    xml.should == <<-XML
-<?xml version="1.0" encoding="utf-8"?>
-<FileListing Base="/" Version="1" Generator="fargo #{Fargo::VERSION}">
-  <Directory Name="shared">
-    <File Name="a" Size="1" TTH="#{file_tth(root + '/a')}"/>
-    <File Name="b" Size="1" TTH="#{file_tth(root + '/b')}"/>
-    <Directory Name="c">
-      <File Name="d" Size="1" TTH="#{file_tth(root + '/c/d')}"/>
-    </Directory>
-  </Directory>
-</FileListing>
-XML
+    expected_xml = <<-XML.strip_heredoc
+      <?xml version="1.0" encoding="UTF-8"?>
+      <FileListing Base="/" Version="1" Generator="fargo #{Fargo::VERSION}">
+        <Directory Name="shared">
+          <File Name="a" Size="1" TTH="#{file_tth(root + '/a')}"/>
+          <File Name="b" Size="1" TTH="#{file_tth(root + '/b')}"/>
+          <Directory Name="c">
+            <File Name="d" Size="1" TTH="#{file_tth(root + '/c/d')}"/>
+          </Directory>
+        </Directory>
+      </FileListing>
+    XML
+    xml.should == LibXML::XML::Document.string(expected_xml).canonicalize
   end
 
   describe "updating the local file list" do

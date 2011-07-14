@@ -24,6 +24,6 @@ Gem::Specification.new do |s|
   s.add_dependency 'em-http-request'
   s.add_dependency 'activesupport', '>= 3.0.3'
   s.add_dependency 'i18n' # active support needs it an doesn't have it listed?
-  s.add_dependency 'nokogiri'
+  s.add_dependency 'libxml-ruby'
   s.add_dependency 'bzip2-ruby', '>= 0.2.7'
 end

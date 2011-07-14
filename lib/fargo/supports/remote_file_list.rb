@@ -1,5 +1,5 @@
 require 'bzip2'
-require 'nokogiri'
+require 'libxml'
 
 module Fargo
   # A struct representing a listing of a file for either a remote nick or as
@@ -110,8 +110,8 @@ module Fargo
       def parse_file_list file, nick
         if file && File.exists?(file)
           Fargo.logger.debug "Parsing file list for: '#{nick}' at '#{file}'"
-          xml = Bzip2::Reader.open(file).read
-          doc = Nokogiri::XML::Document.parse xml
+          xml = Bzip2::Reader.open file
+          doc = LibXML::XML::Document.io xml
 
           construct_file_list doc.root, nil, nick
         else
@@ -121,7 +121,7 @@ module Fargo
 
       # Recursive helper for constructing a file list from a node
       #
-      # @param [Nokogiri::XML::Node] node the current node at which construction
+      # @param [LibXML::XML::Node] node the current node at which construction
       #   is occurring.
       # @param [String, nil] prefix the path prefix that leads down to this
       #   current node. If nil, then this node's children are roots.

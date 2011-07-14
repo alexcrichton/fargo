@@ -1,5 +1,5 @@
 require 'bzip2'
-require 'nokogiri'
+require 'libxml'
 require 'active_support/core_ext/module/synchronization'
 
 module Fargo
@@ -69,27 +69,6 @@ module Fargo
         arr
       end
 
-      def write_file_list
-        builder = Nokogiri::XML::Builder.new(:encoding => 'utf-8') do |xml|
-          attrs = ActiveSupport::OrderedHash.new
-          attrs[:Base]      = '/'
-          attrs[:Version]   = '1'
-          attrs[:Generator] = "fargo #{VERSION}"
-          xml.FileListing(attrs) {
-            create_entities local_file_list, xml
-          }
-        end
-
-        FileUtils.mkdir_p config.config_dir
-        Bzip2::Writer.open(local_file_list_path, 'w') do |f|
-          f << builder.to_xml
-        end
-
-        File.open(cache_file_list_path, 'w'){ |f|
-          f << Marshal.dump([local_file_list, shared_directories, share_size])
-        }
-      end
-
       def update_tth root, directory = nil, hash = nil
         if directory.nil?
           directory = root
@@ -134,19 +113,40 @@ module Fargo
 
       synchronize :update_tth, :with => :@update_lock
 
-      def create_entities entity, xml
+      def write_file_list
+        document = LibXML::XML::Document.new
+        document.root = node 'FileListing', :Base => '/', :Version => '1',
+          :Generator => "fargo #{VERSION}"
+
+        create_entities local_file_list, document.root
+
+        FileUtils.mkdir_p config.config_dir
+        Bzip2::Writer.open(local_file_list_path, 'w') do |f|
+          f << document.to_s
+        end
+
+        File.open(cache_file_list_path, 'w'){ |f|
+          f << Marshal.dump([local_file_list, shared_directories, share_size])
+        }
+      end
+
+      def create_entities entity, node
         entity.each_pair do |k, v|
           if v.is_a? Hash
-            xml.Directory(:Name => k) { create_entities v, xml }
+            dir = node 'Directory', :Name => k
+            create_entities v, dir
+            node << dir
           else
-            # Make sure they always show up in this order
-            attrs        = ActiveSupport::OrderedHash.new
-            attrs[:Name] = k
-            attrs[:Size] = v.size.to_s
-            attrs[:TTH]  = v.tth
-            xml.File attrs
+            node << node('File', :Name => k, :Size => v.size.to_s,
+                :TTH => v.tth)
           end
         end
+      end
+
+      def node name, attrs
+        LibXML::XML::Node.new(name).tap { |n|
+          attrs.each{ |k, v| n[k.to_s] = v }
+        }
       end
 
       def schedule_update
