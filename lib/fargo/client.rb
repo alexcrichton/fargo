@@ -1,9 +1,7 @@
 require 'socket'
-require 'base64'
 require 'active_support/core_ext/object/try'
 require 'active_support/callbacks'
 require 'active_support/configurable'
-require 'em-websocket'
 
 module Fargo
   class Client
@@ -76,7 +74,7 @@ module Fargo
     end
 
     def websocket_url
-      "wd://#{config.websocket_host}:#{config.websocket_port}"
+      "ws://#{config.websocket_host}:#{config.websocket_port}"
     end
 
     def connect
@@ -100,10 +98,11 @@ module Fargo
         end
       end
 
-      start_websocket_service
+      start_websocket_service if defined?(EventMachine::WebSocket)
     end
 
     def start_websocket_service
+      require 'base64'
       EventMachine.start_server(config.websocket_host, config.websocket_port,
           EventMachine::WebSocket::Connection, {}) do |ws|
         ws.onopen {
