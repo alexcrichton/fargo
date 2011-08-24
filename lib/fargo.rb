@@ -23,6 +23,7 @@ module Fargo
   autoload :Parser
   autoload :Search
   autoload :SearchResult
+  autoload :Throttler
   autoload :TTH
   autoload :Utils
   autoload :VERSION

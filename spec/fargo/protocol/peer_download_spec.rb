@@ -25,6 +25,10 @@ describe Fargo::Protocol::PeerDownload, :type => :emsync do
     conn.stub :set_comm_inactivity_timeout
     conn.post_init
     conn.download = Fargo::Download.new 'foobar', 'path/to/file', 'tth', 100, 0
+
+    Fargo::Throttler.stub(:new).and_return mock(:start_throttling => true,
+                                                :stop_throttling => true,
+                                                :throttle => true)
   end
 
   describe 'the standard DC protocol for downloading' do

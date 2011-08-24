@@ -37,9 +37,9 @@ module Fargo
           percent = @recvd.to_f / @length
           @download.percent = percent
 
-          # Only periodically publish our download progress for better
-          # performance
-          if percent - @last_published > 0.05
+          # Only periodically publish our download progress to not flood the
+          # channel with every bit of data received.
+          @throttler.throttle do
             @file.flush
             @client.channel << [:download_progress, {:percent => percent,
                                         :file           => download_path,
@@ -47,8 +47,6 @@ module Fargo
                                         :download       => @download,
                                         :size           => @recvd,
                                         :compressed     => @zlib}]
-
-            @last_published = percent
           end
 
           download_finished if @recvd == @length
@@ -112,11 +110,12 @@ module Fargo
       def begin_download!
         raise NotInReactor unless EM.reactor_thread?
         FileUtils.mkdir_p File.dirname(download_path), :mode => 0755
+        @throttler = Throttler.new 3
+        @throttler.start_throttling
         @file = File.open download_path, 'wb'
 
         @file.seek @download.offset
         @handshake_step = 5
-        @last_published = 0
 
         # Figure out the correct file name to send
         if @download.file_list?
@@ -189,10 +188,11 @@ module Fargo
         if @file_path && File.exists?(@file_path) && File.size(@file_path) == 0
           File.delete(@file_path)
         end
+        @throttler.stop_throttling if @throttler
 
         # clear out these variables
         @inflator = @file_path = @zlib = @length = @download = @recvd = nil
-        @file = nil
+        @file = @throttler = nil
         @get_sent = @getblock_sent = false
 
         # Go back to the get step
