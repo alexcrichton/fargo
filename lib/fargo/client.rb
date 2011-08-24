@@ -8,6 +8,7 @@ module Fargo
   BOLD  = "\e[1m"
   RED   = "\e[31m"
   GREEN = "\e[32m"
+  BLUE  = "\e[34m"
 
   class Client
 

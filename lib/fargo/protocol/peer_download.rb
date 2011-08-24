@@ -181,22 +181,9 @@ module Fargo
       #   an error and the error_msg will be provided in the published data.
       #   Otherwise, the download is considered successfully.
       def download_finished error_msg = nil
-        if @download
-          if error_msg
-            client.debug 'download', "Download error: #{error_msg}"
-          end
-          client.debug 'download', "Finished download of #{@download}"
-
-          @file.close
-          @client.channel << [:download_finished,
-              {:file => @file_path, :download => @download,
-               :nick => @other_nick, :failed => !error_msg.nil?,
-               :last_error => error_msg}]
-
-          # We don't want to keep around connections for file lists. It's not a
-          # high change we'll download anything from this peer anyway.
-          close_connection_after_writing if @download.file_list?
-        end
+        @file.close unless @file.nil? || @file.closed?
+        download = @download
+        file_path = @file_path
 
         # Clean up empty files to prevent litter.
         if @file_path && File.exists?(@file_path) && File.size(@file_path) == 0
@@ -204,11 +191,28 @@ module Fargo
         end
 
         # clear out these variables
-        @inflator = @file_path = @zlib = @download = @length = @recvd = nil
+        @inflator = @file_path = @zlib = @length = @download = @recvd = nil
+        @file = nil
         @get_sent = @getblock_sent = false
 
         # Go back to the get step
         @handshake_step = 5
+
+        if download
+          if error_msg
+            client.debug 'download', "Download error: #{error_msg}"
+          end
+          client.debug 'download', "Finished download of #{@download}"
+
+          @client.channel << [:download_finished,
+              {:file => file_path, :download => download,
+               :nick => @other_nick, :failed => !error_msg.nil?,
+               :last_error => error_msg}]
+
+          # We don't want to keep around connections for file lists. It's not a
+          # high change we'll download anything from this peer anyway.
+          close_connection_after_writing if download.file_list?
+        end
       end
 
       # Helper to generate a unique filename to download a file into. The result

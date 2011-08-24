@@ -110,7 +110,7 @@ module Fargo
             # This might not actually start the download. We
             # could possibly already be downloading from this
             # peer in which case we will queue this for later.
-            EventMachine.schedule { start_download }
+            EventMachine.next_tick { start_download }
           end
         end
 
@@ -161,7 +161,6 @@ module Fargo
         connection = connection_for peer
         # Check to make sure we're in a sane environment.
         raise NotInReactor                        unless EM.reactor_thread?
-        raise 'No open slots!'                    unless has_download_slot?
         raise "Already downloading from #{peer}!" if @current_downloads[peer]
         raise "No downloads: #{peer}"        if !@queued_downloads.key?(peer)
         raise 'Should not have empty array!' if @queued_downloads[peer].empty?
@@ -204,7 +203,7 @@ module Fargo
         downloads = @failed_downloads[nick].dup
         @failed_downloads[nick].clear
         # Reschedule all the failed downloads again
-        EM.schedule {
+        EM.next_tick {
           downloads.each{ |d| download nick, d.file, d.tth, d.size }
         }
 
@@ -265,7 +264,7 @@ module Fargo
         end
 
         # Start another download if possible
-        EventMachine.schedule{ start_download }
+        EventMachine.next_tick{ start_download }
       end
 
       def connection_failed_with! nick
@@ -277,7 +276,7 @@ module Fargo
         @failed_downloads[nick] |= @queued_downloads.delete(nick)
 
         # This one failed, try the next one
-        EventMachine.schedule{ start_download }
+        EventMachine.next_tick{ start_download }
       end
 
       def initialize_download_lists
@@ -299,7 +298,7 @@ module Fargo
           elsif type == :upload_finished
             # If we just finished uploading something, try downloading something
             # from the other user.
-            EventMachine.schedule { start_download }
+            EventMachine.next_tick { start_download }
           end
         end
       end

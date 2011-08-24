@@ -44,6 +44,7 @@ RSpec.configure do |c|
   c.before :each, :type => :emsync do
     EM.stub(:reactor_thread?).and_return true
     EM.stub(:schedule).and_yield
+    EM.stub(:next_tick).and_yield
     EM.stub(:defer) { |block1, block2|
       EM.stub(:reactor_thread?).and_return false
       result = block1.call
