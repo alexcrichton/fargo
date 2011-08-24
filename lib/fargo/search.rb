@@ -24,6 +24,39 @@ module Fargo
 
     attr_accessor :size_restricted, :is_minimum_size, :size, :filetype, :pattern
 
+    # Creates a new search object from the specified parameters
+    #
+    # Recognized options:
+    #   :query => (String|nil) the string to search the hub for. No escaping or
+    #             anything is necessary. Default = nil
+    #   :pattern => (String|nil) this is the raw pattern that is send on the
+    #               socket to the hub. Spaces should be replaced with '$'. When
+    #               in doubt, provide an arbitrary string via the :query option.
+    #               Overrides the :query parameter given
+    #   :filetype => (Integer) The filetype option to search. This is used to
+    #                restrict results returned. The options are:
+    #                   Fargo::Search::ANY
+    #                   Fargo::Search::AUDIO
+    #                   Fargo::Search::COMPRESSED
+    #                   Fargo::Search::DOCUMENT
+    #                   Fargo::Search::EXECUTABLE
+    #                   Fargo::Search::PICTURE
+    #                   Fargo::Search::VIDEO
+    #                   Fargo::Search::FOLDER
+    #                   Fargo::Search::TTH
+    #                Default is Fargo::Search::ANY
+    #   :size => (Integer|nil) the size parameter to send with the search query.
+    #            See the below two options for what this parameter can
+    #            indicate. Default = nil
+    #   :size_restricted => (true|false) whether the search should restrict
+    #                       results based on the size given in the :size
+    #                       option. Default = false
+    #   :is_minimum_size => (true|false) if the :size_restricted key is given
+    #                       along with :size, this key says whether the the size
+    #                       is to be considered a minimum size or a maximum
+    #                       size. Default = false
+    #
+    # @param [Hash] opts the supplied options for the query.
     def initialize opts = {}
       @size_restricted = opts[:size_restricted]
       @is_minimum_size = opts[:is_minimum_size]
