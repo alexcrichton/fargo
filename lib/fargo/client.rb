@@ -24,8 +24,7 @@ module Fargo
     configure do |config|
       config.download_dir   = '/tmp/fargo/downloads'
       config.config_dir     = ENV['HOME'] + '/.fargo'
-      config.address        =
-        (IPSocket.getaddress(Socket.gethostname) rescue '0.0.0.0')
+      config.address        = '0.0.0.0'
       config.passive        = false
       config.nick           = 'fargo'
       config.hub_address    = '127.0.0.1'
