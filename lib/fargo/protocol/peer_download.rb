@@ -44,7 +44,7 @@ module Fargo
             @client.channel << [:download_progress, {:percent => percent,
                                         :file           => download_path,
                                         :nick           => @other_nick,
-                                        :download       => @download.to_h,
+                                        :download       => @download,
                                         :size           => @recvd,
                                         :compressed     => @zlib}]
 
@@ -86,7 +86,7 @@ module Fargo
             end
 
             @client.channel << [:download_started, {:file => download_path,
-                                       :download  => @download.to_h,
+                                       :download  => @download,
                                        :length    => @length,
                                        :nick      => @other_nick}]
 
@@ -189,8 +189,8 @@ module Fargo
 
           @file.close
           @client.channel << [:download_finished,
-              {:file => @file_path, :download => @download.to_h,
-               :nick => @other_nick, :failed => !@error_message.nil?,
+              {:file => @file_path, :download => @download,
+               :nick => @other_nick, :failed => !error_msg.nil?,
                :last_error => error_msg}]
 
           # We don't want to keep around connections for file lists. It's not a
