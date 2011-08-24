@@ -202,7 +202,7 @@ module Fargo
           if error_msg
             client.debug 'download', "Download error: #{error_msg}"
           end
-          client.debug 'download', "Finished download of #{@download}"
+          client.debug 'download', "Finished download of #{download}"
 
           @client.channel << [:download_finished,
               {:file => file_path, :download => download,
