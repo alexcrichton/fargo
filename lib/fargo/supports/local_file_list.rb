@@ -18,11 +18,12 @@ module Fargo
       def share_directory dir
         shared_directories << dir unless shared_directories.include? dir
 
-        EventMachine.schedule { # Make sure we run in the reactor
-          EventMachine.defer {  # This takes awhile so don't block the reactor
-            update_tth dir
-            write_file_list
-          }
+        # This takes awhile so don't block the reactor
+        EventMachine.defer {
+          @local_list_lock.lock
+          update_tth dir
+          write_file_list
+          @local_list_lock.unlock
         }
       end
 
@@ -70,6 +71,10 @@ module Fargo
       end
 
       def update_tth root, directory = nil, hash = nil
+        if EventMachine.reactor_thread? || !@local_list_lock.locked?
+          raise 'Should not update tth hashes in reactor thread or without' \
+                ' the local list lock!'
+        end
         if directory.nil?
           directory = root
           root      = File.dirname(root)
@@ -78,12 +83,13 @@ module Fargo
         hash ||= (local_file_list[File.basename(directory)] ||= {})
 
         Pathname.glob(directory + '/*').each do |path|
+          previous = hash[path.basename.to_s]
           if path.directory?
-            update_tth_without_synchronization root, path.to_s,
+            update_tth root, path.to_s,
               hash[path.basename.to_s] ||= {}
 
-          elsif hash[path.basename.to_s].nil? ||
-              path.mtime > hash[path.basename.to_s].mtime
+          elsif previous.nil? || path.mtime > hash[path.basename.to_s].mtime
+            @share_size -= previous.size if previous
 
             hash[path.basename.to_s] = Listing.new(
                 file_tth(path.to_s),
@@ -111,9 +117,11 @@ module Fargo
         to_remove.each{ |k| hash.delete k }
       end
 
-      synchronize :update_tth, :with => :@update_lock
-
       def write_file_list
+        if EventMachine.reactor_thread? || !@local_list_lock.locked?
+          raise 'Should not write file list in reactor thread or without' \
+                ' the local list lock!'
+        end
         document = LibXML::XML::Document.new
         document.root = node 'FileListing', :Base => '/', :Version => '1',
           :Generator => "fargo #{VERSION}"
@@ -151,10 +159,14 @@ module Fargo
 
       def schedule_update
         EventMachine::Timer.new(60) do
-          shared_directories.each{ |d| update_tth d }
-
-          write_file_list
-          schedule_update
+          EventMachine.defer proc {
+            @local_list_lock.lock
+            shared_directories.each{ |d| update_tth d }
+            write_file_list
+            @local_list_lock.unlock
+          }, proc {
+            schedule_update
+          }
         end
       end
 
@@ -164,7 +176,7 @@ module Fargo
         rescue
           [{}, [], 0]
         end
-        @update_lock = Mutex.new
+        @local_list_lock = Mutex.new
       end
 
     end

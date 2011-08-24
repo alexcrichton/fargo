@@ -110,6 +110,7 @@ module Fargo
       # This doesn't fire the :download_started event. That occurs when the
       # response from the peer that the file will be sent is received.
       def begin_download!
+        raise NotInReactor unless EM.reactor_thread?
         FileUtils.mkdir_p File.dirname(download_path), :mode => 0755
         @file = File.open download_path, 'wb'
 

@@ -10,10 +10,13 @@ module Fargo
       end
 
       def open_upload_slots
+        raise NotInReactor unless EM.reactor_thread?
         [config.upload_slots - @taken_slots, 0].max
       end
 
       def take_slot!
+        raise NotInReactor unless EM.reactor_thread?
+
         if config.upload_slots <= @taken_slots
           false
         else
@@ -23,16 +26,14 @@ module Fargo
       end
 
       def release_slot!
+        raise NotInReactor unless EM.reactor_thread?
         @taken_slots -= 1
       end
-
-      synchronize :take_slot!, :release_slot!, :with => :@upload_slot_lock
 
       protected
 
       def initialize_upload_locks
-        @upload_slot_lock = Mutex.new
-        @taken_slots      = 0
+        @taken_slots = 0
       end
 
     end

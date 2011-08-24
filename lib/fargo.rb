@@ -10,6 +10,7 @@ module Fargo
   extend ActiveSupport::Autoload
 
   class ConnectionException < RuntimeError; end
+  class NotInReactor < RuntimeError; end
 
   mattr_accessor :logger
   self.logger = ActiveSupport::BufferedLogger.new STDOUT
