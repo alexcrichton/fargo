@@ -82,9 +82,15 @@ module Fargo
         channel.subscribe do |type, hash|
           if type == :hub_disconnected
             nicks_connected_with.each{ |n| disconnect_from n }
-          elsif type == :peer_disconnected
+          elsif type.to_s =~ /_disconnected$/
+            if !connected_with?(hash[:nick])
+              raise 'Should have a previously opened connection!'
+            end
             @connection_cache.delete hash[:nick]
-          elsif type == :peer_connected
+          elsif type.to_s =~ /_connected$/
+            if connected_with?(hash[:nick])
+              raise 'Should not have a previously opened connection!'
+            end
             @connection_timeouts.delete(hash[:nick]).try(:cancel)
             @connection_cache[hash[:nick]] = hash[:connection]
           end
