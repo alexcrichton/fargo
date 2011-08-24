@@ -20,10 +20,11 @@ Gem::Specification.new do |s|
   s.require_paths = ['lib', 'ext']
 
   s.add_dependency 'eventmachine'
-  s.add_dependency 'em-websocket'
-  s.add_dependency 'em-http-request'
   s.add_dependency 'activesupport', '>= 3.0.3'
-  s.add_dependency 'i18n' # active support needs it an doesn't have it listed?
   s.add_dependency 'libxml-ruby'
   s.add_dependency 'bzip2-ruby', '>= 0.2.7'
+  s.add_dependency 'i18n'
+
+  s.add_development_dependency 'em-websocket'
+  s.add_development_dependency 'em-http-request'
 end
