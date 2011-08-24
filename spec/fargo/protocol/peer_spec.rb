@@ -15,7 +15,7 @@ describe Fargo::Protocol::Peer do
 
   include Fargo::Utils
 
-  describe "the client to client handshake" do
+  describe "the client to client handshake", :type => :emsync do
     before :each do
       client.config.nick = 'fargo'
     end

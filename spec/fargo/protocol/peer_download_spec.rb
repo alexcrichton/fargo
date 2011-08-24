@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Fargo::Protocol::PeerDownload do
+describe Fargo::Protocol::PeerDownload, :type => :emsync do
   let(:conn) {
     helper_object(Fargo::Protocol::Peer).tap do |conn|
       conn.client     = Fargo::Client.new

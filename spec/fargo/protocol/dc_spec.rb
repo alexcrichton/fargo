@@ -6,6 +6,7 @@ describe Fargo::Protocol::DC do
 
   before :each do
     conn.post_init
+    conn.client = client
   end
 
   context "receiving data" do

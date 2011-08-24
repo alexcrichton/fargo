@@ -1,29 +1,15 @@
 require 'spec_helper'
 
-describe Fargo::Supports::Chat, :type => :em do
+describe Fargo::Supports::Chat, :type => :emsync do
   let(:client) { Fargo::Client.new }
   let(:chat) { {:from => 'foo', :text => 'this is a chat!'} }
   let(:chat2) { {:from => 'bar', :text => 'another'} }
 
-  def flush_channel
-    token = rand
-    counter = Fargo::BlockingCounter.new 1
-    sid = client.channel.subscribe do |type, message|
-      if type == token
-        counter.decrement
-      end
-    end
-    client.channel << [token, {}]
-    counter.wait
-  end
-
   it "keeps a log of all messages sent" do
     client.channel << [:chat, chat]
-    flush_channel
     client.messages.should == [chat]
 
     client.channel << [:chat, chat2]
-    flush_channel
     client.messages.should == [chat, chat2]
   end
 
@@ -31,7 +17,6 @@ describe Fargo::Supports::Chat, :type => :em do
     client.channel << [:privmsg, chat]
     chat2[:from] = chat[:from]
     client.channel << [:privmsg, chat2]
-    flush_channel
 
     client.messages_with('foo').should == [chat, chat2]
   end
@@ -40,7 +25,6 @@ describe Fargo::Supports::Chat, :type => :em do
     client.channel << [:chat, chat]
     client.channel << [:privmsg, chat]
     client.channel << [:hub_disconnected, {}]
-    flush_channel
 
     client.messages.should == []
     client.messages_with('foo').should == []
@@ -61,8 +45,7 @@ describe Fargo::Supports::Chat, :type => :em do
       client.channel << [:chat, chat2]
       client.channel << [:privmsg, chat]
     }
-    flush_channel
-    client.connect
+    client.send(:periodically_remove_chats)
     client.messages.should == Array.new(100, chat2)
     client.messages_with('foo').should == Array.new(100, chat)
   end

@@ -103,7 +103,7 @@ describe Fargo::Protocol::Hub do
     conn.unbind
   end
 
-  context "the hub handshake" do
+  context "the hub handshake", :type => :emsync do
     before :each do
       Fargo.configure do |config|
         config.nick                = 'fargo'
