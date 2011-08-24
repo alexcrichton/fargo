@@ -1,5 +1,3 @@
-require 'active_support/core_ext/module/synchronization'
-
 module Fargo
   module Supports
     module Uploads
