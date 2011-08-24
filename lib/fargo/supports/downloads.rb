@@ -101,14 +101,16 @@ module Fargo
           @failed_downloads[download.nick] << download
           return nil
         else
-          if @queued_downloads[download.nick].include?(download) ||
+          if (@queued_downloads[download.nick] &&
+              @queued_downloads[download.nick].include?(download)) ||
              @current_downloads[download.nick] == download
             return nil
           else
-            @queued_downloads[download.nick] << download
-            start_download # This might not actually start the download. We
-                           # could possibly already be downloading from this
-                           # peer in which case we will queue this for later.
+            (@queued_downloads[download.nick] ||= []) << download
+            # This might not actually start the download. We
+            # could possibly already be downloading from this
+            # peer in which case we will queue this for later.
+            EventMachine.schedule { start_download }
           end
         end
 
@@ -127,6 +129,7 @@ module Fargo
 
       def remove_download nick, file
         raise NotInReactor unless EM.reactor_thread?
+        return unless @queued_downloads.key?(nick)
         @queued_downloads[nick].delete_if{ |h| h.file == file }
         @queued_downloads.delete(nick) if @queued_downloads[nick].empty?
       end
@@ -144,7 +147,7 @@ module Fargo
       #    actually be downloaded, but rather just used for information purposes
       def next_download_for nick
         raise NotInReactor unless EM.reactor_thread?
-        @queued_downloads[nick].first
+        @queued_downloads.key?(nick) ? @queued_downloads[nick].first : nil
       end
 
       # This is intended to be used for when a download has been previously
@@ -154,14 +157,37 @@ module Fargo
       # @param [Fargo::Download] download object returned from the previous call
       #     to {#next_download_for}
       def lock_download! download
-        raise NotInReactor unless EM.reactor_thread?
-        connection = connection_for download.nick
-        raise "We should be connected with: #{download.nick}" if connection.nil?
+        peer = download.nick
+        connection = connection_for peer
+        # Check to make sure we're in a sane environment.
+        raise NotInReactor                        unless EM.reactor_thread?
+        raise 'No open slots!'                    unless has_download_slot?
+        raise "Already downloading from #{peer}!" if @current_downloads[peer]
+        raise "No downloads: #{peer}"        if !@queued_downloads.key?(peer)
+        raise 'Should not have empty array!' if @queued_downloads[peer].empty?
+        raise "We should be connected with: #{peer}" if connection.nil?
 
-        if next_download_for(download.nick) != download
-          raise 'Download is stale'
+        @queued_downloads[peer].delete(download)
+        @queued_downloads.delete(peer) if @queued_downloads[peer].empty?
+        @current_downloads[peer] = download
+        @trying.delete peer
+
+        subscribed_id = channel.subscribe do |type, map|
+          if map[:nick] == peer
+            if type == :download_progress
+              download.percent = map[:percent]
+            elsif type == :download_started
+              download.status = 'downloading'
+            elsif type == :download_finished
+              channel.unsubscribe subscribed_id
+              download.percent = 1 unless map[:failed]
+              download.status  = map[:failed] ? 'failed' : 'finished'
+              download_finished! peer, map[:failed]
+            end
+          end
         end
-        get_next_download! download.nick, connection
+
+        download
       end
 
       # If a connection timed out, retry all queued downloads for that user.
@@ -197,7 +223,7 @@ module Fargo
         return false unless has_download_slot?
 
         # Find the first candidate for downloading
-        arr = @queued_downloads.to_a.detect{ |nick, downloads|
+        nick, downloads = @queued_downloads.detect{ |nick, downloads|
           raise 'Should have at least one download!' if downloads.empty?
 
           # Only download one file at a time from a peer who has not timed out.
@@ -205,57 +231,27 @@ module Fargo
           # a connection open with them.
           !@current_downloads.key?(nick) &&
             !@trying.include?(nick) &&
-            !@timed_out.include?(nick) &&
-            (connection_for(nick) || nick_has_slot?(nick))
+            !@timed_out.include?(nick) #&&
+            # (connection_for(nick) || nick_has_slot?(nick))
         }
 
-        return false if arr.nil?
-        peer       = arr[0]
-        connection = connection_for peer
+        return false if nick.nil? || downloads.nil?
+        connection = connection_for nick
 
         # If we already have an open connection to this user, tell that
         # connection to download the file. Otherwise, request a connection
         # which will handle downloading when the connection is complete.
         if connection
-          debug 'download', "Using previous connection with #{peer}"
-          download = get_next_download! peer, connection
+          debug 'download', "Using previous connection with #{nick}"
+          download = downloads.first
+          lock_download! download
           connection.download = download
           connection.begin_download!
         else
-          @trying << peer
-          connect_with peer
+          @trying << nick
+          connect_with nick
         end
         true
-      end
-
-      def get_next_download! user, connection
-        raise NotInReactor                        unless EM.reactor_thread?
-        raise 'No open slots!'                    unless has_download_slot?
-        raise "Already downloading from #{user}!" if @current_downloads[user]
-
-        return nil if @queued_downloads[user].size == 0
-
-        download = @queued_downloads[user].shift
-        @queued_downloads.delete(user) if @queued_downloads[user].empty?
-        @current_downloads[user] = download
-        @trying.delete user
-
-        subscribed_id = channel.subscribe do |type, map|
-          if map[:nick] == user
-            if type == :download_progress
-              download.percent = map[:percent]
-            elsif type == :download_started
-              download.status = 'downloading'
-            elsif type == :download_finished
-              channel.unsubscribe subscribed_id
-              download.percent = 1 unless map[:failed]
-              download.status  = map[:failed] ? 'failed' : 'finished'
-              download_finished! user, map[:failed]
-            end
-          end
-        end
-
-        download
       end
 
       def download_finished! user, failed
@@ -287,7 +283,7 @@ module Fargo
       def initialize_download_lists
         FileUtils.mkdir_p config.download_dir, :mode => 0755
 
-        @queued_downloads   = Hash.new{ |h, k| h[k] = [] }
+        @queued_downloads   = {}
         @current_downloads  = {}
         @failed_downloads   = Hash.new{ |h, k| h[k] = [] }
         @finished_downloads = Hash.new{ |h, k| h[k] = [] }
@@ -303,12 +299,7 @@ module Fargo
           elsif type == :upload_finished
             # If we just finished uploading something, try downloading something
             # from the other user.
-            connection = connection_for hash[:nick]
-            download = get_next_download! hash[:nick], connection
-            if download
-              connection.download = download
-              connection.begin_download!
-            end
+            EventMachine.schedule { start_download }
           end
         end
       end
