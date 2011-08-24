@@ -44,6 +44,7 @@ module Fargo
           data = "$#{method}|"
         end
 
+        client.debug "out-#{connection_type}", data, RED
         send_data data
       end
 
@@ -59,7 +60,7 @@ module Fargo
       # @param [String] chunk the data received.
       def receive_data_chunk chunk
         chunk.chomp! '|'
-        Fargo.logger.debug "#{self}: Received: #{chunk.inspect}"
+        client.debug "in-#{connection_type}", chunk, GREEN
         hash = parse_message chunk
         receive_message hash[:type], hash
       end
@@ -98,6 +99,10 @@ module Fargo
       # Human-readable type of connection this is.
       def connection_type
         :dc
+      end
+
+      def inspect
+        "#<Connection(#{connection_type}) ...>"
       end
 
       # Publishes disconnect information if we have a client.

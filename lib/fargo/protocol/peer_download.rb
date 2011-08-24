@@ -81,8 +81,8 @@ module Fargo
             send_message 'Send' if @get_sent
 
             if @zlib
-              Fargo.logger.debug(
-                "Enabling zlib compression on: #{@download.file}")
+              client.debug 'download',
+                "Enabling zlib compression on: #{@download.file}"
             end
 
             @client.channel << [:download_started, {:file => download_path,
@@ -160,7 +160,7 @@ module Fargo
           send_message 'Get', "#{@download.file}$#{@download.offset + 1}"
         end
 
-        Fargo.logger.debug "#{self}: Beginning download of #{@download}"
+        client.debug 'download', "Beginning download of #{@download}"
       end
 
       # When closing this connection, make sure that we've finished any
@@ -183,9 +183,9 @@ module Fargo
       def download_finished error_msg = nil
         if @download
           if error_msg
-            Fargo.logger.debug "#{self}: Download error: #{error_msg}"
+            client.debug 'download', "Download error: #{error_msg}"
           end
-          Fargo.logger.debug "#{self}: Finished download of #{@download}"
+          client.debug 'download', "Finished download of #{@download}"
 
           @file.close
           @client.channel << [:download_finished,

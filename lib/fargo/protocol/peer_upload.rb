@@ -103,7 +103,7 @@ module Fargo
         super
 
         if @listing
-          Fargo.logger.debug "Upload disconnected"
+          client.debug 'upload', 'Update disconnected'
           finish_streaming
         end
       end

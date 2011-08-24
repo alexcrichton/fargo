@@ -29,7 +29,7 @@ module Fargo
       attr_accessor :client
 
       def connection_type
-        :peer
+        @other_nick ? @other_nick : :peer
       end
 
       # After this connection is established, generate ourselves a lock to send

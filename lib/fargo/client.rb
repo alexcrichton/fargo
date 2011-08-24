@@ -4,6 +4,11 @@ require 'active_support/callbacks'
 require 'active_support/configurable'
 
 module Fargo
+  RESET = "\e[0m"
+  BOLD  = "\e[1m"
+  RED   = "\e[31m"
+  GREEN = "\e[32m"
+
   class Client
 
     include ActiveSupport::Configurable
@@ -39,6 +44,7 @@ module Fargo
       config.speed          = 'DSL'
       config.email          = nil
       config.override_share_size = nil
+      config.color = false
     end
 
     attr_reader :hub, :channel
@@ -49,8 +55,7 @@ module Fargo
         @connection_timeouts = {}
 
         @channel.subscribe do |type, hash|
-          Fargo.logger.debug(
-            "#{Time.now}: Channel received: #{type} - #{hash.inspect}")
+          debug 'event', "#{type} - #{hash.inspect}", BOLD
         end
 
         config_file = config.config_dir + '/config'
@@ -129,6 +134,20 @@ module Fargo
 
     def description
       "<fargo V:#{VERSION},M:#{config.passive ? 'P' : 'A'},H:1/0/0,S:#{open_upload_slots},Dt:1.2.6/W>"
+    end
+
+    def debug type, message, color = nil
+      log = ''
+      log << Time.now.to_s
+      log << ": ["
+      log << BOLD  if config.color && color
+      log << type.rjust(8)
+      log << RESET if config.color
+      log << "] "
+      log << color if config.color && color
+      log << message
+      log << RESET if config.color
+      Fargo.logger.debug log
     end
 
   end

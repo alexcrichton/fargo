@@ -240,8 +240,6 @@ module Fargo
         @current_downloads[user] = download
         @trying.delete user
 
-        Fargo.logger.debug "#{self}: Locking download: #{download}"
-
         subscribed_id = channel.subscribe do |type, map|
           if map[:nick] == user
             if type == :download_progress
@@ -250,7 +248,7 @@ module Fargo
               download.status = 'downloading'
             elsif type == :download_finished
               channel.unsubscribe subscribed_id
-              download.percent = 1 unless map[:fialed]
+              download.percent = 1 unless map[:failed]
               download.status  = map[:failed] ? 'failed' : 'finished'
               download_finished! user, map[:failed]
             end

@@ -28,6 +28,7 @@ module Fargo
       #
       # @param [String] nick the nick to connect with.
       def connect_with nick
+        debug 'connect', "Requesting connection with #{nick}"
         @connection_timeouts[nick] = EventMachine::Timer.new(10) do
           @connection_timeouts.delete(nick)
           channel << [:connection_timeout, {:nick => nick}]
