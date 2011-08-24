@@ -70,34 +70,6 @@ module Fargo
         true
       end
 
-      # Synchronously load the file list with a specified timeout.
-      #
-      # @param [String] nick the nick to download the file list for
-      # @param [Integer] timeout the number of seconds to timeout for this
-      #   download
-      # @return [Hash, nil] the parsed file list of the user (if downloaded), or
-      #   nil if the download timed out. The downloaded file list is cached for
-      #   a minute.
-      def file_list! nick, timeout = 10
-        if @file_list.has_key?(nick)
-          return parse_file_list(@file_list[nick], nick)
-        end
-
-        list = nil
-        list_gotten = lambda{ |type, map|
-          if type == :file_list && map[:nick] == nick
-            list = map[:list]
-            true
-          else
-            false
-          end
-        }
-
-        timeout_response(timeout, list_gotten){ file_list nick }
-
-        parse_file_list list, nick
-      end
-
       protected
 
       # Parses a file list that has just been download.
