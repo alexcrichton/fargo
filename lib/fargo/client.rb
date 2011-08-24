@@ -22,7 +22,6 @@ module Fargo
     include Supports::Searches
     include Supports::Downloads
     include Supports::Persistence
-    include Supports::Timeout
     include Supports::RemoteFileList
     include Supports::LocalFileList
 
@@ -124,7 +123,7 @@ module Fargo
     end
 
     def connected?
-      EventMachine.reactor_running? && !hub.error?
+      EventMachine.reactor_running?
     end
 
     def disconnect

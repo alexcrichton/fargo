@@ -36,7 +36,6 @@ module Fargo
     autoload :Uploads
     autoload :Downloads
     autoload :Persistence
-    autoload :Timeout
     autoload :RemoteFileList
     autoload :LocalFileList
   end
