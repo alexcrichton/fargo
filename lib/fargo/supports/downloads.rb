@@ -39,7 +39,7 @@ module Fargo
       # Begin downloading a file from a remote peer. The actual download
       # may not begin immediately, but it will be scheduled to occur in the
       # future
-      # 
+      #
       # @param [Fargo::Listing, Fargo::Download, String] object if this is
       #   either a Listing or Download, then none of the other parameters are
       #   used. The others are inferred from the fields of the Listing or
@@ -54,13 +54,13 @@ module Fargo
       #   downloaded.
       # @param [Integer] offset the offset in bytes from the start of the file
       #   to begin downloading.
-      # 
+      #
       # @return [Fargo::Download, nil] If nil is returned, then the queueing of
       #   the download failed because the peer has been timed out previously,
       #   or this download is already queued. Otherwise, the download object
       #   represents the state of the download. The download may start
       #   immediately, but it may also be deferred for later.
-      #   
+      #
       #   To track the status of the download, subscribe to the client's channel
       #   for the events listed in Fargo::Protocol::PeerDownload
       def download object, file = nil, tth = nil, size = -1, offset = 0
@@ -165,7 +165,7 @@ module Fargo
       end
 
       # If a connection timed out, retry all queued downloads for that user.
-      # 
+      #
       # @param [String] nick the remote peer name which has been previously
       #   timed out
       # @return [Boolean] true if all downloads were retried, false if the
@@ -190,7 +190,7 @@ module Fargo
       # Generically start the next download from the remote hub. This method
       # will inspect all queues and figure out the first download which can
       # be retrieved from the remote.
-      # 
+      #
       # @return [Boolean] true if a download was started
       def start_download
         raise NotInReactor unless EM.reactor_thread?
