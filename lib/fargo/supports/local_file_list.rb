@@ -129,11 +129,11 @@ module Fargo
         create_entities local_file_list, document.root
 
         FileUtils.mkdir_p config.config_dir
-        Bzip2::Writer.open(local_file_list_path, 'w') do |f|
+        Bzip2::Writer.open(local_file_list_path, 'wb') do |f|
           f << document.to_s
         end
 
-        File.open(cache_file_list_path, 'w'){ |f|
+        File.open(cache_file_list_path, 'wb'){ |f|
           f << Marshal.dump([local_file_list, shared_directories, share_size])
         }
       end
@@ -158,7 +158,7 @@ module Fargo
       end
 
       def schedule_update
-        EventMachine::Timer.new(60) do
+        EventMachine::Timer.new(config.update_interval) do
           EventMachine.defer proc {
             @local_list_lock.lock
             shared_directories.each{ |d| update_tth d }
@@ -172,7 +172,7 @@ module Fargo
 
       def initialize_upload_lists
         @local_file_list, @shared_directories, @share_size = begin
-          Marshal.load File.read(cache_file_list_path)
+          Marshal.load File.open(cache_file_list_path, 'rb') { |f| f.read }
         rescue
           [{}, [], 0]
         end

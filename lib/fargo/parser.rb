@@ -62,7 +62,7 @@ module Fargo
     end
 
     def parse_command_message text
-      case text
+      hash = case text
         when @@validatedenied then {:type => :denide}
         when @@getpass        then {:type => :getpass}
         when @@badpass        then {:type => :badpass}
@@ -147,6 +147,11 @@ module Fargo
           h
         else                       {:type => :mystery, :text => '$' + text}
       end
+
+      hash.each_pair{ |k, v|
+        v.force_encoding('utf-8') if v.is_a?(String) && k == :file
+      }
+      hash
     end
   end
 end

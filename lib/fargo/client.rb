@@ -43,6 +43,7 @@ module Fargo
       config.password       = ''
       config.speed          = 'DSL'
       config.email          = nil
+      config.update_interval     = 60
       config.override_share_size = nil
       config.color = false
     end
