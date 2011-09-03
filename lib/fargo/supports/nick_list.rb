@@ -41,6 +41,25 @@ module Fargo
         get_info nick
       end
 
+      # Has the same semantics of the #info method, except that only the share
+      # size of the user is yielded. The share size is cached by default for
+      # 10 minutes, so this might not send out new queries.
+      #
+      # @param [String] nick the peer to get sharesize of
+      # @param [Integer] timeout the maximum amount of time (in seconds) to wait
+      #   before the supplied block will be called.
+      # @param [Proc] see #info semantics
+      def sharesize nick, timeout = 5, &block
+        cache = @info_cache[nick]
+        if cache && Time.now - cache[:updated_at] > 600
+          block.call cache[:sharesize]
+        else
+          info(nick, timeout) do |map|
+            map ? block.call(map[:sharesize]) : block.call(nil)
+          end
+        end
+      end
+
       # Test whether the remote peer has a slot for downloading a file. This
       # information might be cached, so the supplied block might be invoked
       # immediately.
@@ -50,8 +69,8 @@ module Fargo
       #   boolean parameter whether the nick had a slot or not.
       def nick_has_slot? nick, &block
         raise ArgumentError.new 'Need a block!' if block.nil?
-        if @search_result_slots.key?(nick) &&
-           Time.now < @search_result_slots[nick][:updated_at] + 1.minute
+        if @info_cache.key?(nick) && @info_cache[nick][:slots]
+           Time.now < @info_cache[nick][:updated_at] + 1.minute
           block.call @search_result_slots[nick][:slots] > 0
         end
 
@@ -78,13 +97,15 @@ module Fargo
       def initialize_nick_lists
         @nicks     = []
         @info_deferrables = {}
-        @search_result_slots = {}
+        @info_cache = {}
 
         channel.subscribe do |type, map|
           case type
             when :hello
               @nicks << map[:nick] unless @nicks.include? map[:nick]
             when :myinfo
+              @info_cache[map[:nick]] = map
+              map[:updated_at] = Time.now
               deferrable = @info_deferrables.delete map[:nick]
               deferrable.succeed map if deferrable
             when :nick_list
@@ -100,10 +121,9 @@ module Fargo
             when :userip
               map[:users].each_pair{ |nick, ip| @nick_info[nick][:ip] = ip }
             when :search_result
-              @search_result_slots[map[:nick]] = {
-                :slots      => map[:open_slots],
-                :updated_at => Time.now
-              }
+              info = @info_cache[map[:nick]]
+              info[:slots] = map[:open_slots]
+              info[:updated_at] = Time.now
           end
         end
       end

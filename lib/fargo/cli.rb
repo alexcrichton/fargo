@@ -24,8 +24,9 @@ module Fargo
       Fargo.logger = Logger.new WrappingLogger.new
 
       unless ARGV.any?{ |s| s == '-d' }
-        Fargo.logger.level = ActiveSupport::BufferedLogger::INFO
+        Fargo.logger.level = Logger::INFO
       end
+      Fargo.logger.datetime_format = ''
 
       console = Console.new
 
@@ -51,8 +52,10 @@ module Fargo
         console.client_uri = 'druby://127.0.0.1:8082'
         console.client.connected?
         Fargo.logger.info "Using DRb server at: #{console.client_uri}"
+        console.log_published_messages
       rescue DRb::DRbConnError
         console.client = Fargo::Client.new
+        console.log_published_messages
         counter = Fargo::BlockingCounter.new 1
         Thread.start{ EventMachine.run{
           console.client.connect
@@ -61,8 +64,6 @@ module Fargo
         counter.wait 5
         Fargo.logger.info "Using local DC client"
       end
-
-      console.log_published_messages
 
       if !console.client.connected?
         puts "Client couldn't connect to hub on: #{console.client.hub_url}"

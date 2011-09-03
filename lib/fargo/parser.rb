@@ -148,9 +148,13 @@ module Fargo
         else                       {:type => :mystery, :text => '$' + text}
       end
 
-      hash.each_pair{ |k, v|
-        v.force_encoding('utf-8') if v.is_a?(String) && k == :file
-      }
+      if hash[:file].is_a?(String)
+        file = hash[:file]
+        file.force_encoding 'utf-8'
+        file.force_encoding 'iso-8859-1' unless file.valid_encoding?
+        hash[:type] = :bad_encoding unless file.valid_encoding?
+      end
+
       hash
     end
   end

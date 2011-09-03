@@ -31,29 +31,38 @@ module Fargo
       def log_published_messages
         @logging = Hash.new{ |h, k| h[k] = [] }
 
-        streamer = proc {
-          host = "ws://#{client.config.websocket_host}" +
-                    ":#{client.config.websocket_port}/"
-
-          ws = EventMachine::HttpRequest.new(host).get(:timeout => 0)
-
-          ws.disconnect { Fargo.logger.info "Stopping logging stream." }
-          ws.callback { Fargo.logger.info "Streaming logging messages." }
-          ws.stream { |msg|
-            to_log = nil
-            type, message = Marshal.load(Base64.decode64(msg))
-
+        if client.is_a?(Fargo::Client)
+          client.channel.subscribe do |type, message|
             @logging[type.to_s].each{ |l|
               to_log = l.call message
               Readline.above_prompt{ puts to_log } unless to_log.nil?
             }
-          }
-        }
-
-        if EventMachine.reactor_running?
-          EventMachine.schedule streamer
+          end
         else
-          Thread.start{ EventMachine.run streamer }
+          streamer = proc {
+            host = "ws://#{client.config.websocket_host}" +
+                      ":#{client.config.websocket_port}/"
+
+            ws = EventMachine::HttpRequest.new(host).get(:timeout => 0)
+
+            ws.disconnect { Fargo.logger.info "Stopping logging stream." }
+            ws.callback { Fargo.logger.info "Streaming logging messages." }
+            ws.stream { |msg|
+              to_log = nil
+              type, message = Marshal.load(Base64.decode64(msg))
+
+              @logging[type.to_s].each{ |l|
+                to_log = l.call message
+                Readline.above_prompt{ puts to_log } unless to_log.nil?
+              }
+            }
+          }
+
+          if EventMachine.reactor_running?
+            EventMachine.schedule streamer
+          else
+            Thread.start{ EventMachine.run streamer }
+          end
         end
       end
 

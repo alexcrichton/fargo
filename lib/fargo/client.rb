@@ -86,8 +86,12 @@ module Fargo
       run_callbacks :connect do
         EventMachine.connect config.hub_address, config.hub_port,
             Protocol::Hub do |conn|
-          @hub        = conn
-          @hub.client = self
+          if conn.error?
+            channel << [:hub_disconnected, {}]
+          else
+            @hub        = conn
+            @hub.client = self
+          end
         end
 
         unless config.passive

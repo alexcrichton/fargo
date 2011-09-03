@@ -83,6 +83,7 @@ module Fargo
           if type == :hub_disconnected
             nicks_connected_with.each{ |n| disconnect_from n }
           elsif type.to_s =~ /_disconnected$/
+            next if hash[:nick].nil?
             if !connected_with?(hash[:nick])
               raise 'Should have a previously opened connection!'
             end
