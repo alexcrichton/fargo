@@ -272,7 +272,14 @@ module Fargo
         @trying.delete nick
         @timed_out << nick
 
-        @queued_downloads[nick].each{ |d| d.status = 'timeout' }
+        @queued_downloads[nick].each{ |d|
+          d.status = 'timeout'
+          channel << [:download_finished, {
+            :download   => d,
+            :failed     => true,
+            :last_error => 'Client timed out.'
+          }]
+        }
         @failed_downloads[nick] |= @queued_downloads.delete(nick)
 
         # This one failed, try the next one

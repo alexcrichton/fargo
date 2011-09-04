@@ -50,6 +50,21 @@ describe Fargo::Parser do
       it "correctly parses search results which are files" do
         helper.parse_message(
           "$SR notas 02 - Heroes.mp3\0053001347 "+
+          "2/4\005Hub status (with parentheses) " +
+          "(127.0.0.1:7314)").should == {
+          :type       => :search_result,
+          :open_slots => 2,
+          :slots      => 4,
+          :hub        => 'Hub status (with parentheses)',
+          :file       => '02 - Heroes.mp3',
+          :address    => '127.0.0.1',
+          :port       => 7314,
+          :size       => 3001347,
+          :nick       => 'notas'
+        }
+
+        helper.parse_message(
+          "$SR notas 02 - Heroes.mp3\0053001347 "+
           "2/4\005TTH:VZWDTXHBSBSW7UMKCFHNEHXWCSWWYGU4KTIL76A " +
           "(127.0.0.1:7314)").should == {
           :type       => :search_result,

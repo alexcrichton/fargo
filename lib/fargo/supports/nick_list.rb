@@ -69,9 +69,9 @@ module Fargo
       #   boolean parameter whether the nick had a slot or not.
       def nick_has_slot? nick, &block
         raise ArgumentError.new 'Need a block!' if block.nil?
-        if @info_cache.key?(nick) && @info_cache[nick][:slots]
+        if @info_cache.key?(nick) && @info_cache[nick][:slots] &&
            Time.now < @info_cache[nick][:updated_at] + 1.minute
-          block.call @search_result_slots[nick][:slots] > 0
+          block.call @info_cache[nick][:slots] > 0
         end
 
         info nick do |map|
@@ -104,7 +104,8 @@ module Fargo
             when :hello
               @nicks << map[:nick] unless @nicks.include? map[:nick]
             when :myinfo
-              @info_cache[map[:nick]] = map
+              info = (@info_cache[map[:nick]] ||= {})
+              info.merge! map
               map[:updated_at] = Time.now
               deferrable = @info_deferrables.delete map[:nick]
               deferrable.succeed map if deferrable
@@ -121,7 +122,7 @@ module Fargo
             when :userip
               map[:users].each_pair{ |nick, ip| @nick_info[nick][:ip] = ip }
             when :search_result
-              info = @info_cache[map[:nick]]
+              info = (@info_cache[map[:nick]] ||= {})
               info[:slots] = map[:open_slots]
               info[:updated_at] = Time.now
           end

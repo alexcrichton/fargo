@@ -83,6 +83,7 @@ module Fargo
     end
 
     def connect
+      config.passive_search = config.passive
       run_callbacks :connect do
         EventMachine.connect config.hub_address, config.hub_port,
             Protocol::Hub do |conn|
@@ -97,12 +98,20 @@ module Fargo
         unless config.passive
           EventMachine.start_server '0.0.0.0', config.active_port,
               Protocol::Peer do |conn|
-            conn.client = self
+            if conn.error?
+              config.passive = true
+            else
+              conn.client = self
+            end
           end
 
           EventMachine.open_datagram_socket '0.0.0.0', config.search_port,
               Protocol::DC do |conn|
-            conn.client = self
+            if conn.error?
+              config.passive_search = true
+            else
+              conn.client = self
+            end
           end
         end
       end

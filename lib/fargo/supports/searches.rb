@@ -73,7 +73,7 @@ module Fargo
       def search_hub query
         raise ConnectionError.new('Not connected Yet!') unless connected?
 
-        if config.passive
+        if config.passive_search
           location = "Hub:#{config.nick}"
         else
           location = "#{config.address}:#{config.search_port}"
