@@ -44,15 +44,25 @@ describe Fargo::Protocol::DC do
       conn.receive_data '$Hello fargo|$Hello fooba'
     end
 
-    it "passes all binary data to :receive_data_chunk when necessary" do
+    it "passes binary data back to :receive_binary_data" do
       conn.should_receive(:receive_message).with(:hello,
         :type => :hello, :nick => 'fargo'){ |*args|
-        conn.stub(:parse_data?).and_return false
-        conn.should_receive(:receive_data_chunk).with('asdf')
+        conn.instance_variable_set(:@parsing, false)
       }
+      conn.should_receive(:receive_binary_data).with('asdf')
 
       conn.receive_data '$Hello fargo|'
       conn.receive_data 'asdf'
+    end
+
+    it "passes merged binary data back to :receive_data" do
+      conn.should_receive(:receive_message).with(:hello,
+        :type => :hello, :nick => 'fargo'){ |*args|
+        conn.instance_variable_set(:@parsing, false)
+        conn.should_receive(:receive_binary_data).with('asdf')
+      }
+
+      conn.receive_data '$Hello fargo|asdf'
     end
   end
 

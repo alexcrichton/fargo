@@ -16,19 +16,10 @@ module Fargo
 
       attr_accessor :download
 
-      # This method is overwritten because when receiving file data, the binary
-      # data shouldn't be parsed. This method delegates upward if we're not
-      # in the middle of downloading a file, however.
-      def receive_data_chunk data
-        # only download if we're at the correct handshake step
-        return super if @handshake_step != 6 || @download.nil?
+      def receive_binary_data data
+        data = @inflator.inflate data if @zlib
 
-        if @zlib
-          @inflator = Zlib::Inflate.new if @inflator.nil?
-          data      = @inflator.inflate data
-        end
-
-        @file << data
+        @file.write data
         @recvd += data.length
 
         if @recvd > @length
@@ -51,14 +42,6 @@ module Fargo
 
           download_finished if @recvd == @length
         end
-
-        true
-      end
-
-      # Overload this method to tell that we don't want to parse when we're in
-      # the middle of a download.
-      def parse_data?
-        @handshake_step != 6
       end
 
       # Implementation for receiving files of any protocol.
@@ -72,6 +55,7 @@ module Fargo
 
             @recvd          = 0
             @handshake_step = 6
+            @parsing        = false
 
             @zlib   = message[:zlib] unless @getblock_sent
             @length = message[:size]
@@ -79,6 +63,7 @@ module Fargo
             send_message 'Send' if @get_sent
 
             if @zlib
+              @inflator = Zlib::Inflate.new
               client.debug 'download',
                 "Enabling zlib compression on: #{@download.file}"
             end
@@ -197,6 +182,7 @@ module Fargo
 
         # Go back to the get step
         @handshake_step = 5
+        @parsing = true
 
         if download
           if error_msg
