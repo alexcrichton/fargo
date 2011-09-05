@@ -68,14 +68,14 @@ module Fargo
         raise NotInReactor unless EM.reactor_thread?
 
         if object.is_a?(Download)
-          dl     = nick
+          dl     = object
           nick   = dl.nick
           file   = dl.file
           tth    = dl.tth
           size   = dl.size || -1
           offset = dl.offset || 0
         elsif object.is_a?(Listing) # i.e. a listing
-          listing = nick
+          listing = object
           nick    = listing.nick
           file    = listing.name
           tth     = listing.tth

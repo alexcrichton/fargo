@@ -23,7 +23,7 @@ module Fargo
     def self.start
       Fargo.logger = Logger.new WrappingLogger.new
 
-      unless ARGV.any?{ |s| s == '-d' }
+      unless ARGV.any?{ |s| s == '--verbose' }
         Fargo.logger.level = Logger::INFO
       end
       Fargo.logger.datetime_format = ''

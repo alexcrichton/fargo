@@ -34,22 +34,28 @@ module Fargo
         if item.nil?
           puts 'That is not something to download!'
         else
-          client.download item[:nick], item[:file], item[:tth], item[:size]
+          EventMachine.schedule {
+            client.download item[:nick], item[:file], item[:tth], item[:size]
+          }
         end
       end
 
       def transfers
-        max_nick = client.current_downloads.keys.map(&:size).max
-        client.current_downloads.each_pair do |nick, download|
-          printf "%#{max_nick}s %10s (%5.2f%%) -- %s\n", nick,
-            humanize_bytes(download.size), 100 * download.percent,
-            download.file
-        end
+        EventMachine.schedule {
+          Readline.above_prompt {
+            max_nick = client.current_downloads.keys.map(&:size).max
+            client.current_downloads.each_pair do |nick, download|
+              printf "%#{max_nick}s %10s (%5.2f%%) -- %s\n", nick,
+                humanize_bytes(download.size), 100 * download.percent,
+                download.file
+            end
 
-        puts "Upload slots avail: " +
-          "#{client.open_upload_slots}/#{client.config.upload_slots}  " +
-          "Download slots avail: " +
-          "#{client.open_download_slots}/#{client.config.download_slots}"
+            puts "Upload slots avail: " +
+              "#{client.open_upload_slots}/#{client.config.upload_slots}  " +
+              "Download slots avail: " +
+              "#{client.open_download_slots}/#{client.config.download_slots}"
+          }
+        }
       end
 
     end

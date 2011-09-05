@@ -32,42 +32,45 @@ module Fargo
         set_callback :initialization, :after, :initialize_file_lists
       end
 
-      # Lazily load the file list for the nick. Subscribe to the client for the
-      # event :file_list to get notified.
+      # Initiate downloading of the file list from a remote peer. File lists are
+      # cached for 10 minutes by default. When the file list is finished
+      # downloading, a :file_list event will be published. If the file list
+      # is cached, this event is immediately published. Subscribe to this event
+      # on the client's channel if you would like to work with the file list.
       #
       # @param [String] nick the nick to download a file list for
-      # @return [Hash, true] either the file list (if one is available), or true
-      #   if the file list is currently being downloaded.
       def file_list nick
-        if @file_list.has_key?(nick)
-          return parse_file_list(@file_list[nick], nick)
-        elsif @getting_file_list[nick]
-          return true
+        raise NotInReactor unless EM.reactor_thread?
+        if @file_list.key?(nick)
+          channel << [:file_list, {:nick => nick}]
+          return
         end
 
-        subscription_id = channel.subscribe do |type, map|
-          case type
-            when :download_finished, :download_failed, :connection_timeout
-              if map[:nick] == nick
-                @file_list[nick] = map[:file]
-
-                channel.unsubscribe subscription_id
-                channel << [:file_list,
-                    {:nick => nick, :list => @file_list[nick]}]
-
-                @getting_file_list.delete nick
-              end
-          end
-        end
-
-        @getting_file_list[nick] = true
         download nick, 'files.xml.bz2'
 
-        EventMachine.add_timer 60 do
-          @file_list.delete nick
-          @getting_file_list.delete nick
-        end
-        true
+        # Only cache file lists for 10 minutes
+        EventMachine.add_timer(600) { @file_list.delete nick }
+      end
+
+      # Retrieve a parsed version of the file list. The parsed form is a ruby
+      # Hash object where each key corresponds to a directory/file and then
+      # each value is either a hash or a Fargo::Listing. A nested hash signifies
+      # a directory, while a Fargo::Listing signifies a file.
+      #
+      # @param [String] nick the peer to parse a file list for.
+      # @yield [Hash] the block supplied to this function will be invoked with
+      #   the parsed file list as a Hash described above when it is available.
+      #   Parsing takes a significant amount of time sometimes, so it's
+      #   recommended that this object be cached.
+      def parsed_file_list nick, &block
+        raise NotInReactor unless EM.reactor_thread?
+        raise "Don't have file list for: #{nick}" if !@file_list.key?(nick)
+
+        # Parsing takes awhile, defer it. Come back into the reactor and
+        # call the block with the result of the parsing.
+        EventMachine.defer lambda {
+          parse_file_list @file_list[nick], nick
+        }, block
       end
 
       protected
@@ -80,15 +83,11 @@ module Fargo
       # @return [Hash, nil] the constructed file list, or nil if the file wasn't
       #   found.
       def parse_file_list file, nick
-        if file && File.exists?(file)
-          debug 'parsing', "Parsing file list for: '#{nick}' at '#{file}'"
-          xml = Bzip2::Reader.open file
-          doc = LibXML::XML::Document.io xml
+        debug 'parsing', "Parsing file list for: '#{nick}' at '#{file}'"
+        xml = Bzip2::Reader.open file
+        doc = LibXML::XML::Document.io xml
 
-          construct_file_list doc.root, nil, nick
-        else
-          nil
-        end
+        construct_file_list doc.root, nil, nick
       end
 
       # Recursive helper for constructing a file list from a node
@@ -101,7 +100,7 @@ module Fargo
       def construct_file_list node, prefix, nick
         list = {}
 
-        node.element_children.each do |element|
+        node.each_element do |element|
           path = prefix ? prefix + "\\" + element['Name'] : element['Name']
 
           if element.name =~ /directory/i
@@ -118,6 +117,15 @@ module Fargo
       def initialize_file_lists
         @file_list = {}
         @getting_file_list = {}
+
+        channel.subscribe do |type, map|
+          if type == :download_finished && !map[:failed] &&
+             map[:download].file_list?
+            @file_list[map[:nick]] = map[:file]
+            channel << [:file_list, {:nick => map[:nick]}]
+          end
+        end
+
       end
 
     end

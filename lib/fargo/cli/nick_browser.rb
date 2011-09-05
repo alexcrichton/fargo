@@ -21,30 +21,29 @@ module Fargo
           add_completion(/^(?:get|download)#{file_regex}$/) { completion true }
           add_completion(/^(?:ls|cd)#{file_regex}$/) { completion }
 
-          add_logger(:download_finished) do |message|
-            if message[:file].end_with? 'files.xml.bz2'
-              begin_browsing message[:nick]
+          add_logger(:file_list) do |message|
+            client.parsed_file_list message[:nick] do |list|
+              begin_browsing list
             end
           end
         end
 
         def download file, other = nil
-          if file.is_a?(String)
-            resolved = resolve(file).to_s
-            listing = drilldown resolved, @file_list
+          return super unless file.is_a?(String)
 
-            if listing.nil?
-              puts "No file to download!: #{file}"
-            elsif listing.is_a? Hash
-              # Recursively download the entire directory
-              listing.keys.each do |k|
-                download File.join(resolved, k)
-              end
-            else
-              client.download listing
+          resolved = resolve(file).to_s
+          listing = drilldown resolved, @file_list
+
+          if listing.nil?
+            puts "No file to download!: #{file}"
+          elsif listing.is_a? Hash
+            # Recursively download the entire directory
+            listing.keys.each do |k|
+              download File.join(resolved, k)
             end
           else
-            super
+            puts "Downloading: [#{@browsing}] - #{listing.name}"
+            EventMachine.schedule { client.download listing }
           end
         end
       end
@@ -52,8 +51,7 @@ module Fargo
       def browse nick
         @browsing  = nick
         @file_list = nil
-        list       = client.file_list nick
-        begin_browsing nick, false if list.is_a?(Hash)
+        EventMachine.schedule { client.file_list nick }
       end
 
       def cd dir = '/'
@@ -74,7 +72,7 @@ module Fargo
 
       def ls dir = ''
         if @cwd.nil? || @file_list.nil?
-          puts "Note browsing any nick!"
+          puts "Not browsing any nick!"
           return
         end
 
@@ -92,18 +90,13 @@ module Fargo
         true
       end
 
-      def begin_browsing nick, above_prompt = true
-        @cwd = Pathname.new '/'
-        @file_list = client.file_list(@browsing)
-
-        if above_prompt
-          Readline.above_prompt{ puts "#{@browsing} ready for browsing" }
-        else
-          puts "#{@browsing} ready for browsing"
-        end
-      end
-
       protected
+
+      def begin_browsing list
+        @cwd = Pathname.new '/'
+        @file_list = list
+        Readline.above_prompt{ puts "#{@browsing} ready for browsing" }
+      end
 
       def completion include_files = false
         if @browsing

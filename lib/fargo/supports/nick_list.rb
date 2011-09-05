@@ -106,7 +106,7 @@ module Fargo
             when :myinfo
               info = (@info_cache[map[:nick]] ||= {})
               info.merge! map
-              map[:updated_at] = Time.now
+              info[:updated_at] = Time.now
               deferrable = @info_deferrables.delete map[:nick]
               deferrable.succeed map if deferrable
             when :nick_list
