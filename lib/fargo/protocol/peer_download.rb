@@ -74,7 +74,7 @@ module Fargo
                                        :nick      => @other_nick}]
 
           when :noslots
-            download_finished 'No Slots' if @download
+            download_finished "#{@other_nick} has no slots" if @download
 
           when :error
             download_finished message[:message] if @download
