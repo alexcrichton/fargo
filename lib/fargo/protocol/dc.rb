@@ -74,6 +74,9 @@ module Fargo
         end
       end
 
+      # Override this data if you ever set the @parsing variable to false. This
+      # method will be called from the #receive_data method whenever data is
+      # received on the connection.
       def receive_binary_data data
         raise 'Needs to be overridden if @parsing is false'
       end
