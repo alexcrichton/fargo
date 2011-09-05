@@ -17,13 +17,14 @@ module Fargo
 
           add_completion(/^browse\s+[^\s]*$/) { client.nicks }
 
-          file_regex = /(?:\s+(?:[^\s,]*))+/
+          file_regex = /(?:\s+(?:[^\s,]+))+/
           add_completion(/^(?:get|download)#{file_regex}$/) { completion true }
           add_completion(/^(?:ls|cd)#{file_regex}$/) { completion }
 
           add_logger(:file_list) do |message|
-            client.parsed_file_list message[:nick] do |list|
-              begin_browsing list
+            client.parsed_file_list message[:nick] do |document|
+              @browsing  = message[:nick]
+              begin_browsing document
             end
           end
         end
@@ -31,35 +32,36 @@ module Fargo
         def download file, other = nil
           return super unless file.is_a?(String)
 
-          resolved = resolve(file).to_s
-          listing = drilldown resolved, @file_list
+          node, path = resolve(file)
 
-          if listing.nil?
+          if node.nil?
             puts "No file to download!: #{file}"
-          elsif listing.is_a? Hash
+          elsif node.name == 'Directory'
             # Recursively download the entire directory
-            listing.keys.each do |k|
-              download File.join(resolved, k)
+            node.each_element do |element|
+              download path.join(element['Name'])
             end
           else
-            puts "Downloading: [#{@browsing}] - #{listing.name}"
-            EventMachine.schedule { client.download listing }
+            puts "Downloading: [#{@browsing}] - #{node['Name']}"
+            EventMachine.schedule {
+              client.download @browsing, path.to_s.gsub(/^\//, ''),
+                              node['TTH'], node['Size'].to_i
+            }
           end
         end
       end
 
       def browse nick
-        @browsing  = nick
-        @file_list = nil
         EventMachine.schedule { client.file_list nick }
       end
 
       def cd dir = '/'
-        cwd = resolve(dir)
-        if drilldown(cwd, @file_list).nil?
-          puts "#{dir.inspect} doesn't exist!"
+        node, path = resolve(dir)
+        if node.nil?
+          puts "#{path.to_s} doesn't exist!"
         else
-          @cwd = cwd
+          @node = node
+          @cwd  = path
           pwd
         end
       end
@@ -71,80 +73,82 @@ module Fargo
       alias :cwd :pwd
 
       def ls dir = ''
-        if @cwd.nil? || @file_list.nil?
+        if @file_list.nil?
           puts "Not browsing any nick!"
           return
         end
 
-        hash = drilldown(resolve(dir), @file_list)
-
-        hash.keys.sort_by(&:downcase).
-            sort_by{ |k| hash[k].is_a?(Hash) ? 0 : 1 }.each do |key|
-          if hash[key].is_a?(Hash)
-            puts "#{key}/"
-          else
-            printf "%10s -- %s\n", humanize_bytes(hash[key].size), key
-          end
+        node, path = resolve dir
+        if node.nil?
+          puts "No such path: #{dir}"
+          return
         end
 
-        true
+        node.each_element do |e|
+          if e.name == 'Directory'
+            puts e['Name'] + '/'
+          else
+            printf "%10s -- %s\n", humanize_bytes(e['Size'].to_i), e['Name']
+          end
+        end
       end
 
       protected
 
-      def begin_browsing list
-        @cwd = Pathname.new '/'
-        @file_list = list
+      def begin_browsing document
+        @cwd  = Pathname.new '/'
+        @node = document.find_first '/FileListing'
+        raise 'Invalid file list!' if @node.nil?
+        @file_list = document
         Readline.above_prompt{ puts "#{@browsing} ready for browsing" }
       end
 
       def completion include_files = false
-        if @browsing
-          all_input = Readline.get_input
-          dirs = []
-          while tmp = all_input.slice!(/[^\s]+?\s+/)
-            dirs << tmp.rstrip.gsub!(/"/, '')
-          end
-          dirs.shift # original command
-
-          resolved = resolve dirs.join('/'), false
-          hash     = drilldown resolved, @file_list
-
-          keys = hash.keys rescue []
-          keys = keys.select{ |k|
-            include_files || k == '..' || hash[k].is_a?(Hash)
-          }
-          keys << '..' unless keys.empty? && dirs.size != 0
-
-          keys.map{ |k|
-            suffix = hash[k].is_a?(Hash) ? '/' : ''
-
-            # Readline doesn't like completing words with spaces in the file
-            # name, so just display them as periods when in actuality we'll
-            # convert back to a space later
-            (k.gsub(' ', '.') + suffix).tap do |str|
-              key = @cwd.join(*dirs).join(str).expand_path.to_s
-              @fixed_completions[key] = resolved.join k
-            end
-          }
-        else
-          []
+        return [] unless @browsing
+        str = Readline.get_input
+        dirs = []
+        while tmp = str.slice!(/[^\s]+\s*/)
+          dirs << tmp.rstrip.gsub('"', '')
         end
+        dirs.pop   # Ignore what we're completing
+        dirs.shift # Ignore the original command
+
+        node, path = resolve dirs.join('/'), false
+        return [] if node.nil?
+
+        files = []
+        node.each_element do |element|
+          next if !include_files && element.name == 'File'
+          name = element['Name']
+          suffix = element.name == 'Directory' ? '/' : ''
+
+          # Readline doesn't like completing words with spaces in the file
+          # name, so just display them as periods when in actuality we'll
+          # convert back to a space later
+          comp = name.gsub(' ', '.') + suffix
+          files << comp
+
+          key = @cwd.join(*dirs).join(comp).expand_path.to_s
+          @fixed_completions[key] = path.join name
+        end
+
+        files << '..' if files.empty? || dirs.size == 0
+        files
       end
 
       def resolve dir, clear_cache = true
-        return '' if @cwd.nil?
+        return '' if @node.nil?
 
         res = @fixed_completions[@cwd.join(dir).expand_path.to_s] ||
                 @cwd.join(dir).expand_path
         @fixed_completions.clear if clear_cache
-        res.expand_path
-      end
 
-      def drilldown path, list
-        path.to_s.gsub(/^\//, '').split('/').inject(list) { |hash, part|
-          hash ? hash[part] : nil
-        }
+        path = res.expand_path
+        xpath = '/FileListing'
+        path.each_filename do |component|
+          xpath += "/*[@Name='#{component}']"
+        end
+        [@file_list.find_first(xpath), path]
       end
 
     end

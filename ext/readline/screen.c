@@ -29,12 +29,6 @@
 #include <stdlib.h>
 #include <signal.h>
 
-#if defined(HAVE_READLINE_READLINE_H)
-# include <readline/readline.h>
-#elif defined(HAVE_READLINE_H)
-# include <readline.h>
-#endif
-
 #include "screen.h"
 
 void clear_rl() {
@@ -67,11 +61,4 @@ void clear_rl() {
 
 void restore_rl() {
   rl_forced_update_display();
-}
-
-char* get_readline_input() {
-  struct readline_state state;
-  rl_save_state(&state);
-
-  return state.buffer;
 }

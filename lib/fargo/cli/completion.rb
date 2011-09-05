@@ -18,8 +18,9 @@ module Fargo
           }
           if data
             data = data.to_a
+            data.pop if data.last == str
             data.shift
-            candidates = proc.call *data
+            candidates = proc.call data
           end
 
           if candidates.empty?

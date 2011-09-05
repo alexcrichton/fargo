@@ -34,9 +34,12 @@ VALUE rb_readline_restore(VALUE self) {
  * @return [String] the current typed string at the readline prompt
  */
 VALUE rb_readline_input(VALUE self) {
-  char *input = get_readline_input();
-
-  return rb_str_new(input, strlen(input));
+  struct readline_state state;
+  if (rl_save_state(&state) == 0 && state.buffer != NULL) {
+    return rb_str_new(state.buffer, strlen(state.buffer));
+  }
+  char *empty = "";
+  return rb_str_new(empty, 0);
 }
 
 void Init_extra_utils() {

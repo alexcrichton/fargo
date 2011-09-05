@@ -52,16 +52,14 @@ module Fargo
         EventMachine.add_timer(600) { @file_list.delete nick }
       end
 
-      # Retrieve a parsed version of the file list. The parsed form is a ruby
-      # Hash object where each key corresponds to a directory/file and then
-      # each value is either a hash or a Fargo::Listing. A nested hash signifies
-      # a directory, while a Fargo::Listing signifies a file.
+      # Retrieve a parsed version of the file list. This parsing could take
+      # awhile, so the operation is performed in one of EventMachine's worker
+      # threads. The supplied block will be passed the file list when it's
+      # available.
       #
       # @param [String] nick the peer to parse a file list for.
-      # @yield [Hash] the block supplied to this function will be invoked with
-      #   the parsed file list as a Hash described above when it is available.
-      #   Parsing takes a significant amount of time sometimes, so it's
-      #   recommended that this object be cached.
+      # @yield [LibXML::XML::Document] the block supplied to this function will
+      #   be invoked with the parsed file list when it's available.
       def parsed_file_list nick, &block
         raise NotInReactor unless EM.reactor_thread?
         raise "Don't have file list for: #{nick}" if !@file_list.key?(nick)
@@ -86,8 +84,8 @@ module Fargo
         debug 'parsing', "Parsing file list for: '#{nick}' at '#{file}'"
         xml = Bzip2::Reader.open file
         doc = LibXML::XML::Document.io xml
-
-        construct_file_list doc.root, nil, nick
+        doc.order_elements!
+        doc
       end
 
       # Recursive helper for constructing a file list from a node
@@ -97,22 +95,22 @@ module Fargo
       # @param [String, nil] prefix the path prefix that leads down to this
       #   current node. If nil, then this node's children are roots.
       # @param [String] nick the nick that the file list is for.
-      def construct_file_list node, prefix, nick
-        list = {}
-
-        node.each_element do |element|
-          path = prefix ? prefix + "\\" + element['Name'] : element['Name']
-
-          if element.name =~ /directory/i
-            list[element['Name']] = construct_file_list element, path, nick
-          else
-            element = list[element['Name']] = Listing.new(element['TTH'],
-              element['Size'].to_i, path, nick)
-          end
-        end
-
-        list
-      end
+      # def construct_file_list node, prefix, nick
+      #   list = {}
+      #
+      #   node.each_element do |element|
+      #     path = prefix ? prefix + "\\" + element['Name'] : element['Name']
+      #
+      #     if element.name =~ /directory/i
+      #       list[element['Name']] = construct_file_list element, path, nick
+      #     else
+      #       element = list[element['Name']] = Listing.new(element['TTH'],
+      #         element['Size'].to_i, path, nick)
+      #     end
+      #   end
+      #
+      #   list
+      # end
 
       def initialize_file_lists
         @file_list = {}
