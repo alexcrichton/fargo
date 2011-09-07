@@ -53,7 +53,7 @@ module Fargo
 
             results = listings.map do |l|
               file = l.path.gsub '/', "\\"
-              if File.directory? l.path
+              if l.tth.nil?
                 s = file
               else
                 s = "#{file}\005#{l.size}"
@@ -61,7 +61,8 @@ module Fargo
 
               s + sprintf(" %d/%d\005%s (%s:%d)", @client.open_upload_slots,
                                                   @client.config.upload_slots,
-                                                  'TTH:' + l.tth,
+                                                  l.tth.nil? ? @hubname :
+                                                    'TTH:' + l.tth,
                                                   @client.config.hub_address,
                                                   @client.config.hub_port)
             end

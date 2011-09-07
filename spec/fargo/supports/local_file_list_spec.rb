@@ -97,6 +97,25 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
     xml.should == LibXML::XML::Document.string(expected_xml).canonicalize
   end
 
+  it "searches for files correctly" do
+    subject.share_directory root
+    listings = subject.search_local_listings Fargo::Search.new(:query => 'b')
+    listings.should =~ [
+      Fargo::Listing.new(file_tth(root + '/b'), 1, 'shared/b')
+    ]
+
+    listings = subject.search_local_listings Fargo::Search.new(:query => 'd')
+    listings.should =~ [
+      Fargo::Listing.new(file_tth(root + '/c/d'), 1, 'shared/c/d'),
+      Fargo::Listing.new(nil, nil, 'shared')
+    ]
+
+    listings = subject.search_local_listings Fargo::Search.new(:query => 'shar')
+    listings.should =~ [
+      Fargo::Listing.new(nil, nil, 'shared')
+    ]
+  end
+
   describe "updating the local file list" do
 
     before do

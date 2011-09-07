@@ -63,7 +63,7 @@ module Fargo
       end
 
       def search_local_listings search
-        xpath = "//File[contains(@Name, '#{search.query}')]"
+        xpath = "//*[contains(@Name, '#{search.query}')]"
         @local_file_list.find(xpath).map { |node| listing_from_node(node) }
       end
 
@@ -101,9 +101,10 @@ module Fargo
       # @return [Fargo::Listing] the listing for the node.
       def listing_from_node node, absolute = false
         listing = Fargo::Listing.new
-        listing = Fargo::Listing.new
-        listing.tth   = node['TTH']
-        listing.size  = node['Size'].to_i
+        if node.name == 'File'
+          listing.tth   = node['TTH']
+          listing.size  = node['Size'].to_i
+        end
 
         # We need to do a bit of work to figure out where the file is located
         # on the filesystem. Walk upwards from the node to get the relative

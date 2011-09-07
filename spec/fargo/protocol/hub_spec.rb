@@ -33,6 +33,17 @@ describe Fargo::Protocol::Hub do
       conn.receive_data "$Search Hub:foobar #{query}|"
     end
 
+    it "searches results and sends the results to the hub" do
+      conn.stub(:send_message)
+      conn.receive_data '$HubName hubname|'
+
+      conn.should_receive(:send_message).with('SR',
+        "fargo tmp 4/4\005hubname (127.0.0.1:7314)\005foobar")
+
+      query = Fargo::Search.new :query => File.basename(File.dirname(file1))
+      conn.receive_data "$Search Hub:foobar #{query}|"
+    end
+
     it "sends all hits to the hub" do
       conn.should_receive(:send_message).with('SR',
         "fargo tmp\\file23\0057 4/4\005TTH:#{file_tth file2} " +

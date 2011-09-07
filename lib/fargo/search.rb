@@ -83,15 +83,6 @@ module Fargo
     end
 
     def matches? map
-      if map.is_a?(Listing)
-        listing = map
-        map     = {
-          :file => listing.name,
-          :size => listing.size,
-          :tth  => listing.tth
-        }
-      end
-
       file = map[:file].try(:downcase) || ''
 
       if @filetype == TTH
