@@ -39,7 +39,7 @@ module Fargo
           elsif node.name == 'Directory'
             # Recursively download the entire directory
             node.each_element do |element|
-              download path.join(element['Name'])
+              download path.join(element['Name']).to_s
             end
           else
             puts "Downloading: [#{@browsing}] - #{node['Name']}"
@@ -132,7 +132,7 @@ module Fargo
           @fixed_completions[key] = path.join name
         end
 
-        files << '..' if files.empty? || dirs.size == 0
+        files << '..'
         files
       end
 

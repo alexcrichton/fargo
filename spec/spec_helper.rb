@@ -6,7 +6,7 @@ require 'fargo'
 
 download_dir = File.expand_path '../tmp', __FILE__
 
-Fargo.logger.level = ActiveSupport::BufferedLogger::WARN
+Fargo.logger.level = ActiveSupport::BufferedLogger::FATAL
 
 RSpec.configure do |c|
   c.before :each do

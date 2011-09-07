@@ -117,13 +117,41 @@ describe Fargo::CLI::NickBrowser, :type => :emsync do
       }
     end
 
+    it "recursively downloads directories" do
+      subject.client.should_receive(:download).with(
+        'foobar', 'shared/a', 'atth', 1).ordered
+      subject.client.should_receive(:download).with(
+        'foobar', 'shared/b', 'btth', 1).ordered
+      subject.client.should_receive(:download).with(
+        'foobar', 'shared/c/d', 'dtth', 1).ordered
+      capture(:stdout) { subject.download 'shared' }
+    end
+
     it "completes files correctly" do
       subject.send(:completion, false).should =~ ['shared/', '..']
       subject.send(:completion, true).should =~ ['shared/', '..']
 
+      Readline.stub(:get_input).and_return 'ls shared c'
+      subject.send(:completion, false).should =~ ['c/', '..']
+      Readline.stub(:get_input).and_return 'ls shared c'
+      subject.send(:completion, true).should =~ ['a', 'b', 'c/', '..']
+
+      Readline.stub(:get_input).and_return ''
       capture(:stdout) { subject.cd 'shared' }
       subject.send(:completion, false).should =~ ['c/', '..']
       subject.send(:completion, true).should =~ ['a', 'b', 'c/', '..']
+    end
+
+    it "complains about nonexistent files" do
+      output = capture(:stdout) { subject.download 'path/to/nowhere' }
+      output.should =~ %r|no.*download.*path/to/nowhere|i
+    end
+
+    it "complains about nonexistent directories" do
+      capture(:stdout) { subject.cd 'path/to/nowhere' }
+      capture(:stdout) { subject.pwd }.should == "/\n"
+      out = capture(:stdout) { subject.ls 'path/to/nowhere' }
+      out.should =~ %r|no.*such.*path/to/nowhere|i
     end
 
   end

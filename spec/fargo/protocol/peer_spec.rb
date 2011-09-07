@@ -47,6 +47,33 @@ describe Fargo::Protocol::Peer do
       conn.receive_data '$MyNick foobar|$Lock lock Pk=pk|$Supports a|' +
         "$Direction Download 100|$Key #{generate_key('lock')}|"
     end
+
+    context "out of order handshakes" do
+      it "doesn't like a lock before MyNick" do
+        conn.should_receive(:close_connection)
+        conn.receive_data '$Lock lock Pk=pk|'
+      end
+
+      it "doesn't like MyNick twice'" do
+        conn.should_receive(:close_connection)
+        conn.receive_data '$MyNick foobar|$MyNick asdf|'
+      end
+
+      it "doesn't like Supports before MyNick'" do
+        conn.should_receive(:close_connection)
+        conn.receive_data '$Supports asdf|'
+      end
+
+      it "doesn't like Direction up front'" do
+        conn.should_receive(:close_connection)
+        conn.receive_data '$Direction Download 3|'
+      end
+
+      it "doesn't like Key up front'" do
+        conn.should_receive(:close_connection)
+        conn.receive_data '$Key foo|'
+      end
+    end
   end
 
   it "disconnects with an appropriate message" do
