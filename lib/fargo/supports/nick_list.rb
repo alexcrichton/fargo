@@ -15,10 +15,6 @@ module Fargo
         hub.send_message 'GetINFO', "#{nick} #{config.nick}"
       end
 
-      def get_ip *nicks
-        hub.send_message 'UserIP', nicks.flatten.join('$$')
-      end
-
       # Send a $GetINFO request to the hub for the specified peer.
       #
       # @param [String] nick the peer to get information about
@@ -119,8 +115,6 @@ module Fargo
               @nicks.clear
               @info_deferrables.each_value { |v| v.fail }
               @info_deferrables.clear
-            when :userip
-              map[:users].each_pair{ |nick, ip| @nick_info[nick][:ip] = ip }
             when :search_result
               info = (@info_cache[map[:nick]] ||= {})
               info[:slots] = map[:open_slots]

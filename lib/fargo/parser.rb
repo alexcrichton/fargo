@@ -7,16 +7,13 @@ module Fargo
     @@commandmatch    = /^\$(.*)$/
     @@messagematch    = /^<(.*?)> (.*)$/
 
-    # TODO: Supports, UserIP, ops command
     # Client - hub commands
     @@validatedenied  = /^ValidateDenide/
     @@getpass         = /^GetPass$/
     @@badpass         = /^BadPass$/
     @@lock            = /^Lock (.*) Pk=.*?$/
-    @@userip          = /^UserIP (.*)$/
     @@hubname         = /^HubName (.*)$/
     @@hubfull         = /^HubIsFull$/
-    @@hubtopic        = /^HubTopic (.*)$/
     @@hello           = /^Hello (.*)$/
     @@myinfo          = /^MyINFO \$ALL (.*?) (.*?)\$ \$(.*?).\$(.*?)\$(.*?)\$/
     @@myinfo2         = /^MyINFO \$ALL (.*?) (.*?)\$$/
@@ -41,7 +38,6 @@ module Fargo
     @@getzblock  = /^U?GetZBlock (.*?) (.*?) (.*?)$/
     @@send       = /^Send$/
     @@filelength = /^FileLength (.*?)$/
-    @@getlistlen = /^GetListLen$/
     @@maxedout   = /^MaxedOut$/
     @@supports   = /^Supports (.*)$/
     @@error      = /^Error (.*)$/
@@ -63,13 +59,11 @@ module Fargo
 
     def parse_command_message text
       hash = case text
-        when @@validatedenied then {:type => :denide}
         when @@getpass        then {:type => :getpass}
         when @@badpass        then {:type => :badpass}
         when @@lock           then {:type => :lock, :lock => $1}
         when @@hubname        then {:type => :hubname, :name => $1}
         when @@hubfull        then {:type => :hubfull}
-        when @@hubtopic       then {:type => :hubtopic, :topic => $1}
         when @@hello          then {:type => :hello, :nick  => $1}
         when @@myinfo         then {:type => :myinfo, :nick => $1,
                                     :interest => $2, :speed => $3,
@@ -121,7 +115,6 @@ module Fargo
                                     :offset => $2.to_i - 1, :size => -1}
         when @@send           then {:type => :send}
         when @@filelength     then {:type => :file_length, :size => $1.to_i}
-        when @@getlistlen     then {:type => :getlistlen}
         when @@maxedout       then {:type => :noslots}
         when @@supports       then {:type => :supports,
                                     :extensions => $1.split(' ')}
@@ -141,10 +134,6 @@ module Fargo
                                     :zlib => true}
         when @@getblock       then {:type => :getblock, :offset => $1.to_i,
                                     :size => $2.to_i, :file => $3}
-        when @@userip         then
-          h = {:type => :userip, :users => {}}
-          $1.split('$$').map{ |s| h[:users][s.split(' ')[0]] = s.split(' ')[1]}
-          h
         else                       {:type => :mystery, :text => '$' + text}
       end
 
