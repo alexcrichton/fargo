@@ -49,11 +49,11 @@ module Fargo
           when :search
             # Let the client handle the results
             search = Search.new message
-            @listings = @client.search_local_listings search
+            listings = @client.search_local_listings search
 
-            @results = @listings.map do |l|
-              file = l.name.gsub '/', "\\"
-              if File.directory? l.name
+            results = listings.map do |l|
+              file = l.path.gsub '/', "\\"
+              if File.directory? l.path
                 s = file
               else
                 s = "#{file}\005#{l.size}"
@@ -70,13 +70,13 @@ module Fargo
             # connections
             if message[:address]
               socket = EventMachine.open_datagram_socket '0.0.0.0', 0
-              @results.each{ |r|
+              results.each{ |r|
                 socket.send_datagram "$SR #{@client.config.nick} #{r}|",
                   message[:address], message[:port]
               }
               socket.close_connection_after_writing
             else
-              @results.each{ |r|
+              results.each{ |r|
                 send_message 'SR',
                   "#{@client.config.nick} #{r}\005#{message[:searcher]}"
               }

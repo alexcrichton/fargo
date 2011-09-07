@@ -119,7 +119,7 @@ module Fargo
         if @listing == 'filelist'
           @file = File.open @client.local_file_list_path, 'rb'
         else
-          @file = File.open File.join(@listing.root, @listing.name), 'rb'
+          @file = File.open @listing.path, 'rb'
         end
 
         @handshake_step = 11

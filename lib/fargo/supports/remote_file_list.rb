@@ -2,10 +2,6 @@ require 'bzip2'
 require 'libxml'
 
 module Fargo
-  # A struct representing a listing of a file for either a remote nick or as
-  # a local file. The metadata contains information about the file used by DC.
-  class Listing < Struct.new(:tth, :size, :name, :nick, :mtime, :root); end
-
   module Supports
 
     # A remote file list is a listing of files for any remote user on a hub.
@@ -87,30 +83,6 @@ module Fargo
         doc.order_elements!
         doc
       end
-
-      # Recursive helper for constructing a file list from a node
-      #
-      # @param [LibXML::XML::Node] node the current node at which construction
-      #   is occurring.
-      # @param [String, nil] prefix the path prefix that leads down to this
-      #   current node. If nil, then this node's children are roots.
-      # @param [String] nick the nick that the file list is for.
-      # def construct_file_list node, prefix, nick
-      #   list = {}
-      #
-      #   node.each_element do |element|
-      #     path = prefix ? prefix + "\\" + element['Name'] : element['Name']
-      #
-      #     if element.name =~ /directory/i
-      #       list[element['Name']] = construct_file_list element, path, nick
-      #     else
-      #       element = list[element['Name']] = Listing.new(element['TTH'],
-      #         element['Size'].to_i, path, nick)
-      #     end
-      #   end
-      #
-      #   list
-      # end
 
       def initialize_file_lists
         @file_list = {}

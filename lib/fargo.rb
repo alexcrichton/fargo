@@ -19,7 +19,7 @@ module Fargo
   autoload :CLI
   autoload :Client
   autoload :Download, 'fargo/supports/downloads'
-  autoload :Listing, 'fargo/supports/remote_file_list'
+  autoload :Listing, 'fargo/supports/local_file_list'
   autoload :Parser
   autoload :Search
   autoload :SearchResult

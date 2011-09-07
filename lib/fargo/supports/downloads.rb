@@ -40,7 +40,7 @@ module Fargo
       # may not begin immediately, but it will be scheduled to occur in the
       # future
       #
-      # @param [Fargo::Listing, Fargo::Download, String] object if this is
+      # @param [Fargo::Download, String] object if this is
       #   either a Listing or Download, then none of the other parameters are
       #   used. The others are inferred from the fields of the Listing or
       #   Download. Otherwise the string is the nick of the remote peer to
@@ -74,12 +74,6 @@ module Fargo
           tth    = dl.tth
           size   = dl.size || -1
           offset = dl.offset || 0
-        elsif object.is_a?(Listing) # i.e. a listing
-          listing = object
-          nick    = listing.nick
-          file    = listing.name
-          tth     = listing.tth
-          size    = listing.size
         else
           nick = object
         end

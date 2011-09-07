@@ -4,12 +4,15 @@ require 'active_support/core_ext/string/strip'
 describe Fargo::Supports::LocalFileList, :type => :emsync do
   subject { Fargo::Client.new }
   let(:root) { Fargo.config.download_dir + '/shared' }
+  let(:root2) { Fargo.config.download_dir + '/shared2' }
 
   include Fargo::TTH
 
   before :each do
     FileUtils.mkdir_p root
+    FileUtils.mkdir_p root2
     File.open(root + '/a', 'w'){ |f| f << 'a' }
+    File.open(root2 + '/a', 'w'){ |f| f << 'a' }
     File.open(root + '/b', 'w'){ |f| f << 'c' }
     FileUtils.mkdir root + '/c'
     File.open(root + '/c/d', 'w'){ |f| f << 'd' }
@@ -17,19 +20,18 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
     subject.config.override_share_size = nil
   end
 
+  after :each do
+    FileUtils.rm_rf root
+  end
+
   it "maintains a list of local files, recursively searching folders" do
     subject.share_directory root
 
-    hash = subject.local_file_list
-    hash['shared'].should be_a(Hash)
-    hash['shared']['a'].should be_a(Fargo::Listing)
-    hash['shared']['b'].should be_a(Fargo::Listing)
-    hash['shared']['c'].should be_a(Hash)
-    hash['shared']['c']['d'].should be_a(Fargo::Listing)
-
-    hash['shared']['a'].name.should == 'shared/a'
-    hash['shared']['b'].name.should == 'shared/b'
-    hash['shared']['c']['d'].name.should == 'shared/c/d'
+    subject.listing_for('shared').should be_nil
+    subject.listing_for('shared/a').should be_a(Fargo::Listing)
+    subject.listing_for('shared/b').should be_a(Fargo::Listing)
+    subject.listing_for('shared/c').should be_nil
+    subject.listing_for('shared/c/d').should be_a(Fargo::Listing)
   end
 
   it "caches the file list so that another subject can come along" do
@@ -37,7 +39,6 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
 
     other = Fargo::Client.new
     other.config.override_share_size = nil
-    other.local_file_list.should     == subject.local_file_list
     other.share_size.should          == subject.share_size
     other.shared_directories.should  == subject.shared_directories
   end
@@ -54,25 +55,25 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
     subject.share_size.should == 100
   end
 
-  it "correctly creates an array of listings that it's sharing" do
-    subject.share_directory root
-
-    subject.local_listings.map(&:name) =~ ['shared/a', 'shared/b', 'shared/c/d']
-  end
-
   it "finds listings correctly when given their name" do
     subject.share_directory root
 
     ret_val = subject.listing_for 'shared/a'
     ret_val.should be_a(Fargo::Listing)
-    ret_val.name.should == 'shared/a'
+    ret_val.path.should == root + '/a'
+
+    subject.share_directory root2
+    subject.listing_for('shared/a').path.should == root + '/a'
+    subject.listing_for('shared2/a').path.should == root2 + '/a'
   end
 
   it "also finds listings based on their TTH value" do
     subject.share_directory root
-    listing = subject.local_listings[0]
-
-    subject.listing_for('TTH/' + listing.tth).should == listing
+    tth = file_tth(root + '/a')
+    listing = subject.listing_for('TTH/' + tth)
+    listing.should be_a(Fargo::Listing)
+    listing.path.should == root + '/a'
+    listing.tth.should == tth
   end
 
   it "generates a correct file list" do
@@ -104,30 +105,31 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
     end
 
     shared_examples_for 'an updated file list' do
+      its(:share_size) { should == 2 }
       it "removes deleted files" do
-        subject.local_file_list['shared']['a'].should be_nil
-      end
-
-      it "decrements the share size" do
-        subject.share_size.should == 2
+        subject.listing_for('shared/a').should be_nil
       end
     end
 
-    it_should_behave_like 'an updated file list' do
-      before do
-        subject.share_directory root
+    context "re-sharing directories" do
+      it_should_behave_like 'an updated file list' do
+        before do
+          subject.share_directory root
+        end
       end
     end
 
-    it_should_behave_like 'an updated file list' do
-      before do
-        EventMachine::Timer.should_receive(:new).with(60) { |time, blk|
-          # Make sure we recursively schedule another update
-          subject.should_receive(:schedule_update)
-          blk.call
-        }
+    context "scheduled updates running" do
+      it_should_behave_like 'an updated file list' do
+        before do
+          EventMachine::Timer.should_receive(:new).with(60) { |time, blk|
+            # Make sure we recursively schedule another update
+            subject.should_receive(:schedule_update)
+            blk.call
+          }
 
-        subject.send(:schedule_update)
+          subject.send(:schedule_update)
+        end
       end
     end
 
