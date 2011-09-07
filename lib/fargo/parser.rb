@@ -16,7 +16,6 @@ module Fargo
     @@hubfull         = /^HubIsFull$/
     @@hello           = /^Hello (.*)$/
     @@myinfo          = /^MyINFO \$ALL (.*?) (.*?)\$ \$(.*?).\$(.*?)\$(.*?)\$/
-    @@myinfo2         = /^MyINFO \$ALL (.*?) (.*?)\$$/
     @@to              = /^To: (.*?) From: (.*?) \$<.*?> (.*)$/
     @@hubto           = /^To: (.*?) From: Hub \$(.*)$/
     @@ctm             = /^ConnectToMe (.*?) (.*?):(.*?)$/
@@ -68,8 +67,6 @@ module Fargo
         when @@myinfo         then {:type => :myinfo, :nick => $1,
                                     :interest => $2, :speed => $3,
                                     :email => $4, :sharesize => $5.to_i}
-        when @@myinfo2        then {:type => :myinfo, :nick=> $1,
-                                    :interest => $2, :sharesize => 0}
         when @@to             then {:type => :privmsg, :to => $1, :from => $2,
                                     :text => $3}
         when @@hubto          then {:type => :privmsg, :to => $1,

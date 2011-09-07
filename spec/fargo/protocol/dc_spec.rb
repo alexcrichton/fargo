@@ -59,10 +59,11 @@ describe Fargo::Protocol::DC do
       conn.should_receive(:receive_message).with(:hello,
         :type => :hello, :nick => 'fargo'){ |*args|
         conn.instance_variable_set(:@parsing, false)
-        conn.should_receive(:receive_binary_data).with('asdf')
+        conn.should_receive(:receive_binary_data).with('asdf|').ordered
+        conn.should_receive(:receive_binary_data).with('a').ordered
       }
 
-      conn.receive_data '$Hello fargo|asdf'
+      conn.receive_data '$Hello fargo|asdf|a'
     end
   end
 
