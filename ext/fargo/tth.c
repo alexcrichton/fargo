@@ -53,12 +53,12 @@ int calc_block_level(word64 filesize, int max_block_count)
 
 char* tth(const char* filename, char **tthl, size_t *tthl_len)
 {
-    char *tth;
+    char *tth = NULL;
     size_t numbytes;
     unsigned char root[24];
     unsigned char *cur;
     TT_CONTEXT tt;
-    unsigned char buf[1 + 512 * BLOCKSIZE];
+    unsigned char buf[1 + 256 * BLOCKSIZE];
     struct stat sb;
     unsigned level;
     size_t leaf_blocksize;

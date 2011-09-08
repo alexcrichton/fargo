@@ -18,7 +18,7 @@
 /* default size of interim values stack, in TIGERSIZE
  * blocks. If this overflows (as it will for input
  * longer than 2^64 in size), havoc may ensue. */
-#define STACKSIZE TIGERSIZE*56
+#define STACKSIZE (TIGERSIZE*56)
 
 typedef struct tt_context {
   word64 count;                   /* total blocks processed */

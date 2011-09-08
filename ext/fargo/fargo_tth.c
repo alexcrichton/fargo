@@ -14,6 +14,9 @@
  *    didn't exist or couldn't be read
  */
 VALUE rb_tth_file(VALUE self, VALUE filename) {
+  if (TYPE(filename) != T_STRING) {
+    rb_raise(rb_eArgError, "argument must be a string");
+  }
   char *file = RSTRING_PTR(filename);
 
   char* tthl = NULL;
@@ -23,11 +26,12 @@ VALUE rb_tth_file(VALUE self, VALUE filename) {
     free(tthl);
   }
 
+  VALUE ret = Qnil;
   if (hash != NULL) {
-    return rb_str_new(hash, strlen(hash));
-  } else {
-    return Qnil;
+    ret = rb_str_new(hash, strlen(hash));
+    free(hash);
   }
+  return ret;
 }
 
 void Init_tth() {
