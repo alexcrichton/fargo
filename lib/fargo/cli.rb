@@ -21,10 +21,11 @@ module Fargo
     # Command line flags should be in ARGV
     #   -d : debug output
     def self.start
-      Fargo.logger = Logger.new WrappingLogger.new
-
-      unless ARGV.any?{ |s| s == '--verbose' }
-        Fargo.logger.level = Logger::INFO
+      if ARGV.any?{ |s| s == '--verbose' }
+        Fargo.logger = Logger.new WrappingLogger.new
+      else
+        log = File.open(Fargo.config.config_dir + '/log', 'w')
+        Fargo.logger = Logger.new log
       end
       Fargo.logger.datetime_format = ''
 
