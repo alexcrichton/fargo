@@ -17,7 +17,7 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
     FileUtils.mkdir root + '/c'
     File.open(root + '/c/d', 'w'){ |f| f << 'd' }
 
-    subject.config.override_share_size = nil
+    Fargo.config.override_share_size = nil
   end
 
   after :each do
@@ -41,6 +41,12 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
     other.config.override_share_size = nil
     other.share_size.should          == subject.share_size
     other.shared_directories.should  == subject.shared_directories
+  end
+
+  it "allows shared directories in the global configuration" do
+    Fargo.config.shared_directories = [root]
+
+    subject.shared_directories.should =~ [Pathname.new(root)]
   end
 
   it "caches the size of each file shared" do

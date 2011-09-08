@@ -245,6 +245,9 @@ module Fargo
         root['Base'] = '/'
         root['Version'] = '1'
         root['Generator'] = "fargo V:#{VERSION}"
+
+        dirs = config.shared_directories || []
+        dirs.each{ |dir| share_directory dir }
       end
 
     end
