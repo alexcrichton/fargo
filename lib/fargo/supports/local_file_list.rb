@@ -30,14 +30,7 @@ module Fargo
         @shared_directories << path unless @shared_directories.include? path
 
         # This takes awhile so don't block the reactor
-        EventMachine.defer {
-          @local_list_lock.synchronize {
-            xpath = "/FileListing/Directory[@Name='#{path.basename.to_s}']"
-            @local_file_list.find(xpath).each{ |n| n.remove! }
-            update_tth path, @local_file_list.find_first('/FileListing')
-            write_file_list
-          }
-        }
+        EventMachine.defer { run_update path }
       end
 
       alias :share :share_directory
@@ -150,7 +143,7 @@ module Fargo
       # @param [LibXML::XML::Node] node the node at which new children should be
       #   placed under.
       def update_tth path, node
-        if EventMachine.reactor_thread? || !@local_list_lock.locked?
+        if EventMachine.reactor_thread? || !@update_lock.locked?
           raise 'Should not update tth hashes in reactor thread or without' \
                 ' the local list lock!'
         end
@@ -190,36 +183,40 @@ module Fargo
 
       # Write the file list to the filesystem, along with the cache of internal
       # state. This function must not be called from within the reactor
-      # thread and requires that the @local_list_lock to be held.
+      # thread and requires that the @update_lock to be held.
       def write_file_list
-        if EventMachine.reactor_thread? || !@local_list_lock.locked?
+        if EventMachine.reactor_thread? || !@update_lock.locked?
           raise 'Should not write file list in reactor thread or without' \
                 ' the local list lock!'
         end
 
         FileUtils.mkdir_p config.config_dir
         Bzip2::Writer.open(local_file_list_path, 'wb') do |f|
-          f << @local_file_list.to_s
+          f << @local_file_list.to_s(:indent => true)
         end
         @share_size = nil
 
         File.open(cache_file_list_path, 'wb'){ |f|
-          f << Marshal.dump([@local_file_info, @shared_directories,
-                             @share_size])
+          f << Marshal.dump([@local_file_info, @shared_directories])
         }
       end
 
       def schedule_update
         EventMachine::Timer.new(config.update_interval) do
           EventMachine.defer proc {
-            @local_list_lock.synchronize {
-              @local_file_list.find('/FileListing/*').each{ |n| n.remove! }
-              root = @local_file_list.find_first('/FileListing')
-              shared_directories.each{ |d| update_tth d, root }
-              write_file_list
-            }
-          }, proc { schedule_update }
+            @shared_directories.each{ |dir| run_update dir }
+          }, proc { |_| schedule_update }
         end
+      end
+
+      def run_update path
+        @update_lock.synchronize {
+          debug 'file-list', "Updating: #{path}"
+          xpath = "/FileListing/Directory[@Name='#{path.basename.to_s}']"
+          @local_file_list.find(xpath).each{ |n| n.remove! }
+          update_tth path, @local_file_list.find_first('/FileListing')
+          write_file_list
+        }
       end
 
       def initialize_upload_lists
@@ -228,17 +225,22 @@ module Fargo
         rescue
           [{}, []]
         end
-        @local_list_lock = Mutex.new
+        @update_lock = Mutex.new
 
+        LibXML::XML.indent_tree_output = true
         if File.exists?(local_file_list_path)
           bzip = Bzip2::Reader.open(local_file_list_path, 'r')
-          @local_file_list = LibXML::XML::Document.io bzip
+          @local_file_list = LibXML::XML::Document.io bzip,
+              :options => LibXML::XML::Parser::Options::NOBLANKS
           bzip.close
+          EventMachine.defer {
+            @update_lock.synchronize { write_file_list }
+          }
         else
           @local_file_list = LibXML::XML::Document.new
           @local_file_list.root = LibXML::XML::Node.new('FileListing')
           EventMachine.defer {
-            @local_list_lock.synchronize { write_file_list }
+            @update_lock.synchronize { write_file_list }
           }
         end
 
