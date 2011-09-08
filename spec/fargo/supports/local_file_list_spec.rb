@@ -77,12 +77,12 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
   end
 
   it "generates a correct file list" do
-    LibXML::XML.default_warnings = false
     subject.share_directory root
     file = Bzip2::Reader.open(subject.config.config_dir + '/files.xml.bz2')
-    xml = LibXML::XML::Document.io(file).canonicalize
+    xml  = LibXML::XML::Document.io(file)
+    file.close
 
-    expected_xml = <<-XML.strip_heredoc
+    expected = LibXML::XML::Document.string <<-XML.strip_heredoc
       <?xml version="1.0" encoding="UTF-8"?>
       <FileListing Base="/" Version="1" Generator="fargo #{Fargo::VERSION}">
         <Directory Name="shared">
@@ -94,7 +94,8 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
         </Directory>
       </FileListing>
     XML
-    xml.should == LibXML::XML::Document.string(expected_xml).canonicalize
+
+    xml.canonicalize.should == expected.canonicalize
   end
 
   it "searches for files correctly" do
