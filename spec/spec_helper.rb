@@ -28,15 +28,6 @@ RSpec.configure do |c|
     end
   end
 
-  c.around :each, :type => :em_different_thread do |example|
-    t = Thread.start{ EventMachine.run }
-    begin
-      example.run
-    ensure
-      t.kill
-    end
-  end
-
   c.around :each, :type => :em do |example|
     EventMachine.run_block{ example.run }
   end
