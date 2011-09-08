@@ -85,7 +85,7 @@ module Fargo
           elsif type.to_s =~ /_disconnected$/
             next if hash[:nick].nil?
             if !connected_with?(hash[:nick])
-              raise 'Should have a previously opened connection!'
+              raise "#{hash[:nick]} should have a previously opened connection!"
             end
             @connection_cache.delete hash[:nick]
           elsif type.to_s =~ /_connected$/

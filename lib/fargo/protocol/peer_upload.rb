@@ -124,7 +124,10 @@ module Fargo
 
         @handshake_step = 11
         @file.seek @offset
-        @deflator = Zlib::Deflate.new if @zlib
+        if @zlib
+          @deflator = Zlib::Deflate.new
+          client.debug 'upload', "Enabling zlib compression on #{@file.path}"
+        end
         @sent     = 0
         @looping  = true
 
