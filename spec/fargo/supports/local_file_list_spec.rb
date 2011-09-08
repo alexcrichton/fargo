@@ -77,6 +77,7 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
   end
 
   it "generates a correct file list" do
+    SecureRandom.stub(:hex).and_return('CID')
     subject.share_directory root
     file = Bzip2::Reader.open(subject.config.config_dir + '/files.xml.bz2')
     xml  = LibXML::XML::Document.io(file)
@@ -84,7 +85,8 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
 
     expected = LibXML::XML::Document.string <<-XML.strip_heredoc
       <?xml version="1.0" encoding="UTF-8"?>
-      <FileListing Base="/" Version="1" Generator="fargo #{Fargo::VERSION}">
+      <FileListing Base="/" Version="1" Generator="fargo V:#{Fargo::VERSION}"
+                   CID="CID">
         <Directory Name="shared">
           <File Name="a" Size="1" TTH="#{file_tth(root + '/a')}"/>
           <File Name="b" Size="1" TTH="#{file_tth(root + '/b')}"/>

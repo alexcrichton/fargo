@@ -1,6 +1,7 @@
 require 'bzip2'
 require 'libxml'
 require 'pathname'
+require 'securerandom'
 
 module Fargo
   # A struct representing a listing of a local file. The metadata contains
@@ -191,6 +192,7 @@ module Fargo
         end
 
         FileUtils.mkdir_p config.config_dir
+        @local_file_list.root['CID'] = SecureRandom.hex(12).upcase
         Bzip2::Writer.open(local_file_list_path, 'wb') do |f|
           f << @local_file_list.to_s(:indent => true)
         end
@@ -233,21 +235,16 @@ module Fargo
           @local_file_list = LibXML::XML::Document.io bzip,
               :options => LibXML::XML::Parser::Options::NOBLANKS
           bzip.close
-          EventMachine.defer {
-            @update_lock.synchronize { write_file_list }
-          }
         else
           @local_file_list = LibXML::XML::Document.new
           @local_file_list.root = LibXML::XML::Node.new('FileListing')
-          EventMachine.defer {
-            @update_lock.synchronize { write_file_list }
-          }
+          EventMachine.defer { @update_lock.synchronize { write_file_list } }
         end
 
         root = @local_file_list.root
         root['Base'] = '/'
         root['Version'] = '1'
-        root['Generator'] = "fargo #{VERSION}"
+        root['Generator'] = "fargo V:#{VERSION}"
       end
 
     end
