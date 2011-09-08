@@ -34,11 +34,11 @@ VALUE rb_readline_restore(VALUE self) {
  * @return [String] the current typed string at the readline prompt
  */
 VALUE rb_readline_input(VALUE self) {
+  const char *empty = "";
   struct readline_state state;
   if (rl_save_state(&state) == 0 && state.buffer != NULL) {
     return rb_str_new(state.buffer, strlen(state.buffer));
   }
-  char *empty = "";
   return rb_str_new(empty, 0);
 }
 
