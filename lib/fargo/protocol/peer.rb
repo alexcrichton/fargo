@@ -73,9 +73,9 @@ module Fargo
               # just automatically disconnect.
               @remote_lock    = message[:lock]
               @handshake_step = 2
-              @download       = @client.next_download_for @other_nick
               @my_num         = rand(0x7fff)
-              @my_direction   = @download ? 'Download' : 'Upload'
+              @my_direction   =
+                @client.download_for?(@other_nick) ? 'Download' : 'Upload'
 
               # Depending on who connected first, we might have already sent
               # our lock information.
@@ -114,13 +114,13 @@ module Fargo
               client.channel << [:peer_connected,
                   publish_args.merge(:connection => self)]
 
-              if @download
+              if @my_direction == 'Download'
                 # If we've both requested downloads, then we fall back to
                 # the numbers we generated to figure out who goes first. If we
                 # sent the same numbers, then we're supposed to terminate the
                 # connection.
                 if @peer_direction == 'Upload' || @peer_num < @my_num
-                  client.lock_download! @download
+                  @download = client.download_for! @other_nick
                   begin_download!
                 elsif @peer_num == @my_num
                   close_connection_after_writing
