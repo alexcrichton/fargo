@@ -95,17 +95,11 @@ module Fargo
           @failed_downloads[download.nick] << download
           return nil
         else
-          if (@queued_downloads[download.nick] &&
-              @queued_downloads[download.nick].include?(download)) ||
-             @current_downloads[download.nick] == download
-            return nil
-          else
-            (@queued_downloads[download.nick] ||= []) << download
-            # This might not actually start the download. We
-            # could possibly already be downloading from this
-            # peer in which case we will queue this for later.
-            EventMachine.next_tick { start_download }
-          end
+          (@queued_downloads[download.nick] ||= []) << download
+          # This might not actually start the download. We
+          # could possibly already be downloading from this
+          # peer in which case we will queue this for later.
+          EventMachine.next_tick { start_download }
         end
 
         download
