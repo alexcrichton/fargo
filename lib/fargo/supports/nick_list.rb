@@ -104,7 +104,7 @@ module Fargo
               info.merge! map
               info[:updated_at] = Time.now
               deferrable = @info_deferrables.delete map[:nick]
-              deferrable.succeed map if deferrable
+              EventMachine.next_tick { deferrable.succeed map } if deferrable
             when :nick_list
               @nicks = map[:nicks]
             when :quit
