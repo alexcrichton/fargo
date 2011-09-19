@@ -57,7 +57,15 @@ module Fargo
       end
 
       def search_local_listings search
-        xpath = "//*[contains(@Name, '#{search.query}')]"
+        parts = search.query.split("'")
+        query = if parts.size == 0
+          '"\'"'
+        elsif parts.size == 1
+          "'#{parts.first}'"
+        else
+          "concat(#{parts.map{ |p| "'" + p + "'" }.join(', "\'", ')})"
+        end
+        xpath = "//*[contains(@Name, #{query})]"
         @local_file_list.find(xpath).map { |node| listing_from_node(node) }
       end
 
