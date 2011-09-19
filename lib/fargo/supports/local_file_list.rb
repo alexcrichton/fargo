@@ -57,7 +57,7 @@ module Fargo
       end
 
       def search_local_listings search
-        parts = search.query.split("'")
+        parts = search.query.downcase.split("'")
         query = if parts.size == 0
           '"\'"'
         elsif parts.size == 1
@@ -65,7 +65,9 @@ module Fargo
         else
           "concat(#{parts.map{ |p| "'" + p + "'" }.join(', "\'", ')})"
         end
-        xpath = "//*[contains(@Name, #{query})]"
+        alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        translate = "translate(@Name, '#{alpha.upcase}', '#{alpha.downcase}')"
+        xpath = "//*[contains(#{translate}, #{query})]"
         @local_file_list.find(xpath).map { |node| listing_from_node(node) }
       end
 

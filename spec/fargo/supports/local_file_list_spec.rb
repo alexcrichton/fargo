@@ -125,6 +125,14 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
     ]
   end
 
+  it "searches for files case insensitively" do
+    subject.share_directory root
+    listings = subject.search_local_listings Fargo::Search.new(:query => 'B')
+    listings.should =~ [
+      Fargo::Listing.new(file_tth(root + '/b'), 1, 'shared/b')
+    ]
+  end
+
   it "searches for apostrophers and quotes" do
     File.open(root + '/a\'s', 'w'){ |f| f << 'a' }
     File.open(root + '/"', 'w'){ |f| f << 'c' }
