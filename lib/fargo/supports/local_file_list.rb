@@ -203,9 +203,8 @@ module Fargo
 
         FileUtils.mkdir_p config.config_dir
         @local_file_list.root['CID'] = SecureRandom.hex(12).upcase
-        Bzip2::Writer.open(local_file_list_path, 'wb') do |f|
-          f << @local_file_list.to_s(:indent => true)
-        end
+        output = @local_file_list.to_s(:indent => true)
+        Bzip2::Writer.open(local_file_list_path, 'wb') { |f| f << output }
         @share_size = nil
 
         File.open(cache_file_list_path, 'wb'){ |f|
