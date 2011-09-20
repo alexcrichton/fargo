@@ -207,9 +207,8 @@ module Fargo
         Bzip2::Writer.open(local_file_list_path, 'wb') { |f| f << output }
         @share_size = nil
 
-        File.open(cache_file_list_path, 'wb'){ |f|
-          f << Marshal.dump([@local_file_info, @shared_directories])
-        }
+        output = Marshal.dump([@local_file_info, @shared_directories])
+        File.open(cache_file_list_path, 'wb'){ |f| f << output }
       end
 
       def schedule_update
