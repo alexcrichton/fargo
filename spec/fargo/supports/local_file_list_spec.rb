@@ -133,6 +133,13 @@ describe Fargo::Supports::LocalFileList, :type => :emsync do
     ]
   end
 
+  it "ignores dotfiles" do
+    File.open(root + '/.z', 'w'){ |f| f << 'a' }
+    subject.share_directory root
+    listings = subject.search_local_listings Fargo::Search.new(:query => '.z')
+    listings.should =~ []
+  end
+
   it "searches for apostrophers and quotes" do
     File.open(root + '/a\'s', 'w'){ |f| f << 'a' }
     File.open(root + '/"', 'w'){ |f| f << 'c' }

@@ -158,6 +158,8 @@ module Fargo
           raise 'Should not update tth hashes in reactor thread or without' \
                 ' the local list lock!'
         end
+        # Ignore dotfiles
+        return if path.basename.to_s.start_with?('.')
 
         # Files might need to have a TTH updated, but only if they've been
         # modified since we last calculated a TTH
