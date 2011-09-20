@@ -223,6 +223,9 @@ module Fargo
 
       def run_update path
         @update_lock.synchronize {
+          @local_file_info.keys.each{ |k|
+            @local_file_info.delete(k) unless k.exist?
+          }
           debug 'file-list', "Updating: #{path}"
           xpath = "/FileListing/Directory[@Name='#{path.basename.to_s}']"
           @local_file_list.find(xpath).each{ |n| n.remove! }
