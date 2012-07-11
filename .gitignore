@@ -1,8 +1,1 @@
-*.o
-coverage*
-ext/**/Makefile
-ext/**/*.bundle
-ext/**/*.log
-.bundle
-pkg
-Gemfile.lock
+fargo
