@@ -75,8 +75,9 @@ func complete(c *C.char, a int, b int) **C.char {
 func parse(line string) (Command, bool) {
   switch line {
     case "q", "quit": return Quit, false
+    case "c", "connect": return Connect, false
   }
-  return Connect, false
+  return Connect, true
 }
 
 //export receiveLine
@@ -89,7 +90,7 @@ func receiveLine(c *C.char) {
     cmd, err = parse(C.GoString(c))
   }
   if err {
-    // print a helpful error message (something bo
+    println("bad cmd")
   } else {
     activeTerm.cmds <- cmd
   }
@@ -99,7 +100,7 @@ func NewTerminal() *Terminal {
   if activeTerm != nil {
     log.Fatal("Can't have two terminals!")
   }
-  term := &Terminal{make(chan Command), make(chan string, 10)}
+  term := &Terminal{make(chan Command), make(chan string)}
   activeTerm = term
   return term
 }
@@ -111,25 +112,23 @@ func (t *Terminal) Start() {
   signal.Notify(interrupts, os.Interrupt)
 
   /* "event loop" for the terminal */
-  for {
+  err := 0
+  for err >= 0 {
+    /* Couldn't ever figure out FD_SET for select... */
+    err := C.fargo_select_stdin()
+    if err > 0 {
+      C.rl_callback_read_char()
+    }
+
     /* check for things to do from channels */
     select {
       case msg := <-t.msgs:
-        print("MSG: ")
         println(msg)
 
       case <-interrupts:
         t.cmds <- Quit
 
       default: /* just fall through if nothing to receive */
-    }
-
-    /* Couldn't ever figure out FD_SET for select... */
-    e := C.fargo_select_stdin()
-    if e > 0 {
-      C.rl_callback_read_char()
-    } else if e < 0 {
-      return
     }
   }
 
