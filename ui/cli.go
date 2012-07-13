@@ -36,6 +36,8 @@ package ui
 // extern void fargo_install_rl(void);
 // extern void fargo_wait_stdin(void);
 // extern int fargo_select_stdin();
+// extern void fargo_clear_rl(void);
+// extern void fargo_restore_rl(void);
 import "C"
 
 import "fmt"
@@ -44,12 +46,11 @@ import "os"
 import "os/signal"
 
 type Input interface {
-  ReceiveCommand() Command
   Log(string)
 }
 
 type Terminal struct {
-  cmds chan Command
+  Cmds chan Command
   msgs chan string
 }
 
@@ -58,7 +59,10 @@ type action int
 
 const (
   Connect = 0
-  Quit Command = 1
+  Nicks = 1
+  Ops = 2
+  Browse = 3
+  Quit Command = 4
 
   inputAvailable = 0
   uninstall action = 1
@@ -74,8 +78,11 @@ func complete(c *C.char, a int, b int) **C.char {
 
 func parse(line string) (Command, bool) {
   switch line {
-    case "q", "quit": return Quit, false
-    case "c", "connect": return Connect, false
+    case "q", "quit":     return Quit, false
+    case "c", "connect":  return Connect, false
+    case "n", "nicks":    return Nicks, false
+    case "o", "ops":      return Ops, false
+    case "b", "browse":   return Browse, false
   }
   return Connect, true
 }
@@ -92,7 +99,7 @@ func receiveLine(c *C.char) {
   if err {
     println("bad cmd")
   } else {
-    activeTerm.cmds <- cmd
+    activeTerm.Cmds <- cmd
   }
 }
 
@@ -121,14 +128,20 @@ func (t *Terminal) Start() {
     }
 
     /* check for things to do from channels */
-    select {
-      case msg := <-t.msgs:
-        println(msg)
+    looping := true
+    for looping {
+      select {
+        case msg := <-t.msgs:
+          C.fargo_clear_rl()
+          println(msg)
+          C.fargo_restore_rl()
 
-      case <-interrupts:
-        t.cmds <- Quit
+        case <-interrupts:
+          t.Cmds <- Quit
 
-      default: /* just fall through if nothing to receive */
+        default:
+          looping = false
+      }
     }
   }
 
@@ -137,10 +150,6 @@ func (t *Terminal) Start() {
 
 func (t *Terminal) Stop() {
   os.Stdin.Close()
-}
-
-func (t *Terminal) ReceiveCommand() Command {
-  return <- t.cmds
 }
 
 func (t *Terminal) Log(msg string) {

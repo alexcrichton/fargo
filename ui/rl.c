@@ -21,3 +21,40 @@ int fargo_select_stdin() {
 
   return select(STDIN_FILENO + 1, &set, NULL, NULL, &tv);
 }
+
+/* screen.c - User interface management (Readline)
+ *
+ * Copyright (C) 2004, 2005 Oskar Liljeblad
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Library General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
+void fargo_clear_rl() {
+    int old_end = rl_end;
+    char *old_prompt = rl_display_prompt;
+
+    rl_end = 0;
+    rl_display_prompt = (char*) "";
+    rl_expand_prompt(rl_display_prompt);
+    rl_redisplay();
+
+    rl_end = old_end;
+    rl_display_prompt = old_prompt;
+    if (rl_display_prompt == rl_prompt)
+        rl_expand_prompt(rl_prompt);
+}
+
+void fargo_restore_rl() {
+  rl_forced_update_display();
+}
