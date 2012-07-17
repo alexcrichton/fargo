@@ -3,11 +3,29 @@
 
 #include "_cgo_export.h"
 
+/* can't figure out how to pass function pointers in go */
+char*(*fargo_completion_entry)(char*, int) = completeEach;
+
+static int disable_filename_completion(char **arr) {
+  for (; *arr != NULL; arr++) {
+    free(*arr);
+    *arr = NULL;
+  }
+  return 1;
+}
+
 void fargo_install_rl() {
+  /* let go handle signals, not readline */
   rl_catch_signals  = 0;
   rl_catch_sigwinch = 0;
+
+  /* install readline handler, don't let readline block */
   rl_readline_name  = "Fargo";
   rl_callback_handler_install("> ", receiveLine);
+
+  /* completion */
+  rl_attempted_completion_function = (CPPFunction*) rawComplete;
+  rl_ignore_some_completions_function = disable_filename_completion;
 }
 
 int fargo_select_stdin() {
@@ -53,8 +71,4 @@ void fargo_clear_rl() {
     rl_display_prompt = old_prompt;
     if (rl_display_prompt == rl_prompt)
         rl_expand_prompt(rl_prompt);
-}
-
-void fargo_restore_rl() {
-  rl_forced_update_display();
 }
