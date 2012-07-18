@@ -249,7 +249,7 @@ func (c *Client) readPeer(conn net.Conn) {
     if p.dl == nil {
       panic("downloading with nil download!")
     }
-    if p.outfile == nil {
+    if out == nil {
       panic("downloading without an output file")
     }
     if p.state != Downloading {
@@ -266,7 +266,15 @@ func (c *Client) readPeer(conn net.Conn) {
 
     c.log("Starting download of: " + p.dl.file)
     defer c.log("Finished downloading: " + p.dl.file)
-    return io.CopyN(out, in, size)
+    s, err := io.CopyN(out, in, size)
+    if p.dl.fileList() && s == size && err == nil {
+      p.outfile.Seek(0, os.SEEK_SET)
+      err := p.parseFiles(p.outfile)
+      if err != nil {
+        c.log("Couldn't parse file list: " + err.Error())
+      }
+    }
+    return s, err
   }
 
   for {
@@ -289,12 +297,15 @@ func (c *Client) readPeer(conn net.Conn) {
       if d != s || err != nil {
         return
       }
-      if p.dl.fileList() {
-        p.outfile.Seek(0, os.SEEK_SET)
-        err := p.parseFiles(p.outfile)
-        if err != nil {
-          c.log("Couldn't parse file list: " + err.Error())
-        }
+
+    case "Sending":
+      s, err := strconv.ParseInt(string(m.data), 10, 32)
+      if err != nil {
+        return
+      }
+      s2, err := dl(p.outfile, buf, s, p.implements("GetZBlock"))
+      if err != nil || s2 != s {
+        return
       }
 
     default:
