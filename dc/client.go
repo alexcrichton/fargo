@@ -308,7 +308,7 @@ func down(path string, cur glue.Directory) (glue.Directory, error) {
       }
     }
     if !found {
-      return nil, errors.New(path + " does not exist")
+      return nil, errors.New(path + " is not a directory")
     }
   }
   return cur, nil
@@ -341,5 +341,5 @@ func (c *Client) DownloadFile(nick string, file string) error {
       return c.download(dl)
     }
   }
-  return errors.New(file + " does not exist")
+  return errors.New(file + " is not a file")
 }
