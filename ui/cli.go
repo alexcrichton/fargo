@@ -138,26 +138,35 @@ func (t *Terminal) complete(cmd string, word string) []string {
   case "cd", "ls":
     if t.nick == "" {
       break
-    } else {
-      idx := strings.LastIndex(word, "/")
-      part1, part2 := "", word
-      prep := ""
-      if idx != -1 {
-        part1, part2 = word[0:idx], word[idx+1:]
-        prep = part1 + "/"
-      }
-      files, err := t.control.Listings(t.nick, t.resolve([]string{cmd, part1}))
-      if files == nil || err != nil {
-        break
-      }
-      arr := make([]string, 0)
-      for i := 0; i < files.DirectoryCount(); i++ {
-        if strings.HasPrefix(files.Directory(i).Name(), part2) {
-          arr = append(arr, prep+files.Directory(i).Name()+"/")
+    }
+    /* Complete only after the last "/" to complete only directories */
+    idx := strings.LastIndex(word, "/")
+    part1, part2 := "", word
+    prep := ""
+    if idx != -1 {
+      part1, part2 = word[0:idx], word[idx+1:]
+      prep = part1 + "/"
+    }
+    /* Find all files within the last finished directory */
+    files, err := t.control.Listings(t.nick, t.resolve([]string{cmd, part1}))
+    if files == nil || err != nil {
+      break
+    }
+    idx = strings.LastIndex(word, " ")
+    arr := make([]string, 0)
+    for i := 0; i < files.DirectoryCount(); i++ {
+      if strings.HasPrefix(files.Directory(i).Name(), part2) {
+        completion := prep + files.Directory(i).Name() + "/"
+        /* if what was typed has a space in it, then only emit whatever's after
+         * the space because that's the delimiter for readline completion */
+        if idx == -1 {
+          arr = append(arr, completion)
+        } else {
+          arr = append(arr, completion[idx+1:])
         }
       }
-      return arr
     }
+    return arr
   }
   return nil
 }
