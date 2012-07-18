@@ -135,7 +135,7 @@ func (t *Terminal) complete(cmd string, word string) []string {
     if err == nil {
       return filter(nicks, word)
     }
-  case "cd", "ls":
+  case "cd", "ls", "get":
     if t.nick == "" {
       break
     }
@@ -154,15 +154,24 @@ func (t *Terminal) complete(cmd string, word string) []string {
     }
     idx = strings.LastIndex(word, " ")
     arr := make([]string, 0)
+    /* if what was typed has a space in it, then only emit whatever's after
+     * the space because that's the delimiter for readline completion */
+    add := func(name string) {
+      if idx == -1 {
+        arr = append(arr, name)
+      } else {
+        arr = append(arr, name[idx+1:])
+      }
+    }
     for i := 0; i < files.DirectoryCount(); i++ {
       if strings.HasPrefix(files.Directory(i).Name(), part2) {
-        completion := prep + files.Directory(i).Name() + "/"
-        /* if what was typed has a space in it, then only emit whatever's after
-         * the space because that's the delimiter for readline completion */
-        if idx == -1 {
-          arr = append(arr, completion)
-        } else {
-          arr = append(arr, completion[idx+1:])
+        add(prep + files.Directory(i).Name() + "/")
+      }
+    }
+    if cmd == "get" {
+      for i := 0; i < files.FileCount(); i++ {
+        if strings.HasPrefix(files.File(i).Name(), part2) {
+          add(prep + files.File(i).Name())
         }
       }
     }
