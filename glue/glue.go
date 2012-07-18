@@ -3,12 +3,12 @@ package glue
 import "fmt"
 
 type Control interface {
-  Browse(string)
-  Nicks() []string
-  Ops() []string
-  ConnectHub(chan string)
-  DisconnectHub()
-  Listings(string, string) Directory
+  Browse(string) error
+  Nicks() ([]string, error)
+  Ops() ([]string, error)
+  ConnectHub(chan string) error
+  DisconnectHub() error
+  Listings(string, string) (Directory, error)
 }
 
 type Directory interface {

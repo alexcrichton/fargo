@@ -42,7 +42,6 @@ package ui
 import "C"
 
 import "fmt"
-import "log"
 import "os"
 import "os/signal"
 import "path"
@@ -63,7 +62,7 @@ var activeTerm *Terminal
 var completionResults []string
 
 var commands = []string{"browse", "connect", "nicks", "ops", "help", "quit",
-  "ls", "pwd", "cd"}
+                        "ls", "pwd", "cd"}
 
 //export completeEach
 func completeEach(c *C.char, idx int) *C.char {
@@ -122,7 +121,7 @@ func receiveLine(c *C.char) {
 
 func New(c glue.Control) *Terminal {
   if activeTerm != nil {
-    log.Fatal("Can't have two terminals!")
+    panic("Can't have two terminals!")
   }
   term := &Terminal{msgs: make(chan string, 10), control: c}
   activeTerm = term
@@ -132,7 +131,10 @@ func New(c glue.Control) *Terminal {
 func (t *Terminal) complete(cmd string, word string) []string {
   switch cmd {
   case "browse":
-    return filter(activeTerm.control.Nicks(), word)
+    nicks, err := activeTerm.control.Nicks()
+    if err == nil {
+      return filter(nicks, word)
+    }
   case "cd", "ls":
     if t.nick == "" {
       break
@@ -144,8 +146,8 @@ func (t *Terminal) complete(cmd string, word string) []string {
         part1, part2 = word[0:idx], word[idx+1:]
         prep = part1 + "/"
       }
-      files := t.control.Listings(t.nick, t.resolve([]string{cmd, part1}))
-      if files == nil {
+      files, err := t.control.Listings(t.nick, t.resolve([]string{cmd, part1}))
+      if files == nil || err != nil {
         break
       }
       arr := make([]string, 0)
@@ -158,6 +160,10 @@ func (t *Terminal) complete(cmd string, word string) []string {
     }
   }
   return nil
+}
+
+func (t *Terminal) err(e error) {
+  println("error:", e.Error())
 }
 
 func (t *Terminal) resolve(parts []string) string {
@@ -176,32 +182,49 @@ func (t *Terminal) exec(line string) {
   case "quit":
     activeTerm.quit()
   case "connect":
-    t.control.ConnectHub(t.msgs)
+    err := t.control.ConnectHub(t.msgs)
+    if err != nil {
+      t.err(err)
+    }
   case "nicks":
-    for _, n := range t.control.Nicks() {
-      println(n)
+    nicks, err := t.control.Nicks()
+    if err == nil {
+      for _, n := range nicks {
+        println(n)
+      }
+    } else {
+      t.err(err)
     }
   case "ops":
-    for _, n := range t.control.Ops() {
-      println(n)
+    ops, err := t.control.Ops()
+    if err == nil {
+      for _, n := range ops {
+        println(n)
+      }
+    } else {
+      t.err(err)
     }
   case "browse":
     if len(parts) != 2 {
       println("usage: browse <nick>")
     } else {
-      t.control.Browse(parts[1])
-      t.nick = parts[1]
-      t.cwd = "/"
+      err := t.control.Browse(parts[1])
+      if err == nil {
+        t.nick = parts[1]
+        t.cwd = "/"
+      } else {
+        t.err(err)
+      }
     }
 
   case "ls":
     if t.nick == "" {
-      println("not browsing a nick")
+      println("error: not browsing a nick")
     } else {
       path := t.resolve(parts)
-      dir := t.control.Listings(t.nick, path)
-      if dir == nil {
-        println(path, "does not exist or is not a directory")
+      dir, err := t.control.Listings(t.nick, path)
+      if err != nil {
+        t.err(err)
         break
       }
       for i := 0; i < dir.DirectoryCount(); i++ {
@@ -216,30 +239,38 @@ func (t *Terminal) exec(line string) {
 
   case "pwd":
     if t.nick == "" {
-      println("not browsing a nick")
+      println("error: not browsing a nick")
     } else {
       println(t.cwd)
     }
   case "cd":
     if t.nick == "" {
-      println("not browsing a nick")
+      println("error: not browsing a nick")
       break
     }
     newwd := t.resolve(parts)
-    if t.control.Listings(t.nick, newwd) == nil {
-      println(newwd, "doesn't exist or is not a directory")
+    _, err := t.control.Listings(t.nick, newwd)
+    if err != nil {
+      t.err(err)
     } else {
       t.cwd = newwd
     }
 
   default:
-    println(
-      `syntax: command [arg1 [arg2 ...]]
+    fmt.Println(`syntax: command [arg1 [arg2 ...]]
 commands:
-  h, help    this help
-  q, quit    quit the client
-  c, connect    connect to the hub
-  TODO: PUT MORE HERE`)
+  help            this help
+  quit            quit the client
+  connect         connect to the hub
+  nicks           show peers connected to the hub
+  ops             show ops on the hub
+
+browsing:
+  browse <nick>   begin browsing a peer's files
+  ls [dir]        when browsing a peer, list files in the current directory
+  pwd             print the current directory
+  cd [dir]        move into the specified directory, or with no argument go back
+                  to the root directory`)
   }
 }
 

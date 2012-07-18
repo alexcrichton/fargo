@@ -2,10 +2,11 @@ package dc
 
 import "bufio"
 import "bytes"
+import "errors"
 import "fmt"
 import "net"
-import "sync"
 import "strings"
+import "sync"
 
 import "../glue"
 
@@ -44,11 +45,12 @@ type method struct {
   data []byte
 }
 
+var notConnected = errors.New("not connected to the hub")
+
 func NewClient() *Client {
   return &Client{peers: make(map[string]*peer),
     dls: make(map[string][]*download),
-    hub: hubConn{nicks: make([]string, 0),
-      ops: make([]string, 0)}}
+    hub: hubConn{nicks: make([]string, 0), ops: make([]string, 0)}}
 }
 
 func (c *Client) log(msg string) {
@@ -257,47 +259,49 @@ func (c *Client) connect(nick string) {
   })
 }
 
-func (c *Client) Browse(nick string) {
+func (c *Client) Browse(nick string) error {
   if c.hub.write == nil {
-    println("not connected to a hub")
-  } else {
-    c.download(NewDownload(nick, FileList))
+    return notConnected
   }
+  c.download(NewDownload(nick, FileList))
+  return nil
 }
 
-func (c *Client) Nicks() []string {
-  return c.hub.nicks
+func (c *Client) Nicks() ([]string, error) {
+  return c.hub.nicks, nil
 }
 
-func (c *Client) Ops() []string {
-  return c.hub.ops
+func (c *Client) Ops() ([]string, error) {
+  return c.hub.ops, nil
 }
 
-func (c *Client) ConnectHub(msgs chan string) {
-  c.logc = msgs
+func (c *Client) ConnectHub(msgs chan string) error {
   if c.hub.write == nil {
+    c.logc = msgs
     go c.run()
-  } else {
-    print("already connected to hub")
+    return nil
   }
+  return errors.New("already connected to the hub")
 }
 
-func (c *Client) DisconnectHub() {
-  if c.hub.conn != nil {
-    c.hub.conn.Close()
+func (c *Client) DisconnectHub() error {
+  if c.hub.conn == nil {
+    return notConnected
   }
+  c.hub.conn.Close()
+  return nil
 }
 
-func (c *Client) Listings(nick string, dir string) glue.Directory {
+func (c *Client) Listings(nick string, dir string) (glue.Directory, error) {
   parts := strings.Split(dir, "/")[1:]
   p := c.peer(nick, func(*peer) {})
 
   if p.files == nil {
-    return nil
+    return nil, errors.New("No file list available for: " + nick)
   }
   var cur glue.Directory = p.files
   if dir == "/" {
-    return cur
+    return cur, nil
   }
   for _, subdir := range parts {
     found := false
@@ -310,8 +314,8 @@ func (c *Client) Listings(nick string, dir string) glue.Directory {
       }
     }
     if !found {
-      return nil
+      return nil, errors.New(dir + " does not exist")
     }
   }
-  return cur
+  return cur, nil
 }
