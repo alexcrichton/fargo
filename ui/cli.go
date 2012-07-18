@@ -29,10 +29,10 @@ package ui
 // #cgo darwin CFLAGS: -I/usr/local/Cellar/readline/6.2.2/include
 // #cgo linux LDFLAGS: -lreadline
 //
-// #import <stdlib.h>
-// #import <stdio.h>
-// #import <readline/readline.h>
-// #import <readline/history.h>
+// #include <stdlib.h>
+// #include <stdio.h>
+// #include <readline/readline.h>
+// #include <readline/history.h>
 //
 // extern void fargo_install_rl(void);
 // extern void fargo_wait_stdin(void);
