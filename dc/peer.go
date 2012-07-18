@@ -282,6 +282,7 @@ func (c *Client) readPeer(conn net.Conn) {
       return
     }
     switch m.name {
+    /* ADC receiving half of things */
     case "ADCSND":
       parts := bytes.Split(m.data, []byte(" "))
       if len(parts) < 4 {
@@ -298,12 +299,25 @@ func (c *Client) readPeer(conn net.Conn) {
         return
       }
 
+    /* UGetZ?Block receiving half */
     case "Sending":
       s, err := strconv.ParseInt(string(m.data), 10, 32)
       if err != nil {
         return
       }
       s2, err := dl(p.outfile, buf, s, p.implements("GetZBlock"))
+      if err != nil || s2 != s {
+        return
+      }
+
+    /* old school original DC receiving half */
+    case "FileLength":
+      s, err := strconv.ParseInt(string(m.data), 10, 32)
+      if err != nil {
+        return
+      }
+      send(write, "Send", nil)
+      s2, err := dl(p.outfile, buf, s, false)
       if err != nil || s2 != s {
         return
       }
