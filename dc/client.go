@@ -5,6 +5,7 @@ import "bytes"
 import "errors"
 import "fmt"
 import "net"
+import "path"
 import "strings"
 import "sync"
 
@@ -18,6 +19,7 @@ type Client struct {
   Passive       bool
   DLSlots       int
   ULSlots       int
+  DownloadRoot  string
 
   logc  chan string
   peers map[string]*peer
@@ -263,8 +265,7 @@ func (c *Client) Browse(nick string) error {
   if c.hub.write == nil {
     return notConnected
   }
-  c.download(NewDownload(nick, FileList))
-  return nil
+  return c.download(NewDownload(nick, FileList))
 }
 
 func (c *Client) Nicks() ([]string, error) {
@@ -292,18 +293,11 @@ func (c *Client) DisconnectHub() error {
   return nil
 }
 
-func (c *Client) Listings(nick string, dir string) (glue.Directory, error) {
-  parts := strings.Split(dir, "/")[1:]
-  p := c.peer(nick, func(*peer) {})
-
-  if p.files == nil {
-    return nil, errors.New("No file list available for: " + nick)
-  }
-  var cur glue.Directory = p.files
-  if dir == "/" {
+func down(path string, cur glue.Directory) (glue.Directory, error) {
+  if path == "/" {
     return cur, nil
   }
-  for _, subdir := range parts {
+  for _, subdir := range strings.Split(path, "/")[1:] {
     found := false
     for i := 0; i < cur.DirectoryCount(); i++ {
       child := cur.Directory(i)
@@ -314,8 +308,38 @@ func (c *Client) Listings(nick string, dir string) (glue.Directory, error) {
       }
     }
     if !found {
-      return nil, errors.New(dir + " does not exist")
+      return nil, errors.New(path + " does not exist")
     }
   }
   return cur, nil
+}
+
+func (c *Client) Listings(nick string, dir string) (glue.Directory, error) {
+  p := c.peer(nick, func(*peer) {})
+
+  if p.files == nil {
+    return nil, errors.New("No file list available for: " + nick)
+  }
+  return down(dir, p.files)
+}
+
+func (c *Client) DownloadFile(nick string, file string) error {
+  p := c.peer(nick, func(*peer) {})
+  if p.files == nil {
+    return errors.New("No file list available for: " + nick)
+  }
+  dir, base := path.Split(file)
+  files, err := down(dir[:len(dir)-1], p.files)
+  if err != nil {
+    return err
+  }
+  for i := 0; i < files.FileCount(); i++ {
+    child := files.File(i)
+    if child.Name() == base {
+      dl := NewDownloadFile(nick, file, child)
+      dl.reldst = base
+      return c.download(dl)
+    }
+  }
+  return errors.New(file + " does not exist")
 }

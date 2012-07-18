@@ -62,7 +62,7 @@ var activeTerm *Terminal
 var completionResults []string
 
 var commands = []string{"browse", "connect", "nicks", "ops", "help", "quit",
-                        "ls", "pwd", "cd"}
+                        "ls", "pwd", "cd", "get"}
 
 //export completeEach
 func completeEach(c *C.char, idx int) *C.char {
@@ -222,6 +222,17 @@ func (t *Terminal) exec(line string) {
         t.nick = parts[1]
         t.cwd = "/"
       } else {
+        t.err(err)
+      }
+    }
+
+  case "get":
+    if t.nick == "" {
+      println("error: not browsing a nick")
+    } else {
+      path := t.resolve(parts)
+      err := t.control.DownloadFile(t.nick, path)
+      if err != nil {
         t.err(err)
       }
     }

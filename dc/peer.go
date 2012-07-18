@@ -52,30 +52,33 @@ func (c *Client) peer(nick string, cb func(*peer)) *peer {
   return p
 }
 
-func (d *download) fileList() bool {
-  return d.file == FileList
+func (p *peer) pop() *download {
+  if len(p.dls) == 0 {
+    return nil
+  }
+  dl := p.dls[0]
+  p.dls = p.dls[1:]
+  return dl
 }
 
-func (p *peer) download(dl *download) {
+func (p *peer) push(dl *download) {
+  p.dls = append(p.dls, dl)
+}
+
+func (p *peer) download(root string, dl *download) error {
   p.Lock()
   defer p.Unlock()
 
-  /* TODO: not here */
   if dl == nil {
-    if len(p.dls) == 0 {
-      return
-    } else {
-      dl = p.dls[0]
-      p.dls = p.dls[1:]
+    if dl = p.pop(); dl == nil {
+      return nil
     }
   }
 
-  /* TODO: manage downloads elsewhere */
   if p.state != Idle {
-    p.dls = append(p.dls, dl)
-    return
+    p.push(dl)
+    return nil
   }
-  p.state = Downloading
   if p.write == nil {
     panic("no write connection")
   }
@@ -90,11 +93,16 @@ func (p *peer) download(dl *download) {
     }
   }
 
-  /* TODO: get file from elsewhere */
-  f, err := os.Create("files.xml.bz2")
+  dest, err := dl.destination(root)
   if err != nil {
-    panic("couldn't open")
+    return err
   }
+  f, err := os.Create(dest)
+  if err != nil {
+    return err
+  }
+
+  p.state = Downloading
   p.outfile = f
   p.dl = dl
 
@@ -125,6 +133,7 @@ func (p *peer) download(dl *download) {
       fmt.Fprintf(w, "%s$%d", dl.file, dl.offset+1)
     })
   }
+  return nil
 }
 
 func (p *peer) implements(extension string) bool {
@@ -243,7 +252,7 @@ func (c *Client) readPeer(conn net.Conn) {
   /* Step 7+ - upload/download files infinitely until closed */
   p.write = write
   p.state = Idle
-  p.download(nil) /* attempt to start downloading something */
+  p.download(c.DownloadRoot, nil) /* attempt to start downloading something */
 
   dl := func(out io.Writer, in io.Reader, size int64, z bool) (int64, error) {
     if p.dl == nil {
@@ -265,7 +274,6 @@ func (c *Client) readPeer(conn net.Conn) {
     }
 
     c.log("Starting download of: " + p.dl.file)
-    defer c.log("Finished downloading: " + p.dl.file)
     s, err := io.CopyN(out, in, size)
     if p.dl.fileList() && s == size && err == nil {
       p.outfile.Seek(0, os.SEEK_SET)
@@ -274,6 +282,11 @@ func (c *Client) readPeer(conn net.Conn) {
         c.log("Couldn't parse file list: " + err.Error())
       }
     }
+    c.log("Finished downloading: " + p.dl.file)
+    p.state = Idle
+    p.dl = nil
+    p.outfile = nil
+    p.download(c.DownloadRoot, nil) // try to process another download
     return s, err
   }
 

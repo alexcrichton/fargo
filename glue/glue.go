@@ -9,6 +9,7 @@ type Control interface {
   ConnectHub(chan string) error
   DisconnectHub() error
   Listings(string, string) (Directory, error)
+  DownloadFile(string, string) error
 }
 
 type Directory interface {
