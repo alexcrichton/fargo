@@ -19,7 +19,10 @@ func Test_ParseListing(t *testing.T) {
   `
 
   var listing FileListing
-  ParseFileList(strings.NewReader(list), &listing)
+  err := ParseFileList(strings.NewReader(list), &listing)
+  if err != nil {
+    t.Error(err)
+  }
 
   if listing.Version != "1" {
     t.Errorf("Wrong version: %s", listing.Version)
@@ -34,40 +37,60 @@ func Test_ParseListing(t *testing.T) {
     t.Errorf("Wrong generator: %s", listing.Generator)
   }
 
-  if len(listing.Directory) != 1 {
+  if listing.DirectoryCount() != 1 {
     t.Error("wrong number of directories")
   }
-  if len(listing.File) != 0 {
+  if listing.FileCount() != 0 {
     t.Error("wrong number of files")
   }
-  d := listing.Directory[0]
-  if d.Name != "shared" {
+  d := listing.Directory(0)
+  if d.Name() != "shared" {
     t.Errorf("wrong directory name")
   }
-  if len(d.File) != 2 {
+  if d.FileCount() != 2 {
     t.Error("wrong number of files")
   }
-  if d.File[0].Name != "a" {
+  if d.File(0).Name() != "a" {
     t.Error("wrong filename")
   }
-  if d.File[0].Size != "1" {
+  if d.File(0).Size() != 1 {
     t.Error("wrong size")
   }
-  if d.File[0].TTH != "ttha" {
+  if d.File(0).TTH() != "ttha" {
     t.Error("wrong tth")
   }
 
-  if len(d.Directory) != 1 {
+  if d.DirectoryCount() != 1 {
     t.Error("wrong number of directories")
   }
-  d = d.Directory[0]
-  if d.Name != "c" {
+  d = d.Directory(0)
+  if d.Name() != "c" {
     t.Error("wrong name")
   }
-  if len(d.Directory) != 0 {
+  if d.DirectoryCount() != 0 {
     t.Error("wrong number")
   }
-  if len(d.File) != 1 {
+  if d.FileCount() != 1 {
     t.Error("wrong number")
+  }
+}
+
+/**
+ * microdc2 can lie by saying that the encoding of the xml is utf-8 but the
+ * characters are iso-8859-1 or something similar
+ */
+func Test_ParseNonUTF8(t *testing.T) {
+  list := "<?xml version='1.0' encoding='UTF-8'?>" +
+          "<FileListing Base='/' Version='1' Generator='fargo'" +
+                       "CID='\xa35 for Pepp\xe9'>" +
+          "</FileListing>"
+
+  var listing FileListing
+  err := ParseFileList(strings.NewReader(list), &listing)
+  if err != nil {
+    t.Error(err)
+  }
+  if listing.CID != "£5 for Peppé" {
+    t.Error("Couldn't parse")
   }
 }
