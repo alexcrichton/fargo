@@ -1,6 +1,7 @@
 package glue
 
 import "fmt"
+import "sort"
 
 type Control interface {
   Browse(string) error
@@ -18,6 +19,7 @@ type Directory interface {
   Directory(int) Directory
   FileCount() int
   File(int) File
+  sort.Interface
 }
 
 type File interface {

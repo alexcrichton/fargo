@@ -45,6 +45,7 @@ import "fmt"
 import "os"
 import "os/signal"
 import "path"
+import "sort"
 import "strings"
 
 import "../glue"
@@ -256,6 +257,7 @@ func (t *Terminal) exec(line string) {
         t.err(err)
         break
       }
+      sort.Sort(dir)
       for i := 0; i < dir.DirectoryCount(); i++ {
         d := dir.Directory(i)
         fmt.Printf("- %s/\n", d.Name())
