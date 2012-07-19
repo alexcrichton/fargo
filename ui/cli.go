@@ -47,6 +47,7 @@ import "os/signal"
 import "path"
 import "sort"
 import "strings"
+import "unsafe"
 
 import "../glue"
 
@@ -56,6 +57,8 @@ type Terminal struct {
 
   nick string
   cwd  string
+  prompt *C.char
+  promptChange bool
 }
 
 var activeTerm *Terminal
@@ -231,6 +234,7 @@ func (t *Terminal) exec(line string) {
       if err == nil {
         t.nick = parts[1]
         t.cwd = "/"
+        t.promptChange = true
       } else {
         t.err(err)
       }
@@ -285,6 +289,7 @@ func (t *Terminal) exec(line string) {
       t.err(err)
     } else {
       t.cwd = newwd
+      t.promptChange = true
     }
 
   default:
@@ -314,6 +319,15 @@ func (t *Terminal) Run() {
   /* "event loop" for the terminal */
   err := 0
   for err >= 0 {
+    if t.promptChange {
+      t.promptChange = false
+      if t.prompt != nil {
+        C.free(unsafe.Pointer(t.prompt))
+      }
+      t.prompt = C.CString(t.nick + ":" + t.cwd + " $ ")
+      C.rl_set_prompt(t.prompt)
+      C.rl_redisplay()
+    }
     /* Couldn't ever figure out FD_SET for select... */
     err = int(C.fargo_select_stdin())
     if err > 0 {

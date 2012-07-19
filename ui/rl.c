@@ -21,7 +21,7 @@ void fargo_install_rl() {
 
   /* install readline handler, don't let readline block */
   rl_readline_name  = "Fargo";
-  rl_callback_handler_install("> ", receiveLine);
+  rl_callback_handler_install("$ ", receiveLine);
 
   /* completion */
   rl_attempted_completion_function = (CPPFunction*) rawComplete;
