@@ -2,6 +2,7 @@ package dc
 
 import "testing"
 import "strings"
+import "sort"
 
 func Test_ParseListing(t *testing.T) {
   list := `
@@ -93,4 +94,19 @@ func Test_ParseNonUTF8(t *testing.T) {
   if listing.CID != "£5 for Peppé" {
     t.Error("Couldn't parse")
   }
+}
+
+func Test_Sorting(t *testing.T) {
+  var listing FileListing
+  listing.Files = make([]File, 4)
+  listing.Dirs = make([]Directory, 2)
+
+  listing.Files[0] = File{XName: "foo"}
+  listing.Files[1] = File{XName: "bar"}
+  listing.Files[2] = File{XName: "a"}
+  listing.Files[3] = File{XName: "z"}
+  listing.Dirs[0] = Directory{XName: "foo"}
+  listing.Dirs[1] = Directory{XName: "bar"}
+
+  sort.Sort(&listing) // don't panic
 }

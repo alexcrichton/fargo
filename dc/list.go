@@ -54,14 +54,14 @@ func swap(d []Directory, f []File, i, j int) {
   dirs := len(d)
   if i < dirs {
     if j >= dirs {
-      panic("bad idx")
+      return
     }
     tmp := d[i]
     d[i] = d[j]
     d[j] = tmp
   } else {
     if j < dirs {
-      panic("bad idx")
+      return
     }
     tmp := f[i - dirs]
     f[i - dirs] = f[j - dirs]
