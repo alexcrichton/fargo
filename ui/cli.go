@@ -244,11 +244,8 @@ func (t *Terminal) exec(line string) {
     if t.nick == "" {
       println("error: not browsing a nick")
     } else {
-      path := t.resolve(parts)
-      err := t.control.DownloadFile(t.nick, path)
-      if err != nil {
-        t.err(err)
-      }
+      err := t.control.Download(t.nick, t.resolve(parts))
+      if err != nil { t.err(err) }
     }
 
   case "ls":

@@ -346,23 +346,49 @@ func (c *Client) Listings(nick string, dir string) (glue.Directory, error) {
   return down(dir, p.files)
 }
 
-func (c *Client) DownloadFile(nick string, file string) error {
+func (c *Client) dlFiles(nick string, trim string, pathname string,
+                         dir glue.Directory) error {
+  for i := 0; i < dir.FileCount(); i++ {
+    file := dir.File(i)
+    fullpath := path.Join(pathname, file.Name())
+    dl := NewDownloadFile(nick, fullpath, file)
+    dl.reldst = strings.Replace(fullpath, trim, "", 1)
+    err := c.download(dl)
+    if err != nil { return err }
+  }
+
+  for i := 0; i < dir.DirectoryCount(); i++ {
+    d := dir.Directory(i)
+    err := c.dlFiles(nick, trim, path.Join(pathname, d.Name()), d)
+    if err != nil { return err }
+  }
+
+  return nil
+}
+
+func (c *Client) Download(nick string, pathname string) error {
   p := c.peer(nick, func(*peer) {})
   if p.files == nil {
     return errors.New("No file list available for: " + nick)
   }
-  dir, base := path.Split(file)
+  dir, base := path.Split(pathname)
   files, err := down(dir[:len(dir)-1], p.files)
-  if err != nil {
-    return err
+  if err != nil { return err }
+
+  for i := 0; i < files.DirectoryCount(); i++ {
+    child := files.Directory(i)
+    if child.Name() == base {
+      return c.dlFiles(nick, dir, pathname, child)
+    }
   }
+
   for i := 0; i < files.FileCount(); i++ {
     child := files.File(i)
     if child.Name() == base {
-      dl := NewDownloadFile(nick, file, child)
+      dl := NewDownloadFile(nick, pathname, child)
       dl.reldst = base
       return c.download(dl)
     }
   }
-  return errors.New(file + " is not a file")
+  return errors.New(pathname + " does not exist")
 }
