@@ -5,6 +5,7 @@ import "bytes"
 import "compress/bzip2"
 import "compress/zlib"
 import "fmt"
+import "errors"
 import "io"
 import "math/rand"
 import "net"
@@ -37,6 +38,8 @@ const (
   Uploading
 )
 
+var NotIdle = errors.New("client not idle")
+
 func (c *Client) peer(nick string, cb func(*peer)) *peer {
   c.Lock()
 
@@ -52,6 +55,62 @@ func (c *Client) peer(nick string, cb func(*peer)) *peer {
   return p
 }
 
+func (c *Client) peerGone(nick string) {
+  c.Lock()
+  p := c.peers[nick]
+  if p == nil {
+    panic("removing unknown peer")
+  }
+  delete(c.peers, nick)
+  for _, dl := range p.dls {
+    c.failed = append(c.failed, dl)
+  }
+  if p.outfile != nil {
+    p.outfile.Close()
+    os.Remove(p.outfile.Name())
+  }
+  if p.dl != nil {
+    c.failed = append(c.failed, p.dl)
+    c.DL.release()
+  }
+  c.Unlock()
+  c.initiateDownload()
+}
+
+func (c *Client) initiateDownload() (err error) {
+  if !c.DL.take() { return }
+  defer func() {
+    if err != nil { c.DL.release() }
+  }()
+
+  c.Lock()
+  defer c.Unlock()
+
+  /* If we can't create our destination file, then this is a fatal error. If we
+   * can't actually download a file from anyone because everyone's already
+   * downloading, then this isn't fatal. */
+  var dl *download
+  for _, peer := range c.peers {
+    dl = peer.pop()
+    if dl == nil { continue }
+    dst, err := dl.destination(c.DownloadRoot)
+    if err != nil { return err }
+    file, err := os.Create(dst)
+    if err != nil { return err }
+    if peer.download(file, dl) == nil {
+      break
+    }
+    peer.push(dl)
+    dl = nil
+  }
+  /* if we didn't start a download with anyone, then release the slot we got */
+  if dl == nil {
+    c.DL.release()
+  }
+
+  return nil
+}
+
 func (p *peer) pop() *download {
   if len(p.dls) == 0 {
     return nil
@@ -65,23 +124,12 @@ func (p *peer) push(dl *download) {
   p.dls = append(p.dls, dl)
 }
 
-func (p *peer) download(root string, dl *download) error {
+func (p *peer) download(outfile *os.File, dl *download) error {
   p.Lock()
   defer p.Unlock()
-
-  if dl == nil {
-    if dl = p.pop(); dl == nil {
-      return nil
-    }
-  }
-
-  if p.state != Idle {
-    p.push(dl)
-    return nil
-  }
-  if p.write == nil {
-    panic("no write connection")
-  }
+  if dl == nil { panic("can't download nothing") }
+  if p.state != Idle { return NotIdle }
+  if p.write == nil { panic("idle without a write connection!") }
 
   if dl.fileList() {
     if p.implements("XmlBZList") {
@@ -93,17 +141,8 @@ func (p *peer) download(root string, dl *download) error {
     }
   }
 
-  dest, err := dl.destination(root)
-  if err != nil {
-    return err
-  }
-  f, err := os.Create(dest)
-  if err != nil {
-    return err
-  }
-
   p.state = Downloading
-  p.outfile = f
+  p.outfile = outfile
   p.dl = dl
 
   if p.implements("ADCGet") {
@@ -161,12 +200,8 @@ func (c *Client) readPeer(conn net.Conn) {
 
   /* Step 0 - figure out who we're talking to */
   buf := bufio.NewReader(conn)
-  if readCmd(buf, &m) != nil {
-    return
-  }
-  if m.name != "MyNick" {
-    return
-  }
+  if readCmd(buf, &m) != nil { return }
+  if m.name != "MyNick" { return }
   nick := string(m.data)
 
   /* Step 1 - make sure we have the only connection to the peer */
@@ -178,27 +213,17 @@ func (c *Client) readPeer(conn net.Conn) {
       bad = true
     }
   })
-  if bad {
-    return
-  }
-  if p.write != nil {
-    panic("already have a write connection")
-  }
+  if bad { return }
+  if p.write != nil { panic("already have a write connection") }
 
   c.log("Connected to: " + p.nick)
   defer c.log("Disconnected from: " + p.nick)
 
   /* Step 2 - get their lock so we can respond with our nick/key */
-  if readCmd(buf, &m) != nil {
-    return
-  }
-  if m.name != "Lock" {
-    return
-  }
+  if readCmd(buf, &m) != nil { return }
+  if m.name != "Lock" { return }
   idx := bytes.IndexByte(m.data, ' ')
-  if idx == -1 {
-    return
-  }
+  if idx == -1 { return }
 
   /* Step 3 - send our nick/lock/supports/direction metadata */
   number := rand.Int63n(0x7fff)
@@ -208,7 +233,7 @@ func (c *Client) readPeer(conn net.Conn) {
     fmt.Fprintf(w, "%s Pk=%s", lock, pk)
   })
   send(write, "Supports",
-    []byte("MiniSlots XmlBZList ADCGet TTHF ZLIG GetZBlock"))
+       []byte("MiniSlots XmlBZList ADCGet TTHF ZLIG GetZBlock"))
   mydirection := "Upload"
   if len(p.dls) > 0 {
     mydirection = "Download"
@@ -219,120 +244,94 @@ func (c *Client) readPeer(conn net.Conn) {
   send(write, "Key", GenerateKey(m.data[0:idx]))
 
   /* Step 4 - receive what they support (optional) */
-  if readCmd(buf, &m) != nil {
-    return
-  }
+  if readCmd(buf, &m) != nil { return }
   p.supports = make([]string, 0)
   if m.name == "Supports" {
     for _, s := range bytes.Split(m.data, []byte(" ")) {
       p.supports = append(p.supports, string(s))
     }
-    if readCmd(buf, &m) != nil {
-      return
-    }
+    if readCmd(buf, &m) != nil { return }
   }
 
   /* Step 5 - receive their direction */
-  if m.name != "Direction" {
-    return
-  }
+  if m.name != "Direction" { return }
   /* Don't actually care about the direction */
 
   /* Step 6 - receive their key */
-  if readCmd(buf, &m) != nil {
-    return
-  }
-  if m.name != "Key" {
-    return
-  }
-  if !bytes.Equal(m.data, GenerateKey([]byte(lock))) {
-    return
-  }
+  if readCmd(buf, &m) != nil { return }
+  if m.name != "Key" { return }
+  if !bytes.Equal(m.data, GenerateKey([]byte(lock))) { return }
 
   /* Step 7+ - upload/download files infinitely until closed */
   p.write = write
   p.state = Idle
-  p.download(c.DownloadRoot, nil) /* attempt to start downloading something */
+  defer c.peerGone(nick)
 
-  dl := func(out io.Writer, in io.Reader, size int64, z bool) (int64, error) {
-    if p.dl == nil {
-      panic("downloading with nil download!")
-    }
-    if out == nil {
-      panic("downloading without an output file")
-    }
+  dl := func(out io.Writer, in io.Reader, size int64, z bool) error {
+    if p.dl == nil { return errors.New("downloading with nil download!") }
+    if out == nil { return errors.New("downloading without an output file") }
     if p.state != Downloading {
-      panic("not in the downloading state")
+      return errors.New("not in the downloading state")
     }
 
     if z {
       in2, err := zlib.NewReader(in)
-      if err != nil {
-        return 0, err
-      }
+      if err != nil { return err }
       in = in2
     }
 
     c.log("Starting download of: " + p.dl.file)
     s, err := io.CopyN(out, in, size)
-    if p.dl.fileList() && s == size && err == nil {
-      p.outfile.Seek(0, os.SEEK_SET)
-      err := p.parseFiles(p.outfile)
-      if err != nil {
-        c.log("Couldn't parse file list: " + err.Error())
-      }
+    if err != nil { return err }
+    if s != size { return errors.New("Didn't download whole file") }
+    if p.dl.fileList() {
+      _, err := p.outfile.Seek(0, os.SEEK_SET)
+      if err != nil { return err }
+      err = p.parseFiles(p.outfile)
+      if err != nil { return err }
     }
     c.log("Finished downloading: " + p.dl.file)
     p.state = Idle
+    c.DL.release() /* if we fail with error, our slot is released elsewhere */
     p.dl = nil
     p.outfile = nil
-    p.download(c.DownloadRoot, nil) // try to process another download
-    return s, err
+    return c.initiateDownload()
   }
 
-  for {
-    if readCmd(buf, &m) != nil {
-      return
+  /* try to diagnose why peers disconnect */
+  err := c.initiateDownload()
+  defer func() {
+    if err != nil {
+      c.log("error with '" + nick + "' :" + err.Error())
     }
+  }()
+
+  for err == nil {
+    err = readCmd(buf, &m)
+    if err != nil { return }
     switch m.name {
     /* ADC receiving half of things */
     case "ADCSND":
       parts := bytes.Split(m.data, []byte(" "))
-      if len(parts) < 4 {
-        return
-      }
+      if len(parts) < 4 { return }
       s, err := strconv.ParseInt(string(parts[3]), 10, 32)
-      if err != nil {
-        return
-      }
-      var d int64 = s
-
-      s, err = dl(p.outfile, buf, d, len(parts) == 5)
-      if d != s || err != nil {
-        return
+      if err == nil {
+        err = dl(p.outfile, buf, s, len(parts) == 5)
       }
 
     /* UGetZ?Block receiving half */
     case "Sending":
       s, err := strconv.ParseInt(string(m.data), 10, 32)
-      if err != nil {
-        return
-      }
-      s2, err := dl(p.outfile, buf, s, p.implements("GetZBlock"))
-      if err != nil || s2 != s {
-        return
+      if err == nil {
+        err = dl(p.outfile, buf, s, p.implements("GetZBlock"))
       }
 
     /* old school original DC receiving half */
     case "FileLength":
       s, err := strconv.ParseInt(string(m.data), 10, 32)
-      if err != nil {
-        return
-      }
-      send(write, "Send", nil)
-      s2, err := dl(p.outfile, buf, s, false)
-      if err != nil || s2 != s {
-        return
+      if err == nil {
+        send(write, "Send", nil)
+        err = dl(p.outfile, buf, s, false)
       }
 
     default:

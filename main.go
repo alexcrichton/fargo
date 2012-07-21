@@ -27,7 +27,7 @@ func main() {
   client.HubAddress = "127.0.0.1:7314"
   client.ClientAddress = net.JoinHostPort(ip(), "65317")
   client.Nick = "foobar"
-  client.DLSlots = 4
+  client.DL.Cnt = 4
   client.DownloadRoot = "downloads"
 
   term := ui.New(client)

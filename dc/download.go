@@ -18,6 +18,7 @@ type download struct {
 const FileList = "files.xml.bz2"
 
 func (c *Client) download(dl *download) error {
+  if dl == nil { panic("can't download nil") }
   p := c.peer(dl.nick, func(p *peer) {
     if p.state != Uninitialized {
       return
@@ -29,7 +30,11 @@ func (c *Client) download(dl *download) error {
     }
     p.state = RequestingConnection
   })
-  return p.download(c.DownloadRoot, dl)
+
+  p.Lock()
+  p.push(dl)
+  p.Unlock()
+  return c.initiateDownload()
 }
 
 func (d *download) fileList() bool {

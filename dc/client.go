@@ -17,15 +17,21 @@ type Client struct {
   ClientAddress string
   Nick          string
   Passive       bool
-  DLSlots       int
-  ULSlots       int
+  DL            Slots
+  UL            Slots
   DownloadRoot  string
 
-  logc  chan string
-  peers map[string]*peer
-  dls   map[string][]*download
-  hub   hubConn
+  logc   chan string
+  peers  map[string]*peer
+  dls    map[string][]*download
+  failed []*download
+  hub    hubConn
 
+  sync.Mutex
+}
+
+type Slots struct {
+  Cnt int
   sync.Mutex
 }
 
@@ -52,11 +58,28 @@ var notConnected = errors.New("not connected to the hub")
 func NewClient() *Client {
   return &Client{peers: make(map[string]*peer),
     dls: make(map[string][]*download),
+    failed: make([]*download, 0),
     hub: hubConn{nicks: make([]string, 0), ops: make([]string, 0)}}
 }
 
 func (c *Client) log(msg string) {
   c.logc <- msg
+}
+
+func (s *Slots) take() bool {
+  s.Lock()
+  defer s.Unlock()
+  if s.Cnt > 0 {
+    s.Cnt--
+    return true
+  }
+  return false
+}
+
+func (s *Slots) release() {
+  s.Lock()
+  s.Cnt++
+  s.Unlock()
 }
 
 func (c *Client) run() {
@@ -143,7 +166,7 @@ func (c *Client) run() {
     }
     fmt.Fprintf(w, "$ALL %s ", c.Nick)
     fmt.Fprintf(w, "<fargo V:0.0.1,M:%c,H:1/0/0,S:%d,Dt:1.2.6/W>",
-      b, c.ULSlots)
+                b, c.UL.Cnt)
     /* $speed\001$email$size$ */
     /* TODO: real file size */
     w.WriteString("$ $DSL\001$$5368709121$")
