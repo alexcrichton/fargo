@@ -47,6 +47,7 @@ import "os/signal"
 import "path"
 import "sort"
 import "strings"
+import "strconv"
 import "unsafe"
 
 import "../glue"
@@ -67,6 +68,8 @@ var completionResults []string
 
 var commands = []string{"browse", "connect", "nicks", "ops", "help", "quit",
                         "ls", "pwd", "cd", "get"}
+var options = []string{"ulslots", "dlslots", "active", "passive", "hub",
+                       "nick", "download"}
 
 //export completeEach
 func completeEach(c *C.char, idx int) *C.char {
@@ -118,7 +121,7 @@ func receiveLine(c *C.char) {
   if c == nil {
     activeTerm.quit()
   } else {
-    activeTerm.exec(C.GoString(c))
+    activeTerm.Exec(C.GoString(c))
     C.add_history(c)
   }
 }
@@ -139,6 +142,12 @@ func (t *Terminal) complete(cmd string, word string) []string {
     if err == nil {
       return filter(nicks, word)
     }
+
+  case "set":
+    if strings.Index(word, " ") == -1 {
+      return filter(options, word)
+    }
+
   case "cd", "ls", "get":
     if t.nick == "" {
       break
@@ -164,6 +173,7 @@ func (t *Terminal) complete(cmd string, word string) []string {
       if idx == -1 {
         arr = append(arr, name)
       } else {
+        t.msgs <- name[idx+1:]
         arr = append(arr, name[idx+1:])
       }
     }
@@ -198,7 +208,13 @@ func (t *Terminal) resolve(parts []string) string {
   return path.Clean(path.Join(t.cwd, parts[1]))
 }
 
-func (t *Terminal) exec(line string) {
+func (t *Terminal) Exec(line string) {
+  line = strings.TrimSpace(line)
+  idx := strings.Index(line, "#")
+  if idx != -1 {
+    line = line[0:idx]
+  }
+  if line == "" { return }
   parts := strings.SplitN(strings.TrimSpace(line), " ", 2)
   switch parts[0] {
   case "quit":
@@ -289,6 +305,35 @@ func (t *Terminal) exec(line string) {
       t.promptChange = true
     }
 
+  case "set":
+    if len(parts) == 1 {
+      println("usage: set <option> [<value>]")
+      break
+    }
+    parts = strings.SplitN(parts[1], " ", 2)
+    if len(parts) == 1 && parts[0] != "passive" {
+      println("must specify an argument as well")
+      break
+    }
+
+    switch parts[0] {
+    case "hub":       t.control.SetHubAddress(parts[1])
+    case "passive":   t.control.SetPassive()
+    case "nick":      t.control.SetNick(parts[1])
+    case "download":  t.control.SetDownloadRoot(parts[1])
+    case "active":    t.control.SetActiveServer(parts[1])
+
+    case "ulslots", "dlslots":
+      s, err := strconv.ParseInt(parts[1], 10, 32)
+      if err != nil {
+        t.err(err)
+      } else if parts[0] == "dlslots" {
+        t.control.SetDLSlots(int(s))
+      } else {
+        t.control.SetULSlots(int(s))
+      }
+    }
+
   default:
     fmt.Println(`syntax: command [arg1 [arg2 ...]]
 commands:
@@ -303,7 +348,18 @@ browsing:
   ls [dir]        when browsing a peer, list files in the current directory
   pwd             print the current directory
   cd [dir]        move into the specified directory, or with no argument go back
-                  to the root directory`)
+                  to the root directory
+
+configuration:
+  set <option> [<value>]
+      hub      address      Address of the hub to connect to
+      nick     string       Local nick to assume
+      passive               Don't have an active server, default
+      active   address      Local address to bind to for an active server
+      download string       Path at which to store downloads
+      ulslots  integer      Number of upload slots to have
+      dlslots  integer      Number of download slots to have
+`)
   }
 }
 

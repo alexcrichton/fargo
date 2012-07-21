@@ -56,7 +56,8 @@ type method struct {
 var notConnected = errors.New("not connected to the hub")
 
 func NewClient() *Client {
-  return &Client{peers: make(map[string]*peer),
+  return &Client{Passive: true,
+    peers: make(map[string]*peer),
     dls: make(map[string][]*download),
     failed: make([]*download, 0),
     hub: hubConn{nicks: make([]string, 0), ops: make([]string, 0)}}
@@ -300,6 +301,12 @@ func (c *Client) Ops() ([]string, error) {
 }
 
 func (c *Client) ConnectHub(msgs chan string) error {
+  if c.Nick == "" { return errors.New("no nick is configured") }
+  if c.HubAddress == "" { return errors.New("no hub address is configured") }
+  if c.DownloadRoot == "" { return errors.New("no download root is configured")}
+  if !c.Passive && c.ClientAddress == "" {
+    return errors.New("no client address is configured")
+  }
   if c.hub.write == nil {
     c.logc = msgs
     go c.run()
@@ -391,4 +398,14 @@ func (c *Client) Download(nick string, pathname string) error {
     }
   }
   return errors.New(pathname + " does not exist")
+}
+
+func (c *Client) SetHubAddress(addr string) { c.HubAddress = addr }
+func (c *Client) SetPassive()               { c.Passive = true }
+func (c *Client) SetNick(nick string)       { c.Nick = nick }
+func (c *Client) SetDownloadRoot(p string)  { c.DownloadRoot = p }
+func (c *Client) SetDLSlots(s int)          { c.DL.Cnt = s }
+func (c *Client) SetULSlots(s int)          { c.UL.Cnt = s }
+func (c *Client) SetActiveServer(a string)  {
+  c.Passive, c.ClientAddress = false, a
 }

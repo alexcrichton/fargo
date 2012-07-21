@@ -11,6 +11,15 @@ type Control interface {
   DisconnectHub() error
   Listings(string, string) (Directory, error)
   Download(string, string) error
+
+  /* setters */
+  SetHubAddress(string)
+  SetPassive()
+  SetActiveServer(string)
+  SetNick(string)
+  SetDownloadRoot(string)
+  SetDLSlots(int)
+  SetULSlots(int)
 }
 
 type Directory interface {

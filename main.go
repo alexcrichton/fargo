@@ -1,5 +1,8 @@
 package main
 
+import "bufio"
+import "flag"
+import "io"
 import "log"
 import "net"
 import "os"
@@ -24,12 +27,33 @@ func ip() string {
 
 func main() {
   client := dc.NewClient()
-  client.HubAddress = "127.0.0.1:7314"
-  client.ClientAddress = net.JoinHostPort(ip(), "65317")
-  client.Nick = "foobar"
-  client.DL.Cnt = 4
-  client.DownloadRoot = "downloads"
+  term   := ui.New(client)
 
-  term := ui.New(client)
+  default_config := os.Getenv("HOME") + "/.fargo/config"
+  user_config := flag.String("config", "",
+                             "config file of commands to run before startup")
+  flag.Parse()
+
+  config := *user_config
+  if config == "" {
+    config = default_config
+  }
+  file, err := os.Open(config)
+  if err == nil {
+    println("Reading commands from:", config)
+    in := bufio.NewReader(file)
+    for {
+      s, err := in.ReadString('\n')
+      if err == io.EOF {
+        break
+      } else if err != nil {
+        log.Fatal(err)
+      }
+      term.Exec(s[0:len(s)-1])
+    }
+  } else if *user_config != "" {
+    log.Fatal(err)
+  }
+
   term.Run()
 }
