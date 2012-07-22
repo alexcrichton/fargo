@@ -50,11 +50,11 @@ import "strings"
 import "strconv"
 import "unsafe"
 
-import "../glue"
+import "../dc"
 
 type Terminal struct {
   msgs    chan string
-  control glue.Control
+  client  *dc.Client
 
   nick string
   cwd  string
@@ -126,11 +126,11 @@ func receiveLine(c *C.char) {
   }
 }
 
-func New(c glue.Control) *Terminal {
+func New(c *dc.Client) *Terminal {
   if activeTerm != nil {
     panic("Can't have two terminals!")
   }
-  term := &Terminal{msgs: make(chan string, 10), control: c}
+  term := &Terminal{msgs: make(chan string, 10), client: c}
   activeTerm = term
   return term
 }
@@ -138,7 +138,7 @@ func New(c glue.Control) *Terminal {
 func (t *Terminal) complete(cmd string, word string) []string {
   switch cmd {
   case "browse":
-    nicks, err := activeTerm.control.Nicks()
+    nicks, err := activeTerm.client.Nicks()
     if err == nil {
       return filter(nicks, word)
     }
@@ -161,7 +161,7 @@ func (t *Terminal) complete(cmd string, word string) []string {
       prep = part1 + "/"
     }
     /* Find all files within the last finished directory */
-    files, err := t.control.Listings(t.nick, t.resolve([]string{cmd, part1}))
+    files, err := t.client.Listings(t.nick, t.resolve([]string{cmd, part1}))
     if files == nil || err != nil {
       break
     }
@@ -177,15 +177,15 @@ func (t *Terminal) complete(cmd string, word string) []string {
         arr = append(arr, name[idx+1:])
       }
     }
-    for i := 0; i < files.DirectoryCount(); i++ {
-      if strings.HasPrefix(files.Directory(i).Name(), part2) {
-        add(prep + files.Directory(i).Name() + "/")
+    for _, dir := range files.Dirs {
+      if strings.HasPrefix(dir.Name, part2) {
+        add(prep + dir.Name + "/")
       }
     }
     if cmd == "get" {
-      for i := 0; i < files.FileCount(); i++ {
-        if strings.HasPrefix(files.File(i).Name(), part2) {
-          add(prep + files.File(i).Name())
+      for _, file := range files.Files {
+        if strings.HasPrefix(file.Name, part2) {
+          add(prep + file.Name)
         }
       }
     }
@@ -220,12 +220,12 @@ func (t *Terminal) Exec(line string) {
   case "quit":
     activeTerm.quit()
   case "connect":
-    err := t.control.ConnectHub(t.msgs)
+    err := t.client.ConnectHub(t.msgs)
     if err != nil {
       t.err(err)
     }
   case "nicks":
-    nicks, err := t.control.Nicks()
+    nicks, err := t.client.Nicks()
     if err == nil {
       for _, n := range nicks {
         println(n)
@@ -234,7 +234,7 @@ func (t *Terminal) Exec(line string) {
       t.err(err)
     }
   case "ops":
-    ops, err := t.control.Ops()
+    ops, err := t.client.Ops()
     if err == nil {
       for _, n := range ops {
         println(n)
@@ -246,7 +246,7 @@ func (t *Terminal) Exec(line string) {
     if len(parts) != 2 {
       println("usage: browse <nick>")
     } else {
-      err := t.control.Browse(parts[1])
+      err := t.client.Browse(parts[1])
       if err == nil {
         t.nick = parts[1]
         t.cwd = "/"
@@ -260,7 +260,7 @@ func (t *Terminal) Exec(line string) {
     if t.nick == "" {
       println("error: not browsing a nick")
     } else {
-      err := t.control.Download(t.nick, t.resolve(parts))
+      err := t.client.Download(t.nick, t.resolve(parts))
       if err != nil { t.err(err) }
     }
 
@@ -269,19 +269,17 @@ func (t *Terminal) Exec(line string) {
       println("error: not browsing a nick")
     } else {
       path := t.resolve(parts)
-      dir, err := t.control.Listings(t.nick, path)
+      dir, err := t.client.Listings(t.nick, path)
       if err != nil {
         t.err(err)
         break
       }
       sort.Sort(dir)
-      for i := 0; i < dir.DirectoryCount(); i++ {
-        d := dir.Directory(i)
-        fmt.Printf("- %s/\n", d.Name())
+      for _, d := range dir.Dirs {
+        fmt.Printf("- %s/\n", d.Name)
       }
-      for i := 0; i < dir.FileCount(); i++ {
-        f := dir.File(i)
-        fmt.Printf("%10s - %s\n", f.Size(), f.Name())
+      for _, f := range dir.Files {
+        fmt.Printf("%10s - %s\n", f.Size, f.Name)
       }
     }
 
@@ -297,7 +295,7 @@ func (t *Terminal) Exec(line string) {
       break
     }
     newwd := t.resolve(parts)
-    _, err := t.control.Listings(t.nick, newwd)
+    _, err := t.client.Listings(t.nick, newwd)
     if err != nil {
       t.err(err)
     } else {
@@ -317,20 +315,22 @@ func (t *Terminal) Exec(line string) {
     }
 
     switch parts[0] {
-    case "hub":       t.control.SetHubAddress(parts[1])
-    case "passive":   t.control.SetPassive()
-    case "nick":      t.control.SetNick(parts[1])
-    case "download":  t.control.SetDownloadRoot(parts[1])
-    case "active":    t.control.SetActiveServer(parts[1])
+    case "hub":       t.client.HubAddress = parts[1]
+    case "passive":   t.client.Passive = true
+    case "nick":      t.client.Nick = parts[1]
+    case "download":  t.client.DownloadRoot = parts[1]
+    case "active":
+      t.client.ClientAddress = parts[1]
+      t.client.Passive = false
 
     case "ulslots", "dlslots":
       s, err := strconv.ParseInt(parts[1], 10, 32)
       if err != nil {
         t.err(err)
       } else if parts[0] == "dlslots" {
-        t.control.SetDLSlots(int(s))
+        t.client.DL.Cnt = int(s)
       } else {
-        t.control.SetULSlots(int(s))
+        t.client.UL.Cnt = int(s)
       }
     }
 
@@ -409,6 +409,6 @@ func (t *Terminal) Run() {
 }
 
 func (t *Terminal) quit() {
-  t.control.DisconnectHub()
+  t.client.DisconnectHub()
   os.Stdin.Close()
 }

@@ -34,44 +34,47 @@ func Test_ParseListing(t *testing.T) {
   if listing.Base != "/" {
     t.Errorf("Wrong base: %s", listing.Base)
   }
+  if listing.Name != "/" {
+    t.Errorf("Wrong name: %s", listing.Name)
+  }
   if listing.Generator != "fargo" {
     t.Errorf("Wrong generator: %s", listing.Generator)
   }
 
-  if listing.DirectoryCount() != 1 {
+  if len(listing.Dirs) != 1 {
     t.Error("wrong number of directories")
   }
-  if listing.FileCount() != 0 {
+  if len(listing.Files) != 0 {
     t.Error("wrong number of files")
   }
-  d := listing.Directory(0)
-  if d.Name() != "shared" {
+  d := listing.Dirs[0]
+  if d.Name != "shared" {
     t.Errorf("wrong directory name")
   }
-  if d.FileCount() != 2 {
+  if len(d.Files) != 2 {
     t.Error("wrong number of files")
   }
-  if d.File(0).Name() != "a" {
+  if d.Files[0].Name != "a" {
     t.Error("wrong filename")
   }
-  if d.File(0).Size() != 1 {
+  if d.Files[0].Size != ByteSize(1) {
     t.Error("wrong size")
   }
-  if d.File(0).TTH() != "ttha" {
+  if d.Files[0].TTH != "ttha" {
     t.Error("wrong tth")
   }
 
-  if d.DirectoryCount() != 1 {
+  if len(d.Dirs) != 1 {
     t.Error("wrong number of directories")
   }
-  d = d.Directory(0)
-  if d.Name() != "c" {
+  d = d.Dirs[0]
+  if d.Name != "c" {
     t.Error("wrong name")
   }
-  if d.DirectoryCount() != 0 {
+  if len(d.Dirs) != 0 {
     t.Error("wrong number")
   }
-  if d.FileCount() != 1 {
+  if len(d.Files) != 1 {
     t.Error("wrong number")
   }
 }
@@ -101,12 +104,12 @@ func Test_Sorting(t *testing.T) {
   listing.Files = make([]File, 4)
   listing.Dirs = make([]Directory, 2)
 
-  listing.Files[0] = File{XName: "foo"}
-  listing.Files[1] = File{XName: "bar"}
-  listing.Files[2] = File{XName: "a"}
-  listing.Files[3] = File{XName: "z"}
-  listing.Dirs[0] = Directory{XName: "foo"}
-  listing.Dirs[1] = Directory{XName: "bar"}
+  listing.Files[0] = File{Name: "foo"}
+  listing.Files[1] = File{Name: "bar"}
+  listing.Files[2] = File{Name: "a"}
+  listing.Files[3] = File{Name: "z"}
+  listing.Dirs[0] = Directory{Name: "foo"}
+  listing.Dirs[1] = Directory{Name: "bar"}
 
   sort.Sort(&listing) // don't panic
 }

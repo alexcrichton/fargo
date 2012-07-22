@@ -9,8 +9,6 @@ import "path"
 import "strings"
 import "sync"
 
-import "../glue"
-
 type Client struct {
   /* configuration options */
   HubAddress    string
@@ -323,17 +321,16 @@ func (c *Client) DisconnectHub() error {
   return nil
 }
 
-func down(path string, cur glue.Directory) (glue.Directory, error) {
+func down(path string, cur *Directory) (*Directory, error) {
   if path == "/" {
     return cur, nil
   }
   for _, subdir := range strings.Split(path, "/")[1:] {
     found := false
-    for i := 0; i < cur.DirectoryCount(); i++ {
-      child := cur.Directory(i)
-      if child.Name() == subdir {
+    for _, child := range cur.Dirs {
+      if child.Name == subdir {
         found = true
-        cur = child
+        cur = &child
         break
       }
     }
@@ -344,29 +341,27 @@ func down(path string, cur glue.Directory) (glue.Directory, error) {
   return cur, nil
 }
 
-func (c *Client) Listings(nick string, dir string) (glue.Directory, error) {
+func (c *Client) Listings(nick string, dir string) (*Directory, error) {
   p := c.peer(nick, func(*peer) {})
 
   if p.files == nil {
     return nil, errors.New("No file list available for: " + nick)
   }
-  return down(dir, p.files)
+  return down(dir, &p.files.Directory)
 }
 
 func (c *Client) dlFiles(nick string, trim string, pathname string,
-                         dir glue.Directory) error {
-  for i := 0; i < dir.FileCount(); i++ {
-    file := dir.File(i)
-    fullpath := path.Join(pathname, file.Name())
-    dl := NewDownloadFile(nick, fullpath, file)
+                         dir *Directory) error {
+  for _, file := range dir.Files {
+    fullpath := path.Join(pathname, file.Name)
+    dl := NewDownloadFile(nick, fullpath, &file)
     dl.reldst = strings.Replace(fullpath, trim, "", 1)
     err := c.download(dl)
     if err != nil { return err }
   }
 
-  for i := 0; i < dir.DirectoryCount(); i++ {
-    d := dir.Directory(i)
-    err := c.dlFiles(nick, trim, path.Join(pathname, d.Name()), d)
+  for _, d := range dir.Dirs {
+    err := c.dlFiles(nick, trim, path.Join(pathname, d.Name), &d)
     if err != nil { return err }
   }
 
@@ -379,33 +374,21 @@ func (c *Client) Download(nick string, pathname string) error {
     return errors.New("No file list available for: " + nick)
   }
   dir, base := path.Split(pathname)
-  files, err := down(dir[:len(dir)-1], p.files)
+  files, err := down(dir[:len(dir)-1], &p.files.Directory)
   if err != nil { return err }
 
-  for i := 0; i < files.DirectoryCount(); i++ {
-    child := files.Directory(i)
-    if child.Name() == base {
-      return c.dlFiles(nick, dir, pathname, child)
+  for _, child := range files.Dirs {
+    if child.Name == base {
+      return c.dlFiles(nick, dir, pathname, &child)
     }
   }
 
-  for i := 0; i < files.FileCount(); i++ {
-    child := files.File(i)
-    if child.Name() == base {
-      dl := NewDownloadFile(nick, pathname, child)
+  for _, child := range files.Files {
+    if child.Name == base {
+      dl := NewDownloadFile(nick, pathname, &child)
       dl.reldst = base
       return c.download(dl)
     }
   }
   return errors.New(pathname + " does not exist")
-}
-
-func (c *Client) SetHubAddress(addr string) { c.HubAddress = addr }
-func (c *Client) SetPassive()               { c.Passive = true }
-func (c *Client) SetNick(nick string)       { c.Nick = nick }
-func (c *Client) SetDownloadRoot(p string)  { c.DownloadRoot = p }
-func (c *Client) SetDLSlots(s int)          { c.DL.Cnt = s }
-func (c *Client) SetULSlots(s int)          { c.UL.Cnt = s }
-func (c *Client) SetActiveServer(a string)  {
-  c.Passive, c.ClientAddress = false, a
 }

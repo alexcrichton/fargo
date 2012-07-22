@@ -4,8 +4,6 @@ import "fmt"
 import "os"
 import "path/filepath"
 
-import "../glue"
-
 type download struct {
   nick   string
   file   string
@@ -83,7 +81,7 @@ func NewDownload(nick string, file string) *download {
   return &download{nick: nick, file: file, size: -1, reldst: file}
 }
 
-func NewDownloadFile(nick string, path string, file glue.File) *download {
-  return &download{nick: nick, file: path[1:], size: int64(file.Size()),
-                   tth: file.TTH(), reldst: path}
+func NewDownloadFile(nick string, path string, file *File) *download {
+  return &download{nick: nick, file: path[1:], size: int64(file.Size),
+                   tth: file.TTH, reldst: path}
 }

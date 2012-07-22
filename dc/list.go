@@ -1,11 +1,10 @@
 package dc
 
+import "fmt"
 import "io"
 import "encoding/xml"
 import "code.google.com/p/go-charset/charset"
 import _ "code.google.com/p/go-charset/data"
-
-import "../glue"
 
 type FileListing struct {
   Version   string `xml:",attr"`
@@ -13,91 +12,79 @@ type FileListing struct {
   Generator string `xml:",attr"`
   CID       string `xml:",attr"`
 
-  Dirs  []Directory `xml:"Directory"`
-  Files []File      `xml:"File"`
+  Directory
 }
 
 type Directory struct {
-  XName string `xml:"Name,attr"`
+  Name string `xml:",attr"`
 
   Dirs  []Directory `xml:"Directory"`
   Files []File      `xml:"File"`
 }
 
 type File struct {
-  XName string `xml:"Name,attr"`
-  XSize uint64 `xml:"Size,attr"`
-  XTTH  string `xml:"TTH,attr"`
+  Name string   `xml:",attr"`
+  Size ByteSize `xml:",attr"`
+  TTH  string   `xml:",attr"`
 }
 
-/* Implementation of sort.Interface for glue.Directory */
-func slen(d []Directory, f []File) int {
-  return len(d) + len(f)
+func (d *Directory) Len() int {
+  return len(d.Dirs) + len(d.Files)
 }
 
-func less(d []Directory, f[]File, i, j int) bool {
-  dirs := len(d)
+func (d *Directory) Less(i, j int) bool {
+  dirs := len(d.Dirs)
   if i < dirs {
     if j >= dirs {
       return true
     } else {
-      return d[i].XName < d[j].XName
+      return d.Dirs[i].Name < d.Dirs[j].Name
     }
   }
-  if j < dirs {
-    return false
-  }
-  return f[i - dirs].XName < f[j - dirs].XName
+  if j < dirs { return false }
+  return d.Files[i - dirs].Name < d.Files[j - dirs].Name
 }
 
-func swap(d []Directory, f []File, i, j int) {
-  dirs := len(d)
+func (d *Directory) Swap(i, j int) {
+  dirs := len(d.Dirs)
   if i < dirs {
-    if j >= dirs {
-      return
-    }
-    tmp := d[i]
-    d[i] = d[j]
-    d[j] = tmp
+    if j >= dirs { return }
+    d.Dirs[i], d.Dirs[j] = d.Dirs[j], d.Dirs[i]
   } else {
-    if j < dirs {
-      return
-    }
-    tmp := f[i - dirs]
-    f[i - dirs] = f[j - dirs]
-    f[j - dirs] = tmp
+    if j < dirs { return }
+    d.Files[i], d.Files[j] = d.Files[j], d.Files[i]
   }
 }
-
-/* Implementation of the glue.Directory interface */
-func (f *FileListing) DirectoryCount() int            { return len(f.Dirs) }
-func (f *FileListing) Directory(i int) glue.Directory { return &f.Dirs[i] }
-func (f *FileListing) FileCount() int                 { return len(f.Files) }
-func (f *FileListing) File(i int) glue.File           { return &f.Files[i] }
-func (f *FileListing) Name() string                   { return "/" }
-func (f *FileListing) Len() int           { return slen(f.Dirs, f.Files) }
-func (f *FileListing) Less(i, j int) bool { return less(f.Dirs, f.Files, i, j) }
-func (f *FileListing) Swap(i, j int)      { swap(f.Dirs, f.Files, i, j) }
-
-func (d *Directory) DirectoryCount() int            { return len(d.Dirs) }
-func (d *Directory) Directory(i int) glue.Directory { return &d.Dirs[i] }
-func (d *Directory) FileCount() int                 { return len(d.Files) }
-func (d *Directory) File(i int) glue.File           { return &d.Files[i] }
-func (d *Directory) Name() string                   { return d.XName }
-func (d *Directory) Len() int           { return slen(d.Dirs, d.Files) }
-func (d *Directory) Less(i, j int) bool { return less(d.Dirs, d.Files, i, j) }
-func (d *Directory) Swap(i, j int)      { swap(d.Dirs, d.Files, i, j) }
-
-/* Implementation of the glue.File interface */
-func (f *File) Name() string        { return f.XName }
-func (f *File) Size() glue.ByteSize { return glue.ByteSize(f.XSize) }
-func (f *File) TTH() string         { return f.XTTH }
 
 func ParseFileList(in io.Reader, out *FileListing) (err error) {
   in, err = charset.NewReader("iso-8859-1", in)
-  if err != nil {
-    return
-  }
+  if err != nil { return }
   decoder := xml.NewDecoder(in)
-  return decoder.Decode(out)
+  err = decoder.Decode(out)
+  out.Name = out.Base
+  return
+}
+
+type ByteSize float64
+
+const (
+  _           = iota // ignore first value by assigning to blank identifier
+  KB ByteSize = 1 << (10 * iota)
+  MB
+  GB
+  TB
+)
+
+func (b ByteSize) String() string {
+  switch {
+  case b >= TB:
+    return fmt.Sprintf("%.2fTB", b/TB)
+  case b >= GB:
+    return fmt.Sprintf("%.2fGB", b/GB)
+  case b >= MB:
+    return fmt.Sprintf("%.2fMB", b/MB)
+  case b >= KB:
+    return fmt.Sprintf("%.2fKB", b/KB)
+  }
+  return fmt.Sprintf("%.2fB", b)
 }
