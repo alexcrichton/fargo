@@ -52,7 +52,7 @@ func (d *Directory) Swap(i, j int) {
     d.Dirs[i], d.Dirs[j] = d.Dirs[j], d.Dirs[i]
   } else {
     if j < dirs { return }
-    d.Files[i], d.Files[j] = d.Files[j], d.Files[i]
+    d.Files[i - dirs], d.Files[j - dirs] = d.Files[j - dirs], d.Files[i - dirs]
   }
 }
 
