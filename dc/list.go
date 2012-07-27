@@ -1,8 +1,10 @@
 package dc
 
+import "encoding/xml"
 import "fmt"
 import "io"
-import "encoding/xml"
+import "io/ioutil"
+
 import "code.google.com/p/go-charset/charset"
 import _ "code.google.com/p/go-charset/data"
 
@@ -16,7 +18,7 @@ type FileListing struct {
 }
 
 type Directory struct {
-  Name string `xml:",attr"`
+  Name string `xml:",attr,omitempty"`
 
   Dirs  []Directory `xml:"Directory"`
   Files []File      `xml:"File"`
@@ -57,12 +59,29 @@ func (d *Directory) Swap(i, j int) {
 }
 
 func ParseFileList(in io.Reader, out *FileListing) (err error) {
-  in, err = charset.NewReader("iso-8859-1", in)
+  defer func() { out.Name = out.Base }()
+  data, err := ioutil.ReadAll(in)
   if err != nil { return }
-  decoder := xml.NewDecoder(in)
-  err = decoder.Decode(out)
-  out.Name = out.Base
-  return
+
+  /* First, try just reading it */
+  err = xml.Unmarshal(data, out)
+  if err == nil { return }
+
+  /* If that failed, then try to read in another charset. This happens because
+   * microdc2 is known to lie by saying that the content is utf-8 when it's
+   * actually iso-8859-1 */
+  translator, err := charset.TranslatorFrom("iso-8859-1")
+  if err != nil { return }
+  _, data, err = translator.Translate(data, true)
+  if err != nil { return }
+  return xml.Unmarshal(data, out)
+}
+
+func EncodeFileList(in *FileListing, out io.Writer) (err error) {
+  _, err = out.Write([]byte(xml.Header))
+  if err != nil { return }
+  encoder := xml.NewEncoder(out)
+  return encoder.Encode(in)
 }
 
 type ByteSize float64
