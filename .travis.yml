@@ -1,2 +1,2 @@
 language: go
-script: "go test ./dc"
+script: "go test -v ./dc"
