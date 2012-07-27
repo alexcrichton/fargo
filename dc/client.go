@@ -6,7 +6,6 @@ import "errors"
 import "fmt"
 import "net"
 import "path"
-import "strings"
 import "sync"
 
 type Client struct {
@@ -321,74 +320,24 @@ func (c *Client) DisconnectHub() error {
   return nil
 }
 
-func down(path string, cur *Directory) (*Directory, error) {
-  if path == "/" {
-    return cur, nil
-  }
-  for _, subdir := range strings.Split(path, "/")[1:] {
-    found := false
-    for _, child := range cur.Dirs {
-      if child.Name == subdir {
-        found = true
-        cur = &child
-        break
-      }
-    }
-    if !found {
-      return nil, errors.New(path + " is not a directory")
-    }
-  }
-  return cur, nil
-}
-
 func (c *Client) Listings(nick string, dir string) (*Directory, error) {
   p := c.peer(nick, func(*peer) {})
 
   if p.files == nil {
     return nil, errors.New("No file list available for: " + nick)
   }
-  return down(dir, &p.files.Directory)
-}
-
-func (c *Client) dlFiles(nick string, trim string, pathname string,
-                         dir *Directory) error {
-  for _, file := range dir.Files {
-    fullpath := path.Join(pathname, file.Name)
-    dl := NewDownloadFile(nick, fullpath, &file)
-    dl.reldst = strings.Replace(fullpath, trim, "", 1)
-    err := c.download(dl)
-    if err != nil { return err }
-  }
-
-  for _, d := range dir.Dirs {
-    err := c.dlFiles(nick, trim, path.Join(pathname, d.Name), &d)
-    if err != nil { return err }
-  }
-
-  return nil
+  return p.files.FindDir(dir)
 }
 
 func (c *Client) Download(nick string, pathname string) error {
+  extra, _ := path.Split(pathname)
   p := c.peer(nick, func(*peer) {})
   if p.files == nil {
     return errors.New("No file list available for: " + nick)
   }
-  dir, base := path.Split(pathname)
-  files, err := down(dir[:len(dir)-1], &p.files.Directory)
-  if err != nil { return err }
-
-  for _, child := range files.Dirs {
-    if child.Name == base {
-      return c.dlFiles(nick, dir, pathname, &child)
-    }
-  }
-
-  for _, child := range files.Files {
-    if child.Name == base {
-      dl := NewDownloadFile(nick, pathname, &child)
-      dl.reldst = base
-      return c.download(dl)
-    }
-  }
-  return errors.New(pathname + " does not exist")
+  return p.files.EachFile(pathname, func(f *File, path string) error {
+    dl := NewDownloadFile(nick, path, f)
+    dl.reldst = path[len(extra):]
+    return c.download(dl)
+  })
 }

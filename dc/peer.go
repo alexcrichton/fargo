@@ -100,6 +100,7 @@ func (c *Client) initiateDownload() (err error) {
     if peer.download(file, dl) == nil {
       break
     }
+    os.Remove(dst)
     peer.push(dl)
     dl = nil
   }

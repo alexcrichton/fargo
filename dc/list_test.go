@@ -73,7 +73,7 @@ func Test_ParseNonUTF8WhenLying(t *testing.T) {
   if listing.CID != "£5 for Peppé" { t.Error() }
 }
 
-func Test_Sorting(t *testing.T) {
+func dummy() *FileListing {
   var listing FileListing
   listing.Files = make([]File, 4)
   listing.Dirs = make([]Directory, 2)
@@ -84,8 +84,12 @@ func Test_Sorting(t *testing.T) {
   listing.Files[3] = File{Name: "z"}
   listing.Dirs[0] = Directory{Name: "foo"}
   listing.Dirs[1] = Directory{Name: "bar"}
+  return &listing
+}
 
-  sort.Sort(&listing)
+func Test_Sorting(t *testing.T) {
+  listing := dummy()
+  sort.Sort(listing)
 
   if listing.Dirs[0].Name != "bar" { t.Error() }
   if listing.Dirs[1].Name != "foo" { t.Error() }
@@ -96,21 +100,12 @@ func Test_Sorting(t *testing.T) {
 }
 
 func Test_Encode(t *testing.T) {
-  var listing FileListing
-  listing.Files = make([]File, 4)
-  listing.Dirs = make([]Directory, 2)
-
-  listing.Files[0] = File{Name: "foo"}
-  listing.Files[1] = File{Name: "bar"}
-  listing.Files[2] = File{Name: "a"}
-  listing.Files[3] = File{Name: "z"}
-  listing.Dirs[0] = Directory{Name: "foo"}
-  listing.Dirs[1] = Directory{Name: "bar"}
+  listing := dummy()
 
   var listing2 FileListing
   read, write := io.Pipe()
   go func() {
-    err := EncodeFileList(&listing, write)
+    err := EncodeFileList(listing, write)
     if err != nil { t.Error(err) }
     write.Close()
   }()
@@ -119,4 +114,59 @@ func Test_Encode(t *testing.T) {
 
   if len(listing2.Files) != 4 { t.Error() }
   if len(listing2.Dirs) != 2 { t.Error() }
+}
+
+func Test_Visiting(t *testing.T) {
+  listing := dummy()
+  sort.Sort(listing)
+  listing.Dirs[0].Files = []File{ File{Name: "foo"} }
+
+  /* visit all files */
+  visited := 0
+  err := listing.EachFile("/", func(f *File, path string) error {
+    switch visited {
+      case 0: if path != "/a" { t.Error(path) }
+      case 1: if path != "/bar" { t.Error(path) }
+      case 2: if path != "/foo" { t.Error(path) }
+      case 3: if path != "/z" { t.Error(path) }
+      case 4: if path != "/bar/foo" { t.Error(path) }
+    }
+    visited++
+    return nil
+  })
+  if err != nil { t.Error(err) }
+  if visited != 5 { t.Error(visited) }
+
+  /* visit a root file */
+  visited = 0
+  err = listing.EachFile("/a", func(f *File, path string) error {
+    if visited > 0 { t.Error(path) }
+    visited++
+    if path != "/a" { t.Error(path) }
+    return nil
+  })
+  if err != nil { t.Error(err) }
+  if visited != 1 { t.Error(visited) }
+
+  /* visit a directory */
+  visited = 0
+  err = listing.EachFile("/bar", func(f *File, path string) error {
+    if visited > 0 { t.Error(path) }
+    visited++
+    if path != "/bar/foo" { t.Error(path) }
+    return nil
+  })
+  if err != nil { t.Error(err) }
+  if visited != 1 { t.Error(visited) }
+
+  /* visit a file in a directory */
+  visited = 0
+  err = listing.EachFile("/bar/foo", func(f *File, path string) error {
+    if visited > 0 { t.Error(path) }
+    visited++
+    if path != "/bar/foo" { t.Error(path) }
+    return nil
+  })
+  if err != nil { t.Error(err) }
+  if visited != 1 { t.Error(visited) }
 }

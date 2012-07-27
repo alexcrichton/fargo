@@ -1,9 +1,12 @@
 package dc
 
 import "encoding/xml"
+import "errors"
 import "fmt"
 import "io"
 import "io/ioutil"
+import "path"
+import "strings"
 
 import "code.google.com/p/go-charset/charset"
 import _ "code.google.com/p/go-charset/data"
@@ -29,6 +32,11 @@ type File struct {
   Size ByteSize `xml:",attr"`
   TTH  string   `xml:",attr"`
 }
+
+type VisitFunc func(*File, string) error
+
+var FileNotFound = errors.New("File not found")
+var DirectoryNotFound = errors.New("Directory not found")
 
 func (d *Directory) Len() int {
   return len(d.Dirs) + len(d.Files)
@@ -82,6 +90,60 @@ func EncodeFileList(in *FileListing, out io.Writer) (err error) {
   if err != nil { return }
   encoder := xml.NewEncoder(out)
   return encoder.Encode(in)
+}
+
+func (f *FileListing) FindDir(path string) (*Directory, error) {
+  if path == "/" { return &f.Directory, nil }
+
+  cur := &f.Directory
+  for _, subdir := range strings.Split(path, "/")[1:] {
+    found := false
+    for _, child := range cur.Dirs {
+      if child.Name == subdir {
+        found = true
+        cur = &child
+        break
+      }
+    }
+    if !found {
+      return nil, errors.New(path + " is not a directory")
+    }
+  }
+  return cur, nil
+}
+
+func (f *FileListing) FindFile(pathname string) (file *File, err error) {
+  dirname, base := path.Split(pathname)
+  dir, err := f.FindDir(dirname[0:len(dirname)-1])
+  if err != nil { return }
+  for _, f := range dir.Files {
+    if f.Name == base { return &f, nil }
+  }
+  return nil, FileNotFound
+}
+
+func (d *Directory) visit(pathname string, cb VisitFunc) error {
+  for _, file := range d.Files {
+    err := cb(&file, path.Join(pathname, file.Name))
+    if err != nil { return err }
+  }
+  for _, dir := range d.Dirs {
+    err := dir.visit(path.Join(pathname, dir.Name), cb)
+    if err != nil { return err }
+  }
+  return nil
+}
+
+func (f *FileListing) EachFile(path string, cb VisitFunc) error {
+  dir, err := f.FindDir(path)
+  if err == nil {
+    return dir.visit(path, cb)
+  }
+  file, err := f.FindFile(path)
+  if err == nil {
+    return cb(file, path)
+  }
+  return err
 }
 
 type ByteSize float64
