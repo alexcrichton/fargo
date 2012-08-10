@@ -17,6 +17,7 @@ type Client struct {
   DL            Slots
   UL            Slots
   DownloadRoot  string
+  CacheDir      string
 
   logc   chan string
   peers  map[string]*peer

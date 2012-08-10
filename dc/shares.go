@@ -3,6 +3,7 @@ package dc
 import "errors"
 import "io"
 import "os"
+import "os/exec"
 import "sync"
 import "time"
 import "path/filepath"
@@ -41,6 +42,27 @@ func NewShares() Shares {
                 delShares: make(chan string, 0)}
 }
 
+func (s *Shares) save(c *Client, list *FileListing) error {
+  /* Create the necessary directories and get a handle on the file */
+  err := os.MkdirAll(c.CacheDir, os.FileMode(0755))
+  if err != nil { return err }
+  file, err := os.Create(filepath.Join(c.CacheDir, "files.xml"))
+  if err != nil { return err }
+  defer file.Close()
+
+  /* Write out the contents to the file */
+  _, err = file.WriteString(xml.Header)
+  if err != nil { return err }
+  enc := xml.NewEncoder(file)
+  err = enc.Encode(list)
+  if err != nil { return err }
+  file.Close() /* flush contents, above defer will just return error */
+
+  /* Unfortunately bzip2.Writer does not exist, so we're forced to shell out */
+  cmd := exec.Command("bzip2", "-f", file.Name())
+  return cmd.Run()
+}
+
 func (s *Shares) hash(c *Client) {
   hasher := ShareHasher{hashers: make(chan HashReq)}
   list := FileListing{Version: "1.0.0", Generator: "fargo", Base: "/"}
@@ -49,15 +71,12 @@ func (s *Shares) hash(c *Client) {
     go hasher.worker(hasher.hashers)
   }
 
-  recheck := time.After(5 * time.Second)
+  recheck := time.After(15 * time.Minute)
 
   for {
-    c.log("Current file list: ")
-    b, err := xml.MarshalIndent(list, "", "  ")
-    if err == nil {
-      c.log(string(b))
-    } else {
-      c.log("err: " + err.Error())
+    err := s.save(c, &list)
+    if err != nil {
+      c.log("save error: " + err.Error())
     }
 
     select {
@@ -81,7 +100,7 @@ func (s *Shares) hash(c *Client) {
         }
 
       case <-recheck:
-        recheck = time.After(5 * time.Second)
+        recheck = time.After(15 * time.Minute)
         for i := 0; i < len(list.Dirs); i++ {
           err := hasher.sync(c, &list, Share{name: list.Dirs[i].Name,
                                              dir: list.Dirs[i].realpath})
@@ -183,7 +202,6 @@ func (s *Shares) remove(name string) error {
 func (h *ShareHasher) worker(reqs chan HashReq) {
   for req := range reqs {
     *req.tth = tth(req.path)
-    println("hasing: ", req.path)
     h.wg.Done()
   }
 }

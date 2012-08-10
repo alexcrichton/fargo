@@ -13,15 +13,14 @@ func main() {
   client := dc.NewClient()
   term   := ui.New(client)
 
-  default_config := os.Getenv("HOME") + "/.fargo/config"
-  user_config := flag.String("config", "",
-                             "config file of commands to run before startup")
+  var cache, config string
+  home := os.Getenv("HOME") + "/.fargo"
+  flag.StringVar(&config, "config", home + "/config",
+                 "config of commands to run before startup")
+  flag.StringVar(&cache, "cache", home,
+                 "cache directory for internal files")
   flag.Parse()
 
-  config := *user_config
-  if config == "" {
-    config = default_config
-  }
   file, err := os.Open(config)
   if err == nil {
     println("Reading commands from:", config)
@@ -35,10 +34,11 @@ func main() {
       }
       term.Exec(s[0:len(s)-1])
     }
-  } else if *user_config != "" {
+  } else if config != home + "/config" {
     log.Fatal(err)
   }
 
+  client.CacheDir = cache
   client.SpawnHashers()
   term.Run()
 }
