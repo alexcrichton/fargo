@@ -1,4 +1,4 @@
-package dc
+package fargo
 
 import "bufio"
 import "bytes"

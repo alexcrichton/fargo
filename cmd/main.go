@@ -6,11 +6,11 @@ import "io"
 import "log"
 import "os"
 
+import "fargo"
 import "fargo/ui"
-import "fargo/dc"
 
 func main() {
-  client := dc.NewClient()
+  client := fargo.NewClient()
   term   := ui.New(client)
 
   var cache, config string

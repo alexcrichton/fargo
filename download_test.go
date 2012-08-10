@@ -1,4 +1,4 @@
-package dc
+package fargo
 
 import "testing"
 import "os"
@@ -7,6 +7,9 @@ import "path/filepath"
 func Test_DownloadDestinations(t *testing.T) {
   dl := NewDownload("foo", "path/to/file")
   wd, err := filepath.EvalSymlinks(os.TempDir())
+  err = os.RemoveAll(wd)
+  if err != nil { t.Error(err) }
+  err = os.Mkdir(wd, os.FileMode(0755))
   if err != nil { t.Error(err) }
   err = os.Chdir(wd)
   if err != nil { t.Error(err) }

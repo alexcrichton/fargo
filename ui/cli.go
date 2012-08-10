@@ -50,11 +50,11 @@ import "strings"
 import "strconv"
 import "unsafe"
 
-import "fargo/dc"
+import "fargo"
 
 type Terminal struct {
   msgs    chan string
-  client  *dc.Client
+  client  *fargo.Client
 
   nick string
   cwd  string
@@ -126,7 +126,7 @@ func receiveLine(c *C.char) {
   }
 }
 
-func New(c *dc.Client) *Terminal {
+func New(c *fargo.Client) *Terminal {
   if activeTerm != nil {
     panic("Can't have two terminals!")
   }
