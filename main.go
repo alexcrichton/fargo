@@ -6,8 +6,8 @@ import "io"
 import "log"
 import "os"
 
-import "./ui"
-import "./dc"
+import "fargo/ui"
+import "fargo/dc"
 
 func main() {
   client := dc.NewClient()
