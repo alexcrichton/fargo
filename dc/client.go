@@ -23,6 +23,7 @@ type Client struct {
   dls    map[string][]*download
   failed []*download
   hub    hubConn
+  shares Shares
 
   sync.Mutex
 }
@@ -57,11 +58,16 @@ func NewClient() *Client {
     peers: make(map[string]*peer),
     dls: make(map[string][]*download),
     failed: make([]*download, 0),
+    shares: NewShares(),
     hub: hubConn{nicks: make([]string, 0), ops: make([]string, 0)}}
 }
 
 func (c *Client) log(msg string) {
-  c.logc <- msg
+  if c.logc == nil {
+    println(msg)
+  } else {
+    c.logc <- msg
+  }
 }
 
 func (s *Slots) take() bool {
@@ -340,4 +346,16 @@ func (c *Client) Download(nick string, pathname string) error {
     dl.reldst = path[len(extra):]
     return c.download(dl)
   })
+}
+
+func (c *Client) Share(name, dir string) error {
+  return c.shares.add(name, dir)
+}
+
+func (c *Client) Unshare(name string) error {
+  return c.shares.remove(name)
+}
+
+func (c *Client) SpawnHashers() {
+  go c.shares.hash(c)
 }

@@ -39,5 +39,6 @@ func main() {
     log.Fatal(err)
   }
 
+  client.SpawnHashers()
   term.Run()
 }

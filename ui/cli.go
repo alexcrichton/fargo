@@ -67,7 +67,7 @@ var activeTerm *Terminal
 var completionResults []string
 
 var commands = []string{"browse", "connect", "nicks", "ops", "help", "quit",
-                        "ls", "pwd", "cd", "get"}
+                        "ls", "pwd", "cd", "get", "share"}
 var options = []string{"ulslots", "dlslots", "active", "passive", "hub",
                        "nick", "download"}
 
@@ -334,6 +334,26 @@ func (t *Terminal) Exec(line string) {
       }
     }
 
+  case "share":
+    if len(parts) == 1 {
+      println("usage: share <name> <directory>")
+      break
+    }
+    parts := strings.SplitN(parts[1], " ", 2)
+    if len(parts) == 1 {
+      println("usage: share <name> <directory>")
+      break
+    }
+    err := t.client.Share(parts[0], parts[1])
+    if err != nil { t.err(err) }
+  case "unshare":
+    if len(parts) == 1 {
+      println("usage: unshare <name>")
+      break
+    }
+    err := t.client.Unshare(parts[1])
+    if err != nil { t.err(err) }
+
   default:
     fmt.Println(`syntax: command [arg1 [arg2 ...]]
 commands:
@@ -349,6 +369,10 @@ browsing:
   pwd             print the current directory
   cd [dir]        move into the specified directory, or with no argument go back
                   to the root directory
+
+sharing:
+  share <name> <directory>
+  unshare <name>
 
 configuration:
   set <option> [<value>]

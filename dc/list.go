@@ -7,6 +7,7 @@ import "io"
 import "io/ioutil"
 import "path"
 import "strings"
+import "time"
 
 import "code.google.com/p/go-charset/charset"
 import _ "code.google.com/p/go-charset/data"
@@ -25,18 +26,32 @@ type Directory struct {
 
   Dirs  []Directory `xml:"Directory"`
   Files []File      `xml:"File"`
+
+  realpath string
+  version  uint64
 }
 
 type File struct {
   Name string   `xml:",attr"`
   Size ByteSize `xml:",attr"`
   TTH  string   `xml:",attr"`
+
+  mtime    time.Time
+  version  uint64
+  realpath string
 }
 
 type VisitFunc func(*File, string) error
 
 var FileNotFound = errors.New("File not found")
 var DirectoryNotFound = errors.New("Directory not found")
+
+func NewDirectory(name string, path string) Directory {
+  return Directory{Name: name,
+                   realpath: path,
+                   Dirs: make([]Directory, 0),
+                   Files: make([]File, 0)}
+}
 
 func (d *Directory) Len() int {
   return len(d.Dirs) + len(d.Files)
@@ -98,10 +113,10 @@ func (f *FileListing) FindDir(path string) (*Directory, error) {
   cur := &f.Directory
   for _, subdir := range strings.Split(path, "/")[1:] {
     found := false
-    for _, child := range cur.Dirs {
+    for i, child := range cur.Dirs {
       if child.Name == subdir {
         found = true
-        cur = &child
+        cur = &cur.Dirs[i]
         break
       }
     }
@@ -116,15 +131,15 @@ func (f *FileListing) FindFile(pathname string) (file *File, err error) {
   dirname, base := path.Split(pathname)
   dir, err := f.FindDir(dirname[0:len(dirname)-1])
   if err != nil { return }
-  for _, f := range dir.Files {
-    if f.Name == base { return &f, nil }
+  for i, f := range dir.Files {
+    if f.Name == base { return &dir.Files[i], nil }
   }
   return nil, FileNotFound
 }
 
 func (d *Directory) visit(pathname string, cb VisitFunc) error {
-  for _, file := range d.Files {
-    err := cb(&file, path.Join(pathname, file.Name))
+  for i, file := range d.Files {
+    err := cb(&d.Files[i], path.Join(pathname, file.Name))
     if err != nil { return err }
   }
   for _, dir := range d.Dirs {
@@ -132,6 +147,54 @@ func (d *Directory) visit(pathname string, cb VisitFunc) error {
     if err != nil { return err }
   }
   return nil
+}
+
+func (d *Directory) childFile(name string) *File {
+  for i, file := range d.Files {
+    if file.Name == name { return &d.Files[i] }
+  }
+  return nil
+}
+
+func (d *Directory) childDir(name string) *Directory {
+  for i, dir := range d.Dirs {
+    if dir.Name == name { return &d.Dirs[i] }
+  }
+  return nil
+}
+
+func (d *Directory) removeDir(i int) {
+  back := len(d.Dirs) - 1
+  if i < back {
+    d.Dirs[i] = d.Dirs[back]
+  }
+  d.Dirs = d.Dirs[0:back]
+}
+
+func (d *Directory) removeDirName(name string) {
+  for i, dir := range d.Dirs {
+    if dir.Name == name {
+      d.removeDir(i)
+      break
+    }
+  }
+}
+
+func (d *Directory) removeFileName(name string) {
+  for i, file := range d.Files {
+    if file.Name == name {
+      d.removeFile(i)
+      break
+    }
+  }
+}
+
+func (d *Directory) removeFile(i int) {
+  back := len(d.Files) - 1
+  if i < back {
+    d.Files[i] = d.Files[back]
+  }
+  d.Files = d.Files[0:back]
 }
 
 func (f *FileListing) EachFile(path string, cb VisitFunc) error {
@@ -146,7 +209,7 @@ func (f *FileListing) EachFile(path string, cb VisitFunc) error {
   return err
 }
 
-type ByteSize float64
+type ByteSize uint64
 
 const (
   _           = iota // ignore first value by assigning to blank identifier
