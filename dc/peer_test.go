@@ -26,6 +26,19 @@ func xsend(t *testing.T, out *bufio.Writer, data string) {
   }
 }
 
+func xread(t *testing.T, in io.Reader, n int, z bool) string {
+  bytes := make([]byte, n)
+  var err error
+
+  if z {
+    in, err = zlib.NewReader(in)
+    if err != nil { t.Fatal(err) }
+  }
+  _, err = io.ReadAtLeast(in, bytes, n)
+  if err != nil { t.Fatal(err) }
+  return string(bytes)
+}
+
 func zsend(t *testing.T, out *bufio.Writer, data string) {
   writer := zlib.NewWriter(out)
   _, err := writer.Write([]byte(data))
@@ -38,6 +51,15 @@ func zsend(t *testing.T, out *bufio.Writer, data string) {
   if err != nil {
     t.Fatal("Error sending '" + data + "' : " + err.Error())
   }
+}
+
+func stub_file(t *testing.T, c *Client) {
+  c.CacheDir = c.DownloadRoot
+  c.SpawnHashers()
+  root := c.DownloadRoot
+  err := ioutil.WriteFile(root + "/a b", []byte("abcd"), os.FileMode(0644))
+  if err != nil { t.Fatal(err) }
+  c.Share("foo", c.DownloadRoot)
 }
 
 func tmpdir(t *testing.T) string {
@@ -64,6 +86,10 @@ func setupPeer(t *testing.T) (*Client, *bufio.Reader, *bufio.Writer) {
     if err != nil { t.Fatal(err) }
   }()
   return c, bufio.NewReader(_in), bufio.NewWriter(_out)
+}
+
+func teardownPeer(t *testing.T, c *Client) {
+  os.RemoveAll(c.DownloadRoot)
 }
 
 func handshake(t *testing.T, in *bufio.Reader, out *bufio.Writer,
@@ -93,6 +119,7 @@ func handshake(t *testing.T, in *bufio.Reader, out *bufio.Writer,
 func Test_Get(t *testing.T) {
   var m method
   c, in, out := setupPeer(t)
+  defer teardownPeer(t, c)
   handshake(t, in, out, "")
 
   dl := NewDownload("bar", "a b")
@@ -115,6 +142,7 @@ func Test_Get(t *testing.T) {
 func Test_UGetBlock(t *testing.T) {
   var m method
   c, in, out := setupPeer(t)
+  defer teardownPeer(t, c)
   handshake(t, in, out, "XmlBZList")
 
   dl := NewDownload("bar", "a b")
@@ -137,6 +165,7 @@ func Test_UGetBlock(t *testing.T) {
 func Test_UGetZBlock(t *testing.T) {
   var m method
   c, in, out := setupPeer(t)
+  defer teardownPeer(t, c)
   handshake(t, in, out, "GetZBlock")
 
   dl := NewDownload("bar", "a b")
@@ -160,6 +189,7 @@ func Test_UGetZBlock(t *testing.T) {
 func Test_ADCSND(t *testing.T) {
   var m method
   c, in, out := setupPeer(t)
+  defer teardownPeer(t, c)
   handshake(t, in, out, "ADCGet")
 
   dl := NewDownload("bar", "a b")
@@ -183,6 +213,7 @@ func Test_ADCSND(t *testing.T) {
 func Test_ADCSNDWithZlibButNotCompressed(t *testing.T) {
   var m method
   c, in, out := setupPeer(t)
+  defer teardownPeer(t, c)
   handshake(t, in, out, "ADCGet ZLIG")
 
   dl := NewDownload("bar", "a b")
@@ -206,6 +237,7 @@ func Test_ADCSNDWithZlibButNotCompressed(t *testing.T) {
 func Test_ADCSNDWithZlib(t *testing.T) {
   var m method
   c, in, out := setupPeer(t)
+  defer teardownPeer(t, c)
   handshake(t, in, out, "ADCGet ZLIG")
 
   dl := NewDownload("bar", "a b")
@@ -223,4 +255,23 @@ func Test_ADCSNDWithZlib(t *testing.T) {
   data, err := ioutil.ReadFile(c.DownloadRoot + "/a b")
   if err != nil { t.Fatal(err) }
   if string(data) != "\u0000\u0000ff" { t.Fatal(string(data)) }
+}
+
+/* Test old-school form of uploading */
+func Test_Send(t *testing.T) {
+  var m method
+  c, in, out := setupPeer(t)
+  defer teardownPeer(t, c)
+  handshake(t, in, out, "")
+  stub_file(t, c)
+
+  xsend(t, out, "$Get foo/a b$2|")
+  getcmd(t, in, "FileLength", &m)
+  if string(m.data) != "3" {
+    t.Fatal(string(m.data))
+  }
+  xsend(t, out, "$Send|")
+
+  data := xread(t, in, 3, false)
+  if data != "bcd" { t.Fatal(data) }
 }

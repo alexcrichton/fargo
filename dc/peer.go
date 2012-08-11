@@ -19,10 +19,11 @@ type peer struct {
   supports []string
 
   sync.Mutex
-  state   peerState
-  dl      *download
-  outfile *os.File
-  dls     []*download
+  state peerState
+  dl    *download
+  file  *os.File
+  ul    *File
+  dls   []*download
 
   files *FileListing
 }
@@ -39,6 +40,7 @@ const (
 )
 
 var NotIdle = errors.New("client not idle")
+var ClientFileNotFound = errors.New("file not found")
 
 func (c *Client) peer(nick string, cb func(*peer)) *peer {
   c.Lock()
@@ -65,13 +67,20 @@ func (c *Client) peerGone(nick string) {
   for _, dl := range p.dls {
     c.failed = append(c.failed, dl)
   }
-  if p.outfile != nil {
-    p.outfile.Close()
-    os.Remove(p.outfile.Name())
+  if p.file != nil {
+    p.file.Close()
+    if p.dl != nil {
+      os.Remove(p.file.Name())
+    }
+    p.file = nil
   }
   if p.dl != nil {
     c.failed = append(c.failed, p.dl)
     c.DL.release()
+    p.dl = nil
+  } else if p.ul != nil {
+    c.UL.release()
+    p.ul = nil
   }
   c.Unlock()
   c.initiateDownload()
@@ -143,7 +152,7 @@ func (p *peer) download(outfile *os.File, dl *download) error {
   }
 
   p.state = Downloading
-  p.outfile = outfile
+  p.file = outfile
   p.dl = dl
 
   if p.implements("ADCGet") {
@@ -170,10 +179,33 @@ func (p *peer) download(outfile *os.File, dl *download) error {
     })
   } else {
     sendf(p.write, "Get", func(w *bufio.Writer) {
-      fmt.Fprintf(w, "%s$%d", dl.file, dl.offset+1)
+      fmt.Fprintf(w, "%s$%d", dl.file, dl.offset + 1)
     })
   }
   return nil
+}
+
+func (p *peer) upload(c *Client, file string) (err error) {
+  /* take a slot, convert to upload state, set p.ul with open file */
+  if !c.UL.take() { return errors.New("No slots to upload with") }
+  err = ClientFileNotFound
+  defer func() {
+    if err != nil { c.UL.release() }
+  }()
+
+  p.Lock()
+  defer p.Unlock()
+  if p.state != Idle { return NotIdle }
+  info := c.shares.query(file)
+  if info == nil { return ClientFileNotFound }
+  handle, err := os.Open(info.realpath)
+  if err != nil { return }
+
+  p.state = Uploading
+  p.ul = info
+  p.file = handle
+  err = nil
+  return
 }
 
 func (p *peer) implements(extension string) bool {
@@ -270,10 +302,12 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer) (err error) {
   defer c.peerGone(nick)
 
   dl := func(size int64, offset int64, z bool) error {
-    if p.dl == nil { return errors.New("downloading with nil download!") }
+    if p.dl == nil { return errors.New("downloading with nil download") }
+    if p.ul != nil { return errors.New("downloading while uploading") }
     if p.state != Downloading {
       return errors.New("not in the downloading state")
     }
+    defer p.file.Close()
 
     var in io.Reader = buf
     if z {
@@ -282,30 +316,57 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer) (err error) {
       in = in2
     }
 
-    _, err := p.outfile.Seek(offset, os.SEEK_SET)
+    _, err := p.file.Seek(offset, os.SEEK_SET)
     if err != nil {
-      err = p.outfile.Truncate(offset)
+      err = p.file.Truncate(offset)
       if err == nil {
-        _, err = p.outfile.Seek(offset, os.SEEK_SET)
+        _, err = p.file.Seek(offset, os.SEEK_SET)
       }
     }
     if err != nil { return err }
 
     c.log("Starting download of: " + p.dl.file)
-    s, err := io.CopyN(p.outfile, in, size)
+    s, err := io.CopyN(p.file, in, size)
     if err != nil { return err }
     if s != size { return errors.New("Didn't download whole file") }
     if p.dl.fileList() {
-      _, err := p.outfile.Seek(0, os.SEEK_SET)
+      _, err := p.file.Seek(0, os.SEEK_SET)
       if err != nil { return err }
-      err = p.parseFiles(p.outfile)
+      err = p.parseFiles(p.file)
       if err != nil { return err }
     }
     c.log("Finished downloading: " + p.dl.file)
-    p.state = Idle
     c.DL.release() /* if we fail with error, our slot is released elsewhere */
     p.dl = nil
-    p.outfile = nil
+    p.file = nil
+    p.state = Idle
+    return c.initiateDownload()
+  }
+
+  ul := func(size int64, offset int64, z bool) error {
+    if p.dl != nil { return errors.New("uploading while trying to download") }
+    if p.ul == nil { return errors.New("uploading without a file") }
+    if p.state != Uploading { return errors.New("not in the uploading state") }
+    defer p.file .Close()
+
+    /* Don't upload through the bufio.Writer instance */
+    var upload io.Writer = out
+    if z {
+      upload = zlib.NewWriter(upload)
+    }
+    write.Flush()
+
+    _, err := p.file.Seek(offset, os.SEEK_SET)
+    if err != nil { return err }
+
+    c.log("Starting upload of: " + p.file.Name())
+    _, err = io.CopyN(upload, p.file, size)
+    if err != nil { return err }
+    c.log("Finished uploading: " + p.file.Name())
+    c.UL.release() /* if we fail with error, our slot is released elsewhere */
+    p.ul = nil
+    p.file = nil
+    p.state = Idle
     return c.initiateDownload()
   }
 
@@ -326,11 +387,12 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer) (err error) {
     switch m.name {
     /* ADC receiving half of things */
     case "ADCSND":
+      if p.state == Idle { return errors.New("Not downloading anything") }
       parts := adcsnd.FindSubmatch(m.data)
       if len(parts) != 6 { return errors.New("Malformed ADCSND command") }
-      size, err = strconv.ParseInt(string(parts[4]), 10, 32)
+      size, err = strconv.ParseInt(string(parts[4]), 10, 64)
       if err == nil {
-        offset, err = strconv.ParseInt(string(parts[3]), 10, 32)
+        offset, err = strconv.ParseInt(string(parts[3]), 10, 64)
       }
       if err == nil {
         err = dl(size, offset, len(parts[5]) != 0)
@@ -338,21 +400,43 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer) (err error) {
 
     /* UGetZ?Block receiving half */
     case "Sending":
-      size, err := strconv.ParseInt(string(m.data), 10, 32)
+      if p.state == Idle { return errors.New("Not downloading anything") }
+      size, err := strconv.ParseInt(string(m.data), 10, 64)
       if err == nil {
         err = dl(size, p.dl.offset, p.implements("GetZBlock"))
       }
 
     /* old school original DC receiving half */
     case "FileLength":
-      size, err := strconv.ParseInt(string(m.data), 10, 32)
+      if p.state == Idle { return errors.New("Not downloading anything") }
+      size, err := strconv.ParseInt(string(m.data), 10, 64)
       if err == nil {
         send(write, "Send", nil)
         err = dl(size, 0, false)
       }
 
+    /* old school DC download system */
+    case "Get":
+      parts := bytes.Split(m.data, []byte("$"))
+      if len(parts) != 2 { return errors.New("Malformed Get command") }
+      file := string(parts[0])
+      offset, err = strconv.ParseInt(string(parts[1]), 10, 64)
+
+      err := p.upload(c, file)
+      if err != nil { return err }
+
+      size := int64(p.ul.Size) - (offset - 1)
+      sendf(write, "FileLength", func(w *bufio.Writer) {
+        fmt.Fprintf(w, "%d", size)
+      })
+      err = readCmd(buf, &m)
+      if err != nil { return err }
+      if m.name != "Send" { return errors.New("Expected $Send") }
+
+      err = ul(size, offset - 1, false)
+
     default:
-      c.log("Unknown command: $" + m.name)
+      return errors.New("Unknown command: $" + m.name)
     }
   }
   return err
