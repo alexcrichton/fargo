@@ -8,7 +8,7 @@ type download struct {
   nick   string
   file   string
   tth    string
-  offset uint64
+  offset int64
   size   int64
   reldst string
 }

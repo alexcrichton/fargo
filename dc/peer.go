@@ -8,8 +8,8 @@ import "fmt"
 import "errors"
 import "io"
 import "math/rand"
-import "net"
 import "os"
+import "regexp"
 import "strconv"
 import "sync"
 
@@ -194,15 +194,14 @@ func (p *peer) parseFiles(in io.Reader) error {
   return err
 }
 
-func (c *Client) readPeer(conn net.Conn) {
-  defer conn.Close()
+func (c *Client) handlePeer(in io.Reader, out io.Writer) (err error) {
   var m method
-  write := bufio.NewWriter(conn)
+  write := bufio.NewWriter(out)
 
   /* Step 0 - figure out who we're talking to */
-  buf := bufio.NewReader(conn)
-  if readCmd(buf, &m) != nil { return }
-  if m.name != "MyNick" { return }
+  buf := bufio.NewReader(in)
+  if err = readCmd(buf, &m); err != nil { return }
+  if m.name != "MyNick" { return errors.New("Expected $MyNick first") }
   nick := string(m.data)
 
   /* Step 1 - make sure we have the only connection to the peer */
@@ -214,17 +213,17 @@ func (c *Client) readPeer(conn net.Conn) {
       bad = true
     }
   })
-  if bad { return }
+  if bad { return errors.New("Invalid state with peer tables") }
   if p.write != nil { panic("already have a write connection") }
 
   c.log("Connected to: " + p.nick)
   defer c.log("Disconnected from: " + p.nick)
 
   /* Step 2 - get their lock so we can respond with our nick/key */
-  if readCmd(buf, &m) != nil { return }
-  if m.name != "Lock" { return }
+  if err = readCmd(buf, &m); err != nil { return }
+  if m.name != "Lock" { return errors.New("Expected $Lock second") }
   idx := bytes.IndexByte(m.data, ' ')
-  if idx == -1 { return }
+  if idx == -1 { return errors.New("Invalid $Lock") }
 
   /* Step 3 - send our nick/lock/supports/direction metadata */
   number := rand.Int63n(0x7fff)
@@ -245,44 +244,55 @@ func (c *Client) readPeer(conn net.Conn) {
   send(write, "Key", GenerateKey(m.data[0:idx]))
 
   /* Step 4 - receive what they support (optional) */
-  if readCmd(buf, &m) != nil { return }
+  if err = readCmd(buf, &m); err != nil { return }
   p.supports = make([]string, 0)
   if m.name == "Supports" {
     for _, s := range bytes.Split(m.data, []byte(" ")) {
       p.supports = append(p.supports, string(s))
     }
-    if readCmd(buf, &m) != nil { return }
+    if err = readCmd(buf, &m); err != nil { return }
   }
 
   /* Step 5 - receive their direction */
-  if m.name != "Direction" { return }
+  if m.name != "Direction" { return errors.New("Expected $Direction") }
   /* Don't actually care about the direction */
 
   /* Step 6 - receive their key */
-  if readCmd(buf, &m) != nil { return }
-  if m.name != "Key" { return }
-  if !bytes.Equal(m.data, GenerateKey([]byte(lock))) { return }
+  if err = readCmd(buf, &m); err != nil { return }
+  if m.name != "Key" { return errors.New("Expected $Key") }
+  if !bytes.Equal(m.data, GenerateKey([]byte(lock))) {
+    return errors.New("Invalid key received for lock send")
+  }
 
   /* Step 7+ - upload/download files infinitely until closed */
   p.write = write
   p.state = Idle
   defer c.peerGone(nick)
 
-  dl := func(out io.Writer, in io.Reader, size int64, z bool) error {
+  dl := func(size int64, offset int64, z bool) error {
     if p.dl == nil { return errors.New("downloading with nil download!") }
-    if out == nil { return errors.New("downloading without an output file") }
     if p.state != Downloading {
       return errors.New("not in the downloading state")
     }
 
+    var in io.Reader = buf
     if z {
       in2, err := zlib.NewReader(in)
       if err != nil { return err }
       in = in2
     }
 
+    _, err := p.outfile.Seek(offset, os.SEEK_SET)
+    if err != nil {
+      err = p.outfile.Truncate(offset)
+      if err == nil {
+        _, err = p.outfile.Seek(offset, os.SEEK_SET)
+      }
+    }
+    if err != nil { return err }
+
     c.log("Starting download of: " + p.dl.file)
-    s, err := io.CopyN(out, in, size)
+    s, err := io.CopyN(p.outfile, in, size)
     if err != nil { return err }
     if s != size { return errors.New("Didn't download whole file") }
     if p.dl.fileList() {
@@ -300,12 +310,15 @@ func (c *Client) readPeer(conn net.Conn) {
   }
 
   /* try to diagnose why peers disconnect */
-  err := c.initiateDownload()
+  err = c.initiateDownload()
   defer func() {
     if err != nil {
-      c.log("error with '" + nick + "' :" + err.Error())
+      c.log("error with '" + nick + "': " + err.Error())
     }
   }()
+
+  adcsnd := regexp.MustCompile("([^ ]+) (.+) ([0-9]+) ([0-9]+)( ZL1)?")
+  size, offset := int64(0), int64(0)
 
   for err == nil {
     err = readCmd(buf, &m)
@@ -313,30 +326,34 @@ func (c *Client) readPeer(conn net.Conn) {
     switch m.name {
     /* ADC receiving half of things */
     case "ADCSND":
-      parts := bytes.Split(m.data, []byte(" "))
-      if len(parts) < 4 { return }
-      s, err := strconv.ParseInt(string(parts[3]), 10, 32)
+      parts := adcsnd.FindSubmatch(m.data)
+      if len(parts) != 6 { return errors.New("Malformed ADCSND command") }
+      size, err = strconv.ParseInt(string(parts[4]), 10, 32)
       if err == nil {
-        err = dl(p.outfile, buf, s, len(parts) == 5)
+        offset, err = strconv.ParseInt(string(parts[3]), 10, 32)
+      }
+      if err == nil {
+        err = dl(size, offset, len(parts[5]) != 0)
       }
 
     /* UGetZ?Block receiving half */
     case "Sending":
-      s, err := strconv.ParseInt(string(m.data), 10, 32)
+      size, err := strconv.ParseInt(string(m.data), 10, 32)
       if err == nil {
-        err = dl(p.outfile, buf, s, p.implements("GetZBlock"))
+        err = dl(size, p.dl.offset, p.implements("GetZBlock"))
       }
 
     /* old school original DC receiving half */
     case "FileLength":
-      s, err := strconv.ParseInt(string(m.data), 10, 32)
+      size, err := strconv.ParseInt(string(m.data), 10, 32)
       if err == nil {
         send(write, "Send", nil)
-        err = dl(p.outfile, buf, s, false)
+        err = dl(size, 0, false)
       }
 
     default:
       c.log("Unknown command: $" + m.name)
     }
   }
+  return err
 }

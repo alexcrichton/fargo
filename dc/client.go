@@ -100,7 +100,10 @@ func (c *Client) run() {
         if err != nil {
           break
         }
-        go c.readPeer(conn)
+        go func() {
+          c.handlePeer(conn, conn)
+          conn.Close()
+        }()
       }
       c.log("Active server shut down")
     }()
