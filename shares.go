@@ -1,45 +1,48 @@
 package fargo
 
-import "errors"
+import "encoding/xml"
 import "io"
 import "os"
 import "os/exec"
-import "sync"
-import "time"
 import "path/filepath"
-import "encoding/xml"
+import "time"
 
 type Shares struct {
-  roots  []string
-  shares chan Share
+  roots     []string
+  shares    chan Share
   delShares chan string
-  list   *FileListing
+  queries   chan fileQuery
+  hashers   chan HashReq
+  stop      chan int
+  rescan    chan int
+  list      *FileListing
 }
 
 type Share struct {
-  dir  string
-  name string
+  dir     string
+  name    string
+}
+
+type fileQuery struct {
+  path      string
+  response  chan *File
 }
 
 type HashReq struct {
-  path string
-  tth  *string
+  path    string
+  tth     *string
 }
-
-type ShareHasher struct {
-  hashers chan HashReq
-  wg      sync.WaitGroup
-}
-
-var AlreadySharing = errors.New("already sharing the directory/file")
-var NotSharing = errors.New("not sharing the directory/file")
 
 var MaxWorkers = 4
 
 func NewShares() Shares {
-  return Shares{roots: make([]string, 0),
-                shares: make(chan Share, 100),
-                delShares: make(chan string, 0)}
+  return Shares{roots:    make([]string, 0),
+                shares:   make(chan Share),
+                delShares:      make(chan string),
+                queries:  make(chan fileQuery),
+                hashers:  make(chan HashReq),
+                stop:     make(chan int),
+                rescan:   make(chan int)}
 }
 
 func (s *Shares) save(c *Client, list *FileListing) error {
@@ -64,11 +67,10 @@ func (s *Shares) save(c *Client, list *FileListing) error {
 }
 
 func (s *Shares) hash(c *Client) {
-  hasher := ShareHasher{hashers: make(chan HashReq)}
   list := FileListing{Version: "1.0.0", Generator: "fargo", Base: "/"}
 
   for i := 0; i < MaxWorkers; i++ {
-    go hasher.worker(hasher.hashers)
+    go s.worker()
   }
 
   recheck := time.After(15 * time.Minute)
@@ -80,13 +82,19 @@ func (s *Shares) hash(c *Client) {
     }
 
     select {
+      case <-s.stop:
+        return
+
       case share := <-s.shares:
         if list.Directory.childFile(share.name) != nil ||
            list.Directory.childDir(share.name) != nil {
           c.log("hash error: already sharing directory")
           break
         }
-        err := hasher.sync(c, &list, share)
+        share.dir, err = filepath.Abs(share.dir)
+        if err == nil {
+          err = s.sync(c, &list, share)
+        }
         if err != nil {
           c.log("hash error: " + err.Error())
         }
@@ -100,35 +108,39 @@ func (s *Shares) hash(c *Client) {
         }
 
       case <-recheck:
+      case <-s.rescan:
         recheck = time.After(15 * time.Minute)
         for i := 0; i < len(list.Dirs); i++ {
-          err := hasher.sync(c, &list, Share{name: list.Dirs[i].Name,
-                                             dir: list.Dirs[i].realpath})
+          err := s.sync(c, &list, Share{name: list.Dirs[i].Name,
+                                        dir: list.Dirs[i].realpath})
           if err != nil {
             c.log("hash error (" + list.Dirs[i].Name + "): " + err.Error())
           }
         }
+
+      case q := <-s.queries:
+        f, _ := list.FindFile(q.path)
+        q.response <- f
     }
   }
 }
 
-func (h *ShareHasher) sync (c *Client, list *FileListing, sh Share) error {
+func (s *Shares) sync(c *Client, list *FileListing, sh Share) error {
   file, err := os.Open(sh.dir)
   if err != nil { return err }
   stat, err := file.Stat()
   if err != nil { return err }
   list.Directory.version++
-  err = h.file(file, stat, &list.Directory, sh.name)
+  err = s.file(file, stat, &list.Directory, sh.name)
   file.Close()
   if err != nil { return err }
-  /* wait for all the hashers to finish */
-  h.wg.Wait()
+
   return nil
 }
 
-func (h *ShareHasher) file(f *os.File, info os.FileInfo, d *Directory,
-                           name string) error {
-  /* If we reached a file, then send a request for the hashers to hash */
+func (s *Shares) file(f *os.File, info os.FileInfo, d *Directory,
+                      name string) error {
+
   if !info.IsDir() {
     d.removeDirName(name)
     file := d.childFile(name)
@@ -139,8 +151,8 @@ func (h *ShareHasher) file(f *os.File, info os.FileInfo, d *Directory,
     file.Size = ByteSize(info.Size())
     if info.ModTime().After(file.mtime) {
       file.mtime = info.ModTime()
-      h.wg.Add(1)
-      h.hashers <- HashReq{path: f.Name(), tth: &file.TTH}
+      file.TTH = ""
+      s.hashers <- HashReq{path: f.Name(), tth: &file.TTH}
     }
     file.version = d.version
     return nil
@@ -167,7 +179,7 @@ func (h *ShareHasher) file(f *os.File, info os.FileInfo, d *Directory,
     for _, info := range infos {
       f2, err := os.Open(filepath.Join(f.Name(), info.Name()))
       if err != nil { return err }
-      h.file(f2, info, dir, info.Name())
+      s.file(f2, info, dir, info.Name())
       f2.Close()
     }
   }
@@ -189,6 +201,12 @@ func (h *ShareHasher) file(f *os.File, info os.FileInfo, d *Directory,
   return nil
 }
 
+func (s *Shares) query(path string) *File {
+  response := make(chan *File)
+  s.queries <- fileQuery{response: response, path: path}
+  return <-response
+}
+
 func (s *Shares) add(name, dir string) error {
   s.shares <- Share{dir: dir, name: name}
   return nil
@@ -199,14 +217,26 @@ func (s *Shares) remove(name string) error {
   return nil
 }
 
-func (h *ShareHasher) worker(reqs chan HashReq) {
-  for req := range reqs {
+func (s *Shares) update() {
+  s.rescan <- 1
+}
+
+func (s *Shares) halt() {
+  s.stop <- 1
+  close(s.shares)
+  close(s.queries)
+  close(s.delShares)
+  close(s.hashers)
+}
+
+func (s *Shares) worker() {
+  for req := range s.hashers {
     *req.tth = tth(req.path)
-    h.wg.Done()
   }
 }
 
 /* TODO: implement this */
 func tth(path string) string {
+  time.Sleep(1)
   return path
 }

@@ -107,11 +107,15 @@ func EncodeFileList(in *FileListing, out io.Writer) (err error) {
   return encoder.Encode(in)
 }
 
-func (f *FileListing) FindDir(path string) (*Directory, error) {
-  if path == "/" { return &f.Directory, nil }
+func (f *FileListing) FindDir(dir string) (*Directory, error) {
+  if dir == "" || dir == "/" { return &f.Directory, nil }
 
+  parts := strings.Split(dir, "/")
+  if path.IsAbs(dir) {
+    parts = parts[1:]
+  }
   cur := &f.Directory
-  for _, subdir := range strings.Split(path, "/")[1:] {
+  for _, subdir := range parts {
     found := false
     for i, child := range cur.Dirs {
       if child.Name == subdir {
@@ -121,7 +125,7 @@ func (f *FileListing) FindDir(path string) (*Directory, error) {
       }
     }
     if !found {
-      return nil, errors.New(path + " is not a directory")
+      return nil, errors.New(dir + " is not a directory")
     }
   }
   return cur, nil
