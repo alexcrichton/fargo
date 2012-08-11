@@ -50,7 +50,7 @@ import "strings"
 import "strconv"
 import "unsafe"
 
-import "fargo/dc"
+import "github.com/alexcrichton/fargo/dc"
 
 type Terminal struct {
   msgs    chan string
