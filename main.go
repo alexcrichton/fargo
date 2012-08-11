@@ -6,11 +6,11 @@ import "io"
 import "log"
 import "os"
 
-import "fargo"
+import "fargo/dc"
 import "fargo/ui"
 
 func main() {
-  client := fargo.NewClient()
+  client := dc.NewClient()
   term   := ui.New(client)
 
   var cache, config string
@@ -20,6 +20,9 @@ func main() {
   flag.StringVar(&cache, "cache", home,
                  "cache directory for internal files")
   flag.Parse()
+
+  client.CacheDir = cache
+  client.SpawnHashers()
 
   file, err := os.Open(config)
   if err == nil {
@@ -37,8 +40,5 @@ func main() {
   } else if config != home + "/config" {
     log.Fatal(err)
   }
-
-  client.CacheDir = cache
-  client.SpawnHashers()
   term.Run()
 }

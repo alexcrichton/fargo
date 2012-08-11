@@ -1,4 +1,4 @@
-package fargo
+package dc
 
 import "encoding/xml"
 import "errors"

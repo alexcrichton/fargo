@@ -1,4 +1,4 @@
-package fargo
+package dc
 
 import "bytes"
 import "strings"
