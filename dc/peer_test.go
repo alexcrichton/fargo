@@ -275,3 +275,35 @@ func Test_Send(t *testing.T) {
   data := xread(t, in, 3, false)
   if data != "bcd" { t.Fatal(data) }
 }
+
+/* UGetBlock uploading half */
+func Test_UploadViaUGetBlock(t *testing.T) {
+  var m method
+  c, in, out := setupPeer(t)
+  defer teardownPeer(t, c)
+  handshake(t, in, out, "")
+  stub_file(t, c)
+
+  xsend(t, out, "$UGetBlock 1 2 foo/a b|")
+  getcmd(t, in, "Sending", &m)
+  if string(m.data) != "2" { t.Fatal(string(m.data)) }
+
+  data := xread(t, in, 2, false)
+  if data != "bc" { t.Fatal(data) }
+}
+
+/* UGetZBlock uploading half */
+func Test_UploadViaUGetZBlock(t *testing.T) {
+  var m method
+  c, in, out := setupPeer(t)
+  defer teardownPeer(t, c)
+  handshake(t, in, out, "")
+  stub_file(t, c)
+
+  xsend(t, out, "$UGetZBlock 1 10 foo/a b|")
+  getcmd(t, in, "Sending", &m)
+  if string(m.data) != "3" { t.Fatal(string(m.data)) }
+
+  data := xread(t, in, 3, true)
+  if data != "bcd" { t.Fatal(data) }
+}

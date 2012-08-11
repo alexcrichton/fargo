@@ -350,9 +350,12 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer) (err error) {
     defer p.file .Close()
 
     /* Don't upload through the bufio.Writer instance */
+    var compressed *zlib.Writer
     var upload io.Writer = out
     if z {
-      upload = zlib.NewWriter(upload)
+      println("compressing")
+      compressed = zlib.NewWriter(upload)
+      upload = compressed
     }
     write.Flush()
 
@@ -361,6 +364,9 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer) (err error) {
 
     c.log("Starting upload of: " + p.file.Name())
     _, err = io.CopyN(upload, p.file, size)
+    if compressed != nil && err == nil {
+      err = compressed.Close() /* be sure to flush the zlib stream */
+    }
     if err != nil { return err }
     c.log("Finished uploading: " + p.file.Name())
     c.UL.release() /* if we fail with error, our slot is released elsewhere */
@@ -422,7 +428,7 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer) (err error) {
       file := string(parts[0])
       offset, err = strconv.ParseInt(string(parts[1]), 10, 64)
 
-      err := p.upload(c, file)
+      err = p.upload(c, file)
       if err != nil { return err }
 
       size := int64(p.ul.Size) - (offset - 1)
@@ -434,6 +440,27 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer) (err error) {
       if m.name != "Send" { return errors.New("Expected $Send") }
 
       err = ul(size, offset - 1, false)
+
+    /* Upload half of UGetZ?Block */
+    case "UGetBlock", "UGetZBlock":
+      parts := bytes.SplitN(m.data, []byte(" "), 3)
+      if len(parts) != 3 { return errors.New("Malformed UGetZ?Block command") }
+      offset, err = strconv.ParseInt(string(parts[0]), 10, 64)
+      if err != nil { return err }
+      size, err = strconv.ParseInt(string(parts[1]), 10, 64)
+      if err != nil { return err }
+      err = p.upload(c, string(parts[2]))
+      if err != nil { return err }
+
+      max := int64(p.ul.Size) - offset
+      if max < size {
+        size = max
+      }
+
+      sendf(write, "Sending", func(w *bufio.Writer) {
+        fmt.Fprintf(w, "%d", size)
+      })
+      err = ul(size, offset, m.name == "UGetZBlock")
 
     default:
       return errors.New("Unknown command: $" + m.name)
