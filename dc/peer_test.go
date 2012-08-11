@@ -307,3 +307,35 @@ func Test_UploadViaUGetZBlock(t *testing.T) {
   data := xread(t, in, 3, true)
   if data != "bcd" { t.Fatal(data) }
 }
+
+/* ADCSND upload without zlib */
+func Test_UploadViaADCNoZlib(t *testing.T) {
+  var m method
+  c, in, out := setupPeer(t)
+  defer teardownPeer(t, c)
+  handshake(t, in, out, "")
+  stub_file(t, c)
+
+  xsend(t, out, "$ADCGET file foo/a b 2 1|")
+  getcmd(t, in, "ADCSND", &m)
+  if string(m.data) != "file foo/a b 2 1" { t.Fatal(string(m.data)) }
+
+  data := xread(t, in, 1, false)
+  if data != "c" { t.Fatal(data) }
+}
+
+/* ADCSND upload with zlib */
+func Test_UploadViaADCWithZlib(t *testing.T) {
+  var m method
+  c, in, out := setupPeer(t)
+  defer teardownPeer(t, c)
+  handshake(t, in, out, "")
+  stub_file(t, c)
+
+  xsend(t, out, "$ADCGET file foo/a b 3 100 ZL1|")
+  getcmd(t, in, "ADCSND", &m)
+  if string(m.data) != "file foo/a b 3 1 ZL1" { t.Fatal(string(m.data)) }
+
+  data := xread(t, in, 1, true)
+  if data != "d" { t.Fatal(data) }
+}
