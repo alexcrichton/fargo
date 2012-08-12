@@ -216,6 +216,10 @@ func (t *Terminal) Exec(line string) {
   }
   if line == "" { return }
   parts := strings.SplitN(strings.TrimSpace(line), " ", 2)
+  for i, p := range parts {
+    parts[i] = strings.TrimSpace(p)
+  }
+
   switch parts[0] {
   case "quit":
     activeTerm.quit()
@@ -309,6 +313,9 @@ func (t *Terminal) Exec(line string) {
       break
     }
     parts = strings.SplitN(parts[1], " ", 2)
+    for i, p := range parts {
+      parts[i] = strings.TrimSpace(p)
+    }
     if len(parts) == 1 && parts[0] != "passive" {
       println("must specify an argument as well")
       break
