@@ -7,6 +7,8 @@ import "os/exec"
 import "path/filepath"
 import "time"
 
+import "github.com/alexcrichton/fargo/dc/tth"
+
 type Shares struct {
   roots     []string
   shares    chan Share
@@ -31,6 +33,7 @@ type fileQuery struct {
 type HashReq struct {
   path    string
   tth     *string
+  size    uint64
 }
 
 var MaxWorkers = 4
@@ -152,7 +155,8 @@ func (s *Shares) file(f *os.File, info os.FileInfo, d *Directory,
     if info.ModTime().After(file.mtime) {
       file.mtime = info.ModTime()
       file.TTH = ""
-      s.hashers <- HashReq{path: f.Name(), tth: &file.TTH}
+      s.hashers <- HashReq{path: f.Name(), tth: &file.TTH,
+                           size: uint64(file.Size)}
     }
     file.version = d.version
     return nil
@@ -231,12 +235,15 @@ func (s *Shares) halt() {
 
 func (s *Shares) worker() {
   for req := range s.hashers {
-    *req.tth = tth(req.path)
+    file, err := os.Open(req.path)
+    hash := ""
+    if err == nil {
+      hash, err = tth.Hash(file, req.size)
+    }
+    if err == nil {
+      *req.tth = hash
+    } else {
+      *req.tth = ""
+    }
   }
-}
-
-/* TODO: implement this */
-func tth(path string) string {
-  time.Sleep(1)
-  return path
 }
