@@ -69,8 +69,13 @@ func Test_ScanShares(t *testing.T) {
   if shares.query("name/a b") == nil { t.Error() }
   if shares.query("name") != nil { t.Error() }
 
+  /* query via a TTH hash of 'a' (contents of all files) */
+  if shares.queryWait("TTH/CZQUWH3IYXBF5L3BGYUGZHASSMXU647IP2IKE4Y") == nil {
+    t.Error()
+  }
+
   /* query for the file list */
-  f = shares.query("files.xml.bz2")
+  f = shares.queryWait("files.xml.bz2")
   if f == nil { t.Fatal() }
   if f.realpath != wd + "/cache/files.xml.bz2" { t.Error(f.realpath) }
   if f.Size == 0 { t.Error() }

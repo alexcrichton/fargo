@@ -284,9 +284,8 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer, first bool) (err error)
       fmt.Fprintf(w, "%s Pk=%s", lock, pk)
     })
   }
-  /* TODO: support TTHF */
   send(write, "Supports",
-       []byte("MiniSlots XmlBZList ADCGet ZLIG GetZBlock"))
+       []byte("MiniSlots XmlBZList ADCGet ZLIG GetZBlock TTHF"))
   mydirection := "Upload"
   if len(p.dls) > 0 {
     mydirection = "Download"
