@@ -159,12 +159,10 @@ func (p *peer) download(outfile *os.File, dl *download) error {
 
   if p.implements("ADCGet") {
     sendf(p.write, "ADCGET", func(w *bufio.Writer) {
-      w.WriteString("file ")
       if dl.tth != "" && p.implements("TTHF") {
-        w.WriteString("TTH/")
-        w.WriteString(dl.tth)
+        fmt.Fprintf(w, "tthl TTH/%s", dl.tth)
       } else {
-        w.WriteString(dl.file)
+        fmt.Fprintf(w, "file %s", dl.file)
       }
       fmt.Fprintf(w, " %d %d", dl.offset, dl.size)
       if p.implements("ZLIG") {
@@ -189,7 +187,6 @@ func (p *peer) download(outfile *os.File, dl *download) error {
 
 func (p *peer) upload(c *Client, file string,
                       offset, size int64) (int64, error) {
-  c.log("Uploading: " + file)
   err := ClientFileNotFound
 
   /* MiniSlots dictates that file lists don't need upload slots */
@@ -431,7 +428,7 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer, first bool) (err error)
         size, err = p.upload(c, parts[2], offset, size)
         if err != nil { return err }
         sendf(write, "ADCSND", func(w *bufio.Writer) {
-          fmt.Fprintf(w, "file %s %d %d", parts[2], offset, size)
+          fmt.Fprintf(w, "%s %s %d %d", parts[1], parts[2], offset, size)
           if zlig {
             w.WriteString(" ZL1")
           }

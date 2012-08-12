@@ -358,6 +358,24 @@ func Test_UploadViaADCWithNegativeSize(t *testing.T) {
   if data != "d" { t.Fatal(data) }
 }
 
+/* ADCSND where file is identified with a TTH */
+func Test_UploadViaADCWithTTH(t *testing.T) {
+  var m method
+  c, in, out, _in, _out := setupPeer(t)
+  defer teardownPeer(t, c, _in, _out)
+  handshake(t, in, out, "")
+  c.shares.queryWait("foo") /* wait for tth hashes to propogate */
+
+  tth := "SQF2PFTVIFRR5KJSI45IDENXMB43NI7EIXYGHGI"
+  xsend(t, out, "$ADCGET tthl TTH/" + tth + " 0 -1|")
+  getcmd(t, in, "ADCSND", &m)
+  if string(m.data) != "tthl TTH/" + tth + " 0 4" {
+    t.Fatal(string(m.data))
+  }
+  data := xread(t, in, 4, false)
+  if data != "abcd" { t.Fatal(data) }
+}
+
 /* Test MiniSlots support */
 func Test_SupportsMiniSlots(t *testing.T) {
   var m method
