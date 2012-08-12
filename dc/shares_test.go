@@ -67,6 +67,13 @@ func Test_ScanShares(t *testing.T) {
   if shares.query("name/bar/a") == nil { t.Error() }
   if shares.query("name/bar/baz/a") == nil { t.Error() }
   if shares.query("name/a b") == nil { t.Error() }
+  if shares.query("name") != nil { t.Error() }
+
+  /* query for the file list */
+  f = shares.query("files.xml.bz2")
+  if f == nil { t.Fatal() }
+  if f.realpath != wd + "/cache/files.xml.bz2" { t.Error(f.realpath) }
+  if f.Size == 0 { t.Error() }
 }
 
 func Test_AddRemoveShares(t *testing.T) {

@@ -4,6 +4,8 @@ import "bufio"
 import "bytes"
 import "errors"
 import "fmt"
+import "io"
+import "log"
 import "net"
 import "path"
 import "sync"
@@ -92,7 +94,8 @@ func (c *Client) run() {
   if !c.Passive {
     ln, err := net.Listen("tcp", c.ClientAddress)
     if err != nil {
-      panic(err)
+      log.Fatal("Couldn't spawn active server at '" +
+                c.ClientAddress + "': ", err)
     }
     go func() {
       for {
@@ -101,7 +104,7 @@ func (c *Client) run() {
           break
         }
         go func() {
-          c.handlePeer(conn, conn)
+          c.handlePeer(conn, conn, true)
           conn.Close()
         }()
       }
@@ -233,6 +236,22 @@ func (c *Client) hubExec(m *method) {
     } else {
       c.connect(remote)
     }
+
+  case "ConnectToMe":
+    parts := bytes.Split(m.data, []byte(" "))
+    if len(parts) != 2 { break }
+    if string(parts[0]) != c.Nick { break }
+    go func() {
+      c.log("Connecting to: " + string(m.data))
+      conn, err := net.Dial("tcp", string(parts[1]))
+      if err == nil {
+        err = c.handlePeer(conn, conn, true)
+      }
+      if err != nil && err != io.EOF {
+        c.log("Connection failed: " + err.Error())
+      }
+      if conn != nil { conn.Close() }
+    }()
 
   default:
     c.log("Unknown command: $" + m.name + " " + string(m.data))

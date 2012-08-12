@@ -133,6 +133,7 @@ func (f *FileListing) FindDir(dir string) (*Directory, error) {
 
 func (f *FileListing) FindFile(pathname string) (file *File, err error) {
   dirname, base := path.Split(pathname)
+  if len(dirname) == 0 { return nil, FileNotFound }
   dir, err := f.FindDir(dirname[0:len(dirname)-1])
   if err != nil { return }
   for i, f := range dir.Files {

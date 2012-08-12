@@ -230,9 +230,18 @@ func (p *peer) parseFiles(in io.Reader) error {
   return err
 }
 
-func (c *Client) handlePeer(in io.Reader, out io.Writer) (err error) {
+func (c *Client) handlePeer(in io.Reader, out io.Writer, first bool) (err error) {
   var m method
   write := bufio.NewWriter(out)
+  number := rand.Int63n(0x7fff)
+  lock, pk := GenerateLock()
+
+  if first {
+    send(write, "MyNick", []byte(c.Nick))
+    sendf(write, "Lock", func(w *bufio.Writer) {
+      fmt.Fprintf(w, "%s Pk=%s", lock, pk)
+    })
+  }
 
   /* Step 0 - figure out who we're talking to */
   buf := bufio.NewReader(in)
@@ -262,12 +271,12 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer) (err error) {
   if idx == -1 { return errors.New("Invalid $Lock") }
 
   /* Step 3 - send our nick/lock/supports/direction metadata */
-  number := rand.Int63n(0x7fff)
-  lock, pk := GenerateLock()
-  send(write, "MyNick", []byte(c.Nick))
-  sendf(write, "Lock", func(w *bufio.Writer) {
-    fmt.Fprintf(w, "%s Pk=%s", lock, pk)
-  })
+  if !first {
+    send(write, "MyNick", []byte(c.Nick))
+    sendf(write, "Lock", func(w *bufio.Writer) {
+      fmt.Fprintf(w, "%s Pk=%s", lock, pk)
+    })
+  }
   send(write, "Supports",
        []byte("MiniSlots XmlBZList ADCGet TTHF ZLIG GetZBlock"))
   mydirection := "Upload"
@@ -383,7 +392,7 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer) (err error) {
   /* try to diagnose why peers disconnect */
   err = c.initiateDownload()
   defer func() {
-    if err != nil {
+    if err != nil && err != io.EOF {
       c.log("error with '" + nick + "': " + err.Error())
     }
   }()
@@ -398,7 +407,9 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer) (err error) {
     /* ADC receiving half of things */
     case "ADCSND", "ADCGET":
       parts := adc.FindStringSubmatch(string(m.data))
-      if len(parts) != 6 { return errors.New("Malformed ADCSND command") }
+      if len(parts) != 6 {
+        return errors.New("Malformed ADC command: " + string(m.data))
+      }
       size, err = strconv.ParseInt(parts[4], 10, 64)
       if err == nil {
         offset, err = strconv.ParseInt(parts[3], 10, 64)

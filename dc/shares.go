@@ -48,7 +48,7 @@ func NewShares() Shares {
                 rescan:   make(chan int)}
 }
 
-func (s *Shares) save(c *Client, list *FileListing) error {
+func (s *Shares) save(c *Client, list *FileListing, xmlFile *File) error {
   /* Create the necessary directories and get a handle on the file */
   err := os.MkdirAll(c.CacheDir, os.FileMode(0755))
   if err != nil { return err }
@@ -66,11 +66,21 @@ func (s *Shares) save(c *Client, list *FileListing) error {
 
   /* Unfortunately bzip2.Writer does not exist, so we're forced to shell out */
   cmd := exec.Command("bzip2", "-f", file.Name())
-  return cmd.Run()
+  err = cmd.Run()
+  if err != nil { return err }
+
+  file, err = os.Open(file.Name() + ".bz2")
+  if err != nil { return err }
+  info, err := file.Stat()
+  if err != nil { return err }
+  xmlFile.Size = ByteSize(info.Size())
+  xmlFile.realpath = file.Name()
+  return nil
 }
 
 func (s *Shares) hash(c *Client) {
   list := FileListing{Version: "1.0.0", Generator: "fargo", Base: "/"}
+  xmlList := File{Name: "files.xml.bz2"}
 
   for i := 0; i < MaxWorkers; i++ {
     go s.worker()
@@ -79,7 +89,7 @@ func (s *Shares) hash(c *Client) {
   recheck := time.After(15 * time.Minute)
 
   for {
-    err := s.save(c, &list)
+    err := s.save(c, &list, &xmlList)
     if err != nil {
       c.log("save error: " + err.Error())
     }
@@ -122,8 +132,12 @@ func (s *Shares) hash(c *Client) {
         }
 
       case q := <-s.queries:
-        f, _ := list.FindFile(q.path)
-        q.response <- f
+        if q.path == "files.xml.bz2" {
+          q.response <- &xmlList
+        } else {
+          f, _ := list.FindFile(q.path)
+          q.response <- f
+        }
     }
   }
 }

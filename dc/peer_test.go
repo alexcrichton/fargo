@@ -80,7 +80,7 @@ func setupPeer(t *testing.T) (*Client, *bufio.Reader, *bufio.Writer) {
   peerin, _out := io.Pipe()
 
   go func() {
-    err := c.handlePeer(peerin, peerout)
+    err := c.handlePeer(peerin, peerout, false)
     peerin.Close()
     peerout.Close()
     if err != nil { t.Fatal(err) }
