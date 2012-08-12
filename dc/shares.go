@@ -1,24 +1,32 @@
 package dc
 
 import "encoding/xml"
+import "errors"
 import "io"
 import "os"
 import "os/exec"
 import "path/filepath"
 import "time"
+import "sync/atomic"
 
 import "github.com/alexcrichton/fargo/dc/tth"
 
 type Shares struct {
-  roots     []string
   shares    chan Share
   delShares chan string
   queries   chan fileQuery
-  hashers   chan HashReq
-  stop      chan int
-  rescan    chan int
-  list      *FileListing
+  hashers   chan *File
+  cmds      chan command
+  resave    chan int
+
+  hashing   int32
 }
+
+type command int
+const (
+  stop command = iota
+  rescan
+)
 
 type Share struct {
   dir     string
@@ -30,22 +38,15 @@ type fileQuery struct {
   response  chan *File
 }
 
-type HashReq struct {
-  path    string
-  tth     *string
-  size    uint64
-}
-
 var MaxWorkers = 4
 
 func NewShares() Shares {
-  return Shares{roots:    make([]string, 0),
-                shares:   make(chan Share),
-                delShares:      make(chan string),
-                queries:  make(chan fileQuery),
-                hashers:  make(chan HashReq),
-                stop:     make(chan int),
-                rescan:   make(chan int)}
+  return Shares{shares:    make(chan Share),
+                delShares: make(chan string),
+                queries:   make(chan fileQuery),
+                hashers:   make(chan *File),
+                cmds:      make(chan command),
+                resave:    make(chan int, 1)}
 }
 
 func (s *Shares) save(c *Client, list *FileListing, xmlFile *File) error {
@@ -87,17 +88,14 @@ func (s *Shares) hash(c *Client) {
   }
 
   recheck := time.After(15 * time.Minute)
+  err := s.save(c, &list, &xmlList)
+  if err != nil {
+    c.log("save error, aborting: " + err.Error())
+    return
+  }
 
   for {
-    err := s.save(c, &list, &xmlList)
-    if err != nil {
-      c.log("save error: " + err.Error())
-    }
-
     select {
-      case <-s.stop:
-        return
-
       case share := <-s.shares:
         if list.Directory.childFile(share.name) != nil ||
            list.Directory.childDir(share.name) != nil {
@@ -121,14 +119,28 @@ func (s *Shares) hash(c *Client) {
         }
 
       case <-recheck:
-      case <-s.rescan:
         recheck = time.After(15 * time.Minute)
-        for i := 0; i < len(list.Dirs); i++ {
-          err := s.sync(c, &list, Share{name: list.Dirs[i].Name,
-                                        dir: list.Dirs[i].realpath})
-          if err != nil {
-            c.log("hash error (" + list.Dirs[i].Name + "): " + err.Error())
-          }
+        err = s.rescanShares(&list, c)
+        if err != nil {
+          c.log("rescan error: " + err.Error())
+        }
+
+      case cmd := <-s.cmds:
+        switch cmd {
+          case stop:
+            return
+          case rescan:
+            err = s.rescanShares(&list, c)
+            if err != nil {
+              c.log("rescan error: " + err.Error())
+            }
+        }
+
+      case <-s.resave:
+        if atomic.LoadInt32(&s.hashing) != 0 { break }
+        err = s.save(c, &list, &xmlList)
+        if err != nil {
+          c.log("save error: " + err.Error())
         }
 
       case q := <-s.queries:
@@ -140,6 +152,17 @@ func (s *Shares) hash(c *Client) {
         }
     }
   }
+}
+
+func (s *Shares) rescanShares(list *FileListing, c *Client) error {
+  for i := 0; i < len(list.Dirs); i++ {
+    err := s.sync(c, list, Share{name: list.Dirs[i].Name,
+                                  dir: list.Dirs[i].realpath})
+    if err != nil {
+      return errors.New("[" + list.Dirs[i].Name + "] " + err.Error())
+    }
+  }
+  return nil
 }
 
 func (s *Shares) sync(c *Client, list *FileListing, sh Share) error {
@@ -162,15 +185,15 @@ func (s *Shares) file(f *os.File, info os.FileInfo, d *Directory,
     d.removeDirName(name)
     file := d.childFile(name)
     if file == nil {
-      d.Files = append(d.Files, File{Name: name, realpath: f.Name()})
-      file = &d.Files[len(d.Files) - 1]
+      file = &File{Name: name, realpath: f.Name()}
+      d.Files = append(d.Files, file)
     }
     file.Size = ByteSize(info.Size())
     if info.ModTime().After(file.mtime) {
       file.mtime = info.ModTime()
       file.TTH = ""
-      s.hashers <- HashReq{path: f.Name(), tth: &file.TTH,
-                           size: uint64(file.Size)}
+      atomic.AddInt32(&s.hashing, 1)
+      s.hashers <- file
     }
     file.version = d.version
     return nil
@@ -236,11 +259,12 @@ func (s *Shares) remove(name string) error {
 }
 
 func (s *Shares) update() {
-  s.rescan <- 1
+  s.cmds <- rescan
 }
 
 func (s *Shares) halt() {
-  s.stop <- 1
+  s.cmds <- stop
+  close(s.cmds)
   close(s.shares)
   close(s.queries)
   close(s.delShares)
@@ -248,16 +272,22 @@ func (s *Shares) halt() {
 }
 
 func (s *Shares) worker() {
-  for req := range s.hashers {
-    file, err := os.Open(req.path)
+  for info := range s.hashers {
+    file, err := os.Open(info.realpath)
     hash := ""
     if err == nil {
-      hash, err = tth.Hash(file, req.size)
+      hash, err = tth.Hash(file, uint64(info.Size))
     }
     if err == nil {
-      *req.tth = hash
+      info.TTH = hash
     } else {
-      *req.tth = ""
+      info.TTH = "fail"
+    }
+    if atomic.AddInt32(&s.hashing, -1) == 0 {
+      select {
+        case s.resave <- 1:
+        default:
+      }
     }
   }
 }

@@ -25,7 +25,7 @@ type Directory struct {
   Name string `xml:",attr,omitempty"`
 
   Dirs  []Directory `xml:"Directory"`
-  Files []File      `xml:"File"`
+  Files []*File     `xml:"File"`
 
   realpath string
   version  uint64
@@ -50,7 +50,7 @@ func NewDirectory(name string, path string) Directory {
   return Directory{Name: name,
                    realpath: path,
                    Dirs: make([]Directory, 0),
-                   Files: make([]File, 0)}
+                   Files: make([]*File, 0)}
 }
 
 func (d *Directory) Len() int {
@@ -137,14 +137,14 @@ func (f *FileListing) FindFile(pathname string) (file *File, err error) {
   dir, err := f.FindDir(dirname[0:len(dirname)-1])
   if err != nil { return }
   for i, f := range dir.Files {
-    if f.Name == base { return &dir.Files[i], nil }
+    if f.Name == base { return dir.Files[i], nil }
   }
   return nil, FileNotFound
 }
 
 func (d *Directory) visit(pathname string, cb VisitFunc) error {
   for i, file := range d.Files {
-    err := cb(&d.Files[i], path.Join(pathname, file.Name))
+    err := cb(d.Files[i], path.Join(pathname, file.Name))
     if err != nil { return err }
   }
   for _, dir := range d.Dirs {
@@ -156,7 +156,7 @@ func (d *Directory) visit(pathname string, cb VisitFunc) error {
 
 func (d *Directory) childFile(name string) *File {
   for i, file := range d.Files {
-    if file.Name == name { return &d.Files[i] }
+    if file.Name == name { return d.Files[i] }
   }
   return nil
 }

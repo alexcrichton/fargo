@@ -79,7 +79,9 @@ func (c *Client) peerGone(nick string) {
     c.DL.release()
     p.dl = nil
   } else if p.ul != nil {
-    c.UL.release()
+    if p.ul.Name != "files.xml.bz2" {
+      c.UL.release()
+    }
     p.ul = nil
   }
   c.Unlock()
@@ -187,12 +189,17 @@ func (p *peer) download(outfile *os.File, dl *download) error {
 
 func (p *peer) upload(c *Client, file string,
                       offset, size int64) (int64, error) {
-  /* take a slot, convert to upload state, set p.ul with open file */
-  if !c.UL.take() { return 0, errors.New("No slots to upload with") }
+  c.log("Uploading: " + file)
   err := ClientFileNotFound
-  defer func() {
-    if err != nil { c.UL.release() }
-  }()
+
+  /* MiniSlots dictates that file lists don't need upload slots */
+  if file != "files.xml.bz2" {
+    /* take a slot, convert to upload state, set p.ul with open file */
+    if !c.UL.take() { return 0, errors.New("No slots to upload with") }
+    defer func() {
+      if err != nil { c.UL.release() }
+    }()
+  }
 
   p.Lock()
   defer p.Unlock()
@@ -277,8 +284,9 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer, first bool) (err error)
       fmt.Fprintf(w, "%s Pk=%s", lock, pk)
     })
   }
+  /* TODO: support TTHF */
   send(write, "Supports",
-       []byte("MiniSlots XmlBZList ADCGet TTHF ZLIG GetZBlock"))
+       []byte("MiniSlots XmlBZList ADCGet ZLIG GetZBlock"))
   mydirection := "Upload"
   if len(p.dls) > 0 {
     mydirection = "Download"
@@ -366,7 +374,6 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer, first bool) (err error)
     var compressed *zlib.Writer
     var upload io.Writer = out
     if z {
-      println("compressing")
       compressed = zlib.NewWriter(upload)
       upload = compressed
     }
@@ -382,7 +389,9 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer, first bool) (err error)
     }
     if err != nil { return err }
     c.log("Finished uploading: " + p.file.Name())
-    c.UL.release() /* if we fail with error, our slot is released elsewhere */
+    if p.ul.Name != "files.xml.bz2" {
+      c.UL.release() /* if we fail with error, our slot is released elsewhere */
+    }
     p.ul = nil
     p.file = nil
     p.state = Idle
@@ -397,7 +406,7 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer, first bool) (err error)
     }
   }()
 
-  adc := regexp.MustCompile("([^ ]+) (.+) ([0-9]+) ([0-9]+)( ZL1)?")
+  adc := regexp.MustCompile("([^ ]+) (.+) ([0-9]+) (-?[0-9]+)( ZL1)?")
   size, offset := int64(0), int64(0)
 
   for err == nil {

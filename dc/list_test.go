@@ -75,13 +75,13 @@ func Test_ParseNonUTF8WhenLying(t *testing.T) {
 
 func dummy() *FileListing {
   var listing FileListing
-  listing.Files = make([]File, 4)
+  listing.Files = make([]*File, 4)
   listing.Dirs = make([]Directory, 2)
 
-  listing.Files[0] = File{Name: "foo"}
-  listing.Files[1] = File{Name: "bar"}
-  listing.Files[2] = File{Name: "a"}
-  listing.Files[3] = File{Name: "z"}
+  listing.Files[0] = &File{Name: "foo"}
+  listing.Files[1] = &File{Name: "bar"}
+  listing.Files[2] = &File{Name: "a"}
+  listing.Files[3] = &File{Name: "z"}
   listing.Dirs[0] = Directory{Name: "foo"}
   listing.Dirs[1] = Directory{Name: "bar"}
   return &listing
@@ -119,7 +119,7 @@ func Test_Encode(t *testing.T) {
 func Test_Visiting(t *testing.T) {
   listing := dummy()
   sort.Sort(listing)
-  listing.Dirs[0].Files = []File{ File{Name: "foo"} }
+  listing.Dirs[0].Files = []*File{ &File{Name: "foo"} }
 
   /* visit all files */
   visited := 0
