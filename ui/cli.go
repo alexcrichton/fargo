@@ -67,7 +67,7 @@ var activeTerm *Terminal
 var completionResults []string
 
 var commands = []string{"browse", "connect", "nicks", "ops", "help", "quit",
-                        "ls", "pwd", "cd", "get", "share"}
+                        "ls", "pwd", "cd", "get", "share", "say"}
 var options = []string{"ulslots", "dlslots", "active", "passive", "hub",
                        "nick", "download"}
 
@@ -258,6 +258,13 @@ func (t *Terminal) Exec(line string) {
       } else {
         t.err(err)
       }
+    }
+
+  case "say":
+    if len(parts) != 2 {
+      println("usage: say <message>")
+    } else {
+      t.client.Say(parts[1])
     }
 
   case "get":
