@@ -8,6 +8,8 @@ import "io"
 import "log"
 import "net"
 import "path"
+import "regexp"
+import "strconv"
 import "sync"
 
 type Client struct {
@@ -46,8 +48,19 @@ type hubConn struct {
   conn  net.Conn
   write *bufio.Writer
   name  string
-  nicks []string
+  nicks map[string]nickInfo
   ops   []string
+}
+
+type nickInfo struct {
+  client  string
+  version string
+  mode	  string
+  slots	  uint32
+  speed	  string
+  email	  string
+  shared  uint64
+  info	  string
 }
 
 type method struct {
@@ -56,6 +69,30 @@ type method struct {
 }
 
 var notConnected = errors.New("not connected to the hub")
+var infoPattern = regexp.MustCompile(`$ALL (\w+) <(\S+) V:(\S+),M:(\S),` +
+                                     `H:\d+/\d+/\d+,S:(\d+).*>$ ` +
+                                     `$(\S*)` + "\001" + `$(\S*)$(\S*)$`)
+
+func (h *hubConn) parseInfo(info string) error {
+  matches := infoPattern.FindStringSubmatch(info)
+  if len(matches) != 9 { return errors.New("Malformed info string") }
+
+  nick := matches[1]
+  client := matches[2]
+  version := matches[3]
+  mode := matches[4]
+  slots, err := strconv.ParseInt(matches[5], 10, 32)
+  if err != nil { return err }
+  speed := matches[6]
+  email := matches[7]
+  shared, err := strconv.ParseInt(matches[8], 10, 64)
+  if err != nil { return err }
+
+  h.nicks[nick] = nickInfo{client: client, version: version, mode: mode,
+                           slots: uint32(slots), speed: speed, email: email,
+                           shared: uint64(shared), info: info}
+  return nil
+}
 
 func NewClient() *Client {
   return &Client{Passive: true,
@@ -209,13 +246,34 @@ func (c *Client) hubExec(m *method) {
   switch m.name {
   case "NickList":
     nicks := bytes.Split(m.data, []byte("$$"))
-    snicks := make([]string, 0)
+    snicks := make(map[string]nickInfo)
     for _, name := range nicks {
       if len(name) > 0 {
-        snicks = append(snicks, string(name))
+        snicks[string(name)] = nickInfo{}
       }
     }
+    c.Lock()
     c.hub.nicks = snicks
+    c.Unlock()
+
+  case "Hello":
+    c.Lock()
+    c.hub.nicks[string(m.data)] = nickInfo{}
+    c.Unlock()
+
+  case "Quit":
+    c.Lock()
+    delete(c.hub.nicks, string(m.data))
+    c.Unlock()
+
+  case "MyINFO":
+    c.hub.parseInfo(string(m.data))
+
+  case "HubName":
+    if c.hub.name != string(m.data) {
+      c.hub.name = string(m.data)
+      c.log("Hub renamed to: " + c.hub.name)
+    }
 
   case "OpList":
     ops := bytes.Split(m.data, []byte("$$"))
@@ -322,7 +380,15 @@ func (c *Client) Browse(nick string) error {
 }
 
 func (c *Client) Nicks() ([]string, error) {
-  return c.hub.nicks, nil
+  c.Lock()
+  nicks := make([]string, len(c.hub.nicks))
+  i := 0
+  for k, _ := range c.hub.nicks {
+    nicks[i] = k
+    i++
+  }
+  c.Unlock()
+  return nicks, nil
 }
 
 func (c *Client) Ops() ([]string, error) {
