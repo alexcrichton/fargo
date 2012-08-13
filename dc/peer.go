@@ -4,8 +4,8 @@ import "bufio"
 import "bytes"
 import "compress/bzip2"
 import "compress/zlib"
-import "fmt"
 import "errors"
+import "fmt"
 import "io"
 import "math/rand"
 import "os"
@@ -162,7 +162,7 @@ func (p *peer) download(outfile *os.File, dl *download) error {
   if p.implements("ADCGet") {
     sendf(p.write, "ADCGET", func(w *bufio.Writer) {
       if dl.tth != "" && p.implements("TTHF") {
-        fmt.Fprintf(w, "tthl TTH/%s", dl.tth)
+        fmt.Fprintf(w, "file TTH/%s", dl.tth)
       } else {
         fmt.Fprintf(w, "file %s", dl.file)
       }
@@ -324,7 +324,14 @@ func (c *Client) handlePeer(in io.ReadCloser, out io.WriteCloser,
   /* Step 7+ - upload/download files infinitely until closed */
   p.write = write
   p.state = Idle
-  defer c.peerGone(nick)
+
+  /* try to diagnose why peers disconnect */
+  err = c.initiateDownload()
+  defer func() {
+    if err != nil && err != io.EOF {
+      c.log("error with '" + nick + "': " + err.Error())
+    }
+  }()
 
   dl := func(size int64, offset int64, z bool) error {
     if p.state != Downloading {
@@ -334,11 +341,10 @@ func (c *Client) handlePeer(in io.ReadCloser, out io.WriteCloser,
     if p.ul != nil { return errors.New("downloading while uploading") }
     defer p.file.Close()
 
-    var in io.Reader = buf
+    var input io.Reader = buf
     if z {
-      in2, err := zlib.NewReader(in)
+      input, err = zlib.NewReader(input)
       if err != nil { return err }
-      in = in2
     }
 
     _, err := p.file.Seek(offset, os.SEEK_SET)
@@ -351,7 +357,7 @@ func (c *Client) handlePeer(in io.ReadCloser, out io.WriteCloser,
     if err != nil { return err }
 
     c.log("Starting download of: " + p.dl.file)
-    s, err := io.CopyN(p.file, in, size)
+    s, err := io.CopyN(p.file, input, size)
     if err != nil { return err }
     if s != size { return errors.New("Didn't download whole file") }
     if p.dl.fileList() {
@@ -401,14 +407,6 @@ func (c *Client) handlePeer(in io.ReadCloser, out io.WriteCloser,
     p.state = Idle
     return c.initiateDownload()
   }
-
-  /* try to diagnose why peers disconnect */
-  err = c.initiateDownload()
-  defer func() {
-    if err != nil && err != io.EOF {
-      c.log("error with '" + nick + "': " + err.Error())
-    }
-  }()
 
   adc := regexp.MustCompile("([^ ]+) (.+) ([0-9]+) (-?[0-9]+)( ZL1)?")
   size, offset := int64(0), int64(0)
@@ -494,6 +492,9 @@ func (c *Client) handlePeer(in io.ReadCloser, out io.WriteCloser,
         fmt.Fprintf(w, "%d", size)
       })
       err = ul(size, offset, m.name == "UGetZBlock")
+
+    case "Error":
+      return errors.New("remote error: " + string(m.data))
 
     default:
       return errors.New("Unknown command: $" + m.name)
