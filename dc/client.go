@@ -56,12 +56,12 @@ type hubConn struct {
 type nickInfo struct {
   client  string
   version string
-  mode	  string
-  slots	  uint32
-  speed	  string
-  email	  string
+  mode    string
+  slots   uint32
+  speed   string
+  email   string
   shared  uint64
-  info	  string
+  info    string
 }
 
 type method struct {
@@ -102,7 +102,7 @@ func NewClient() *Client {
                  dls:     make(map[string][]*download),
                  failed:  make([]*download, 0),
                  shares:  NewShares(),
-                 hub:     hubConn{nicks: make([]string, 0),
+                 hub:     hubConn{nicks: make(map[string]nickInfo),
                                   ops:   make([]string, 0)}}
 }
 
@@ -176,25 +176,16 @@ func (c *Client) run() {
   defer c.log("Hub disconnected")
 
   /* Step 1 - Receive the hub's lock */
-  if readCmd(hub, &m) != nil {
-    return
-  }
-  if m.name != "Lock" {
-    return
-  }
+  if readCmd(hub, &m) != nil { return }
+  if m.name != "Lock" { return }
   idx := bytes.IndexByte(m.data, ' ')
-  if idx == -1 {
-    return
-  }
+  if idx == -1 { return }
 
   /* Step 2 - Receive the hub's name */
-  if readCmd(hub, &m) != nil {
-    return
-  }
-  if m.name != "HubName" {
-    return
-  }
-  c.log("Connected to hub: " + string(m.data))
+  if readCmd(hub, &m) != nil { return }
+  if m.name != "HubName" { return }
+  c.hub.name = string(m.data)
+  c.log("Connected to hub: " + c.hub.name)
 
   /* Step 3 - send our credentials */
   send(c.hub.write, "Key", GenerateKey(m.data[0:idx]))
@@ -219,7 +210,7 @@ func (c *Client) run() {
       b = 'A'
     }
     fmt.Fprintf(w, "$ALL %s ", c.Nick)
-    fmt.Fprintf(w, "<fargo V:0.0.1,M:%c,H:1/0/0,S:%d,Dt:1.2.6/W>",
+    fmt.Fprintf(w, "<fargo V:0.0.1,M:%c,H:1/0/0,S:%d>",
                 b, c.UL.Cnt)
     /* $speed\001$email$size$ */
     /* TODO: real file size */
@@ -417,8 +408,7 @@ func (c *Client) DisconnectHub() error {
   if c.hub.conn == nil {
     return notConnected
   }
-  c.hub.conn.Close()
-  return nil
+  return c.hub.conn.Close()
 }
 
 func (c *Client) Listings(nick string, dir string) (*Directory, error) {
