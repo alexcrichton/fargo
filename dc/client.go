@@ -22,6 +22,7 @@ type Client struct {
   UL            Slots
   DownloadRoot  string
   CacheDir      string
+  Quiet         bool
 
   logc   chan string
   peers  map[string]*peer
@@ -106,10 +107,12 @@ func NewClient() *Client {
 }
 
 func (c *Client) log(msg string) {
-  if c.logc == nil {
-    println(msg)
-  } else {
-    c.logc <- msg
+  if !c.Quiet {
+    if c.logc == nil {
+      println(msg)
+    } else {
+      c.logc <- msg
+    }
   }
 }
 
