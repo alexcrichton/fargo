@@ -448,3 +448,32 @@ func (c *Client) Unshare(name string) error {
 func (c *Client) SpawnHashers() {
   go c.shares.hash(c)
 }
+
+func (c *Client) Stop() {
+  c.DisconnectHub()
+  c.shares.halt()
+  peers := make([]*peer, 0)
+  c.Lock()
+  for _, peer := range c.peers {
+    if peer == nil { continue }
+    if peer.in != nil {
+      peer.in.Close()
+      if peer.out != nil {
+        peer.out.Close()
+        peers = append(peers, peer)
+      }
+    }
+  }
+  c.Unlock()
+
+  for _, p := range peers {
+    <-p.dead
+  }
+}
+
+func (c *Client) Say(msg string) {
+  if c.hub.write != nil {
+    fmt.Fprintf(c.hub.write, "<%s> %s|", c.Nick, msg)
+    c.hub.write.Flush()
+  }
+}

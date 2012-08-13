@@ -17,6 +17,9 @@ type peer struct {
   nick     string
   write    *bufio.Writer
   supports []string
+  in       io.ReadCloser
+  out      io.WriteCloser
+  dead     chan int
 
   sync.Mutex
   state peerState
@@ -45,7 +48,7 @@ func (c *Client) peer(nick string, cb func(*peer)) *peer {
 
   p := c.peers[nick]
   if p == nil {
-    p = &peer{dls: make([]*download, 0), nick: nick}
+    p = &peer{dls: make([]*download, 0), nick: nick, dead: make(chan int, 1)}
     c.peers[nick] = p
   }
   p.Lock()
@@ -84,6 +87,7 @@ func (c *Client) peerGone(nick string) {
   }
   c.Unlock()
   c.initiateDownload()
+  p.dead <- 0
 }
 
 func (c *Client) initiateDownload() (err error) {
@@ -234,7 +238,8 @@ func (p *peer) parseFiles(c *Client, in io.Reader) error {
   return err
 }
 
-func (c *Client) handlePeer(in io.Reader, out io.Writer, first bool) (err error) {
+func (c *Client) handlePeer(in io.ReadCloser, out io.WriteCloser,
+                            first bool) (err error) {
   var m method
   write := bufio.NewWriter(out)
   number := rand.Int63n(0x7fff)
@@ -264,6 +269,9 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer, first bool) (err error)
   })
   if bad { return errors.New("Invalid state with peer tables") }
   if p.write != nil { panic("already have a write connection") }
+  p.in = in
+  p.out = out
+  defer c.peerGone(p.nick)
 
   c.log("Connected to: " + p.nick)
   defer c.log("Disconnected from: " + p.nick)

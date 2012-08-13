@@ -41,4 +41,5 @@ func main() {
     log.Fatal(err)
   }
   term.Run()
+  client.Stop()
 }
