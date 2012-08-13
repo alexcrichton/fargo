@@ -60,7 +60,7 @@ type nickInfo struct {
   slots   uint32
   speed   string
   email   string
-  shared  uint64
+  shared  ByteSize
   info    string
 }
 
@@ -91,7 +91,7 @@ func (h *hubConn) parseInfo(info string) error {
 
   h.nicks[nick] = nickInfo{client: client, version: version, mode: mode,
                            slots: uint32(slots), speed: speed, email: email,
-                           shared: uint64(shared), info: info}
+                           shared: ByteSize(shared), info: info}
   return nil
 }
 
