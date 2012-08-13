@@ -23,6 +23,7 @@ type Client struct {
 
   logc   chan string
   peers  map[string]*peer
+  lists  map[string]*FileListing
   dls    map[string][]*download
   failed []*download
   hub    hubConn
@@ -58,11 +59,13 @@ var notConnected = errors.New("not connected to the hub")
 
 func NewClient() *Client {
   return &Client{Passive: true,
-    peers: make(map[string]*peer),
-    dls: make(map[string][]*download),
-    failed: make([]*download, 0),
-    shares: NewShares(),
-    hub: hubConn{nicks: make([]string, 0), ops: make([]string, 0)}}
+                 peers:   make(map[string]*peer),
+                 lists:   make(map[string]*FileListing),
+                 dls:     make(map[string][]*download),
+                 failed:  make([]*download, 0),
+                 shares:  NewShares(),
+                 hub:     hubConn{nicks: make([]string, 0),
+                                  ops:   make([]string, 0)}}
 }
 
 func (c *Client) log(msg string) {
@@ -350,21 +353,25 @@ func (c *Client) DisconnectHub() error {
 }
 
 func (c *Client) Listings(nick string, dir string) (*Directory, error) {
-  p := c.peer(nick, func(*peer) {})
+  c.Lock()
+  list := c.lists[nick]
+  c.Unlock()
 
-  if p.files == nil {
+  if list == nil {
     return nil, errors.New("No file list available for: " + nick)
   }
-  return p.files.FindDir(dir)
+  return list.FindDir(dir)
 }
 
 func (c *Client) Download(nick string, pathname string) error {
   extra, _ := path.Split(pathname)
-  p := c.peer(nick, func(*peer) {})
-  if p.files == nil {
+  c.Lock()
+  list := c.lists[nick]
+  c.Unlock()
+  if list == nil {
     return errors.New("No file list available for: " + nick)
   }
-  return p.files.EachFile(pathname, func(f *File, path string) error {
+  return list.EachFile(pathname, func(f *File, path string) error {
     dl := NewDownloadFile(nick, path, f)
     dl.reldst = path[len(extra):]
     return c.download(dl)

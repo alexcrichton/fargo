@@ -24,8 +24,6 @@ type peer struct {
   file  *os.File
   ul    *File
   dls   []*download
-
-  files *FileListing
 }
 
 type peerState int
@@ -225,11 +223,13 @@ func (p *peer) implements(extension string) bool {
   return false
 }
 
-func (p *peer) parseFiles(in io.Reader) error {
+func (p *peer) parseFiles(c *Client, in io.Reader) error {
   files := &FileListing{}
   err := ParseFileList(bzip2.NewReader(in), files)
   if err == nil {
-    p.files = files
+    c.Lock()
+    c.lists[p.nick] = files
+    c.Unlock()
   }
   return err
 }
@@ -349,7 +349,7 @@ func (c *Client) handlePeer(in io.Reader, out io.Writer, first bool) (err error)
     if p.dl.fileList() {
       _, err := p.file.Seek(0, os.SEEK_SET)
       if err != nil { return err }
-      err = p.parseFiles(p.file)
+      err = p.parseFiles(c, p.file)
       if err != nil { return err }
     }
     c.log("Finished downloading: " + p.dl.file)
