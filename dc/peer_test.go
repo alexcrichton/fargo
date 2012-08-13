@@ -74,6 +74,7 @@ func tmpdir(t *testing.T) string {
 func setupPeer(t *testing.T) (*Client, *bufio.Reader, *bufio.Writer,
                               *io.PipeReader, *io.PipeWriter) {
   c := NewClient()
+  c.Quiet = true
   c.Nick = "foo"
   c.DL.Cnt = 1
   c.UL.Cnt = 1
