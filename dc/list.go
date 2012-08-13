@@ -225,15 +225,16 @@ const (
 )
 
 func (b ByteSize) String() string {
+  bf := float64(b)
   switch {
   case b >= TB:
-    return fmt.Sprintf("%.2fTB", b/TB)
+    return fmt.Sprintf("%.2fTB", bf/float64(TB))
   case b >= GB:
-    return fmt.Sprintf("%.2fGB", b/GB)
+    return fmt.Sprintf("%.2fGB", bf/float64(GB))
   case b >= MB:
-    return fmt.Sprintf("%.2fMB", b/MB)
+    return fmt.Sprintf("%.2fMB", bf/float64(MB))
   case b >= KB:
-    return fmt.Sprintf("%.2fKB", b/KB)
+    return fmt.Sprintf("%.2fKB", bf/float64(KB))
   }
-  return fmt.Sprintf("%.2fB", b)
+  return fmt.Sprintf("%.2fB", bf)
 }

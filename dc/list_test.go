@@ -170,3 +170,14 @@ func Test_Visiting(t *testing.T) {
   if err != nil { t.Error(err) }
   if visited != 1 { t.Error(visited) }
 }
+
+func Test_ByteSizeStringification(t *testing.T) {
+  s := ByteSize(100).String()
+  if s != "100.00B" { t.Error(s) }
+  s = ByteSize(100 << 10).String()
+  if s != "100.00KB" { t.Error(s) }
+  s = ByteSize(100 << 20).String()
+  if s != "100.00MB" { t.Error(s) }
+  s = ByteSize(100 << 30).String()
+  if s != "100.00GB" { t.Error(s) }
+}
