@@ -10,6 +10,7 @@ import "net"
 import "path"
 import "regexp"
 import "strconv"
+import "strings"
 import "sync"
 
 type Client struct {
@@ -23,13 +24,13 @@ type Client struct {
   DownloadRoot  string
   CacheDir      string
   Quiet         bool
+  Hub           HubConnection
 
   logc   chan string
   peers  map[string]*peer
   lists  map[string]*FileListing
   dls    map[string][]*download
   failed []*download
-  hub    hubConn
   shares Shares
 
   sync.Mutex
@@ -45,23 +46,24 @@ type dirRequest struct {
   resp chan string
 }
 
-type hubConn struct {
+type HubConnection struct {
+  Name  string
+
   conn  net.Conn
   write *bufio.Writer
-  name  string
-  nicks map[string]nickInfo
+  nicks map[string]*NickInfo
   ops   []string
 }
 
-type nickInfo struct {
-  client  string
-  version string
-  mode    string
-  slots   uint32
-  speed   string
-  email   string
-  shared  ByteSize
-  info    string
+type NickInfo struct {
+  Status  string
+  Client  string
+  Version string
+  Mode    string
+  Slots   uint32
+  Speed   string
+  Email   string
+  Shared  ByteSize
 }
 
 type method struct {
@@ -69,29 +71,43 @@ type method struct {
   data []byte
 }
 
-var notConnected = errors.New("not connected to the hub")
-var infoPattern = regexp.MustCompile(`$ALL (\w+) <(\S+) V:(\S+),M:(\S),` +
-                                     `H:\d+/\d+/\d+,S:(\d+).*>$ ` +
-                                     `$(\S*)` + "\001" + `$(\S*)$(\S*)$`)
+var notConnected = errors.New("not connected to the Hub")
+var infoPattern = regexp.MustCompile(`\$ALL (\S*) (.*)\$ \$(\S*)` + "\001?" +
+                                     `\$(\S*)\$(\S*)\$`)
+var tagPattern = regexp.MustCompile(`(.*)<(.*) V:(.*),M:(.),H:\d+/\d+/\d+` +
+                                    `,S:(\d+).*>`)
 
-func (h *hubConn) parseInfo(info string) error {
+func (h *HubConnection) parseInfo(info string) error {
   matches := infoPattern.FindStringSubmatch(info)
-  if len(matches) != 9 { return errors.New("Malformed info string") }
+  if len(matches) != 6 { return errors.New("Malformed info string") }
+  ni := h.nicks[matches[1]]
+  if ni == nil { return errors.New("MyINFO for an unknown nick") }
 
-  nick := matches[1]
-  client := matches[2]
-  version := matches[3]
-  mode := matches[4]
-  slots, err := strconv.ParseInt(matches[5], 10, 32)
-  if err != nil { return err }
-  speed := matches[6]
-  email := matches[7]
-  shared, err := strconv.ParseInt(matches[8], 10, 64)
+  size, err := strconv.ParseInt(matches[5], 10, 64)
   if err != nil { return err }
 
-  h.nicks[nick] = nickInfo{client: client, version: version, mode: mode,
-                           slots: uint32(slots), speed: speed, email: email,
-                           shared: ByteSize(shared), info: info}
+  ni.Speed  = matches[3]
+  ni.Email  = matches[4]
+  ni.Shared = ByteSize(size)
+
+  status := tagPattern.FindStringSubmatch(matches[2])
+
+  if len(status) == 6 {
+    slots, err := strconv.ParseInt(status[5], 10, 32)
+    if err != nil { return err }
+    ni.Status  = strings.TrimSpace(status[1])
+    ni.Client  = status[2]
+    ni.Version = status[3]
+    ni.Mode    = status[4]
+    ni.Slots   = uint32(slots)
+  } else {
+    ni.Status  = matches[2]
+    ni.Client  = ""
+    ni.Version = ""
+    ni.Mode    = ""
+    ni.Slots   = 0
+  }
+
   return nil
 }
 
@@ -102,8 +118,8 @@ func NewClient() *Client {
                  dls:     make(map[string][]*download),
                  failed:  make([]*download, 0),
                  shares:  NewShares(),
-                 hub:     hubConn{nicks: make(map[string]nickInfo),
-                                  ops:   make([]string, 0)}}
+                 Hub:     HubConnection{nicks: make(map[string]*NickInfo),
+                                        ops:   make([]string, 0)}}
 }
 
 func (c *Client) log(msg string) {
@@ -156,43 +172,43 @@ func (c *Client) run() {
     defer ln.Close()
   }
 
-  /* Create the tcp connection to the hub */
+  /* Create the tcp connection to the Hub */
   conn, err := net.Dial("tcp", c.HubAddress)
   if err != nil {
     c.log("error connecting: " + err.Error())
     return
   }
-  if c.hub.conn != nil {
-    panic("already have hub connection")
+  if c.Hub.conn != nil {
+    panic("already have Hub connection")
   }
-  c.hub.conn = conn
-  c.hub.write = bufio.NewWriter(conn)
+  c.Hub.conn = conn
+  c.Hub.write = bufio.NewWriter(conn)
   defer func() {
-    c.hub.conn = nil
-    c.hub.write = nil
+    c.Hub.conn = nil
+    c.Hub.write = nil
   }()
-  hub := bufio.NewReader(conn)
+  Hub := bufio.NewReader(conn)
   var m method
   defer c.log("Hub disconnected")
 
-  /* Step 1 - Receive the hub's lock */
-  if readCmd(hub, &m) != nil { return }
+  /* Step 1 - Receive the Hub's lock */
+  if readCmd(Hub, &m) != nil { return }
   if m.name != "Lock" { return }
   idx := bytes.IndexByte(m.data, ' ')
   if idx == -1 { return }
 
-  /* Step 2 - Receive the hub's name */
-  if readCmd(hub, &m) != nil { return }
+  /* Step 2 - Receive the Hub's name */
+  if readCmd(Hub, &m) != nil { return }
   if m.name != "HubName" { return }
-  c.hub.name = string(m.data)
-  c.log("Connected to hub: " + c.hub.name)
+  c.Hub.Name = string(m.data)
+  c.log("Connected to Hub: " + c.Hub.Name)
 
   /* Step 3 - send our credentials */
-  send(c.hub.write, "Key", GenerateKey(m.data[0:idx]))
-  send(c.hub.write, "ValidateNick", []byte(c.Nick))
+  send(c.Hub.write, "Key", GenerateKey(m.data[0:idx]))
+  send(c.Hub.write, "ValidateNick", []byte(c.Nick))
 
   /* Step 4 - receive our $Hello and reply with our info */
-  if readCmd(hub, &m) != nil {
+  if readCmd(Hub, &m) != nil {
     return
   }
   if m.name != "Hello" {
@@ -201,8 +217,8 @@ func (c *Client) run() {
   if string(m.data) != c.Nick {
     return
   }
-  send(c.hub.write, "Version", []byte("1,0091"))
-  sendf(c.hub.write, "MyINFO", func(w *bufio.Writer) {
+  send(c.Hub.write, "Version", []byte("1,0091"))
+  sendf(c.Hub.write, "MyINFO", func(w *bufio.Writer) {
     var b byte
     if c.Passive {
       b = 'P'
@@ -216,11 +232,11 @@ func (c *Client) run() {
     /* TODO: real file size */
     w.WriteString("$ $DSL\001$$5368709121$")
   })
-  send(c.hub.write, "GetNickList", nil)
+  send(c.Hub.write, "GetNickList", nil)
 
-  /* Step 4+ - process commands from the hub as they're received */
+  /* Step 4+ - process commands from the Hub as they're received */
   for {
-    cmd, err := hub.ReadBytes('|')
+    cmd, err := Hub.ReadBytes('|')
     if err != nil {
       return
     }
@@ -240,33 +256,41 @@ func (c *Client) hubExec(m *method) {
   switch m.name {
   case "NickList":
     nicks := bytes.Split(m.data, []byte("$$"))
-    snicks := make(map[string]nickInfo)
+    c.Lock()
     for _, name := range nicks {
-      if len(name) > 0 {
-        snicks[string(name)] = nickInfo{}
+      nick := string(name)
+      if len(name) > 0 && c.Hub.nicks[nick] == nil {
+        c.Hub.nicks[nick] = &NickInfo{}
+        sendf(c.Hub.write, "GetINFO", func(w *bufio.Writer) {
+          fmt.Fprintf(w, "%s %s", nick, c.Nick)
+        })
       }
     }
-    c.Lock()
-    c.hub.nicks = snicks
     c.Unlock()
 
   case "Hello":
+    nick := string(m.data)
     c.Lock()
-    c.hub.nicks[string(m.data)] = nickInfo{}
+    if c.Hub.nicks[nick] == nil {
+      c.Hub.nicks[nick] = &NickInfo{}
+    }
     c.Unlock()
 
   case "Quit":
     c.Lock()
-    delete(c.hub.nicks, string(m.data))
+    delete(c.Hub.nicks, string(m.data))
     c.Unlock()
 
   case "MyINFO":
-    c.hub.parseInfo(string(m.data))
+    err := c.Hub.parseInfo(string(m.data))
+    if err != nil {
+      c.log("MyINFO error: " + err.Error() + " for: " + string(m.data))
+    }
 
   case "HubName":
-    if c.hub.name != string(m.data) {
-      c.hub.name = string(m.data)
-      c.log("Hub renamed to: " + c.hub.name)
+    if c.Hub.Name != string(m.data) {
+      c.Hub.Name = string(m.data)
+      c.log("Hub renamed to: " + c.Hub.Name)
     }
 
   case "OpList":
@@ -277,7 +301,7 @@ func (c *Client) hubExec(m *method) {
         sops = append(sops, string(name))
       }
     }
-    c.hub.ops = sops
+    c.Hub.ops = sops
 
   case "RevConnectToMe":
     nicks := bytes.Split(m.data, []byte(" "))
@@ -351,7 +375,7 @@ func readCmd(buf *bufio.Reader, m *method) error {
 }
 
 func (c *Client) recvconnect(nick string) {
-  sendf(c.hub.write, "RevConnectToMe", func(w *bufio.Writer) {
+  sendf(c.Hub.write, "RevConnectToMe", func(w *bufio.Writer) {
     w.WriteString(c.Nick)
     w.WriteByte(' ')
     w.WriteString(nick)
@@ -359,7 +383,7 @@ func (c *Client) recvconnect(nick string) {
 }
 
 func (c *Client) connect(nick string) {
-  sendf(c.hub.write, "ConnectToMe", func(w *bufio.Writer) {
+  sendf(c.Hub.write, "ConnectToMe", func(w *bufio.Writer) {
     w.WriteString(nick)
     w.WriteByte(' ')
     w.WriteString(c.ClientAddress)
@@ -367,48 +391,48 @@ func (c *Client) connect(nick string) {
 }
 
 func (c *Client) Browse(nick string) error {
-  if c.hub.write == nil {
+  if c.Hub.write == nil {
     return notConnected
   }
   return c.download(NewDownload(nick, FileList))
 }
 
-func (c *Client) Nicks() ([]string, error) {
+func (c *Client) Nicks() []string {
   c.Lock()
-  nicks := make([]string, len(c.hub.nicks))
+  nicks := make([]string, len(c.Hub.nicks))
   i := 0
-  for k, _ := range c.hub.nicks {
+  for k, _ := range c.Hub.nicks {
     nicks[i] = k
     i++
   }
   c.Unlock()
-  return nicks, nil
+  return nicks
 }
 
 func (c *Client) Ops() ([]string, error) {
-  return c.hub.ops, nil
+  return c.Hub.ops, nil
 }
 
 func (c *Client) ConnectHub(msgs chan string) error {
   if c.Nick == "" { return errors.New("no nick is configured") }
-  if c.HubAddress == "" { return errors.New("no hub address is configured") }
+  if c.HubAddress == "" { return errors.New("no Hub address is configured") }
   if c.DownloadRoot == "" { return errors.New("no download root is configured")}
   if !c.Passive && c.ClientAddress == "" {
     return errors.New("no client address is configured")
   }
-  if c.hub.write == nil {
+  if c.Hub.write == nil {
     c.logc = msgs
     go c.run()
     return nil
   }
-  return errors.New("already connected to the hub")
+  return errors.New("already connected to the Hub")
 }
 
 func (c *Client) DisconnectHub() error {
-  if c.hub.conn == nil {
+  if c.Hub.conn == nil {
     return notConnected
   }
-  return c.hub.conn.Close()
+  return c.Hub.conn.Close()
 }
 
 func (c *Client) Listings(nick string, dir string) (*Directory, error) {
@@ -472,8 +496,14 @@ func (c *Client) Stop() {
 }
 
 func (c *Client) Say(msg string) {
-  if c.hub.write != nil {
-    fmt.Fprintf(c.hub.write, "<%s> %s|", c.Nick, msg)
-    c.hub.write.Flush()
+  if c.Hub.write != nil {
+    fmt.Fprintf(c.Hub.write, "<%s> %s|", c.Nick, msg)
+    c.Hub.write.Flush()
   }
+}
+
+func (c *Client) Info(nick string) *NickInfo {
+  c.Lock()
+  defer c.Unlock()
+  return c.Hub.nicks[nick]
 }

@@ -63,13 +63,18 @@ type Terminal struct {
 }
 
 var activeTerm *Terminal
-
 var completionResults []string
 
 var commands = []string{"browse", "connect", "nicks", "ops", "help", "quit",
-                        "ls", "pwd", "cd", "get", "share", "say"}
+                        "ls", "pwd", "cd", "get", "share", "say", "status"}
 var options = []string{"ulslots", "dlslots", "active", "passive", "hub",
                        "nick", "download"}
+
+type NickList struct {
+  Nicks  []string
+  Infos  []*dc.NickInfo
+  BySize bool
+}
 
 //export completeEach
 func completeEach(c *C.char, idx int) *C.char {
@@ -138,10 +143,8 @@ func New(c *dc.Client) *Terminal {
 func (t *Terminal) complete(cmd string, word string) []string {
   switch cmd {
   case "browse":
-    nicks, err := activeTerm.client.Nicks()
-    if err == nil {
-      return filter(nicks, word)
-    }
+    nicks := activeTerm.client.Nicks()
+    return filter(nicks, word)
 
   case "set":
     if strings.Index(word, " ") == -1 {
@@ -229,14 +232,25 @@ func (t *Terminal) Exec(line string) {
       t.err(err)
     }
   case "nicks":
-    nicks, err := t.client.Nicks()
-    if err == nil {
-      for _, n := range nicks {
-        println(n)
-      }
-    } else {
-      t.err(err)
+    list := NickList{Nicks: t.client.Nicks()}
+    list.Infos = make([]*dc.NickInfo, len(list.Nicks))
+    for i, n := range list.Nicks {
+      list.Infos[i] = t.client.Info(n)
     }
+    list.BySize = len(parts) == 2 && parts[1] == "-s"
+    sort.Sort(&list)
+
+    fmt.Printf("%15s %7s %15s\n", "nick", "size", "client")
+    for i, n := range list.Nicks {
+      info := list.Infos[i]
+      if info == nil {
+        fmt.Printf("%15s %7s %15s\n", n, "--", "--")
+      } else {
+        fmt.Printf("%15s %7v %15s\n", n, info.Shared,
+                   info.Client + "/" + info.Version)
+      }
+    }
+
   case "ops":
     ops, err := t.client.Ops()
     if err == nil {
@@ -323,29 +337,45 @@ func (t *Terminal) Exec(line string) {
     for i, p := range parts {
       parts[i] = strings.TrimSpace(p)
     }
-    if len(parts) == 1 && parts[0] != "passive" {
-      println("must specify an argument as well")
+    if len(parts) == 1 {
+      switch parts[0] {
+        case "hub":       println("hub address =", t.client.HubAddress)
+        case "passive":   println("passive =", t.client.Passive)
+        case "nick":      println("nick =", t.client.Nick)
+        case "download":  println("download root =", t.client.DownloadRoot)
+        case "active":    println("active address =", t.client.ClientAddress)
+        case "ulslots":   println("upload slots =", t.client.UL.Cnt)
+        case "dlslots":   println("download slots =", t.client.DL.Cnt)
+      }
+
       break
     }
 
     switch parts[0] {
-    case "hub":       t.client.HubAddress = parts[1]
-    case "passive":   t.client.Passive = true
-    case "nick":      t.client.Nick = parts[1]
-    case "download":  t.client.DownloadRoot = parts[1]
-    case "active":
-      t.client.ClientAddress = parts[1]
-      t.client.Passive = false
+      case "hub":       t.client.HubAddress = parts[1]
+      case "nick":      t.client.Nick = parts[1]
+      case "download":  t.client.DownloadRoot = parts[1]
+      case "active":
+        t.client.ClientAddress = parts[1]
+        t.client.Passive = false
 
-    case "ulslots", "dlslots":
-      s, err := strconv.ParseInt(parts[1], 10, 32)
-      if err != nil {
-        t.err(err)
-      } else if parts[0] == "dlslots" {
-        t.client.DL.Cnt = int(s)
-      } else {
-        t.client.UL.Cnt = int(s)
-      }
+      case "passive":
+        p, err := strconv.ParseBool(parts[1])
+        if err != nil {
+          t.err(err)
+        } else {
+          t.client.Passive = p
+        }
+
+      case "ulslots", "dlslots":
+        s, err := strconv.ParseInt(parts[1], 10, 32)
+        if err != nil {
+          t.err(err)
+        } else if parts[0] == "dlslots" {
+          t.client.DL.Cnt = int(s)
+        } else {
+          t.client.UL.Cnt = int(s)
+        }
     }
 
   case "share":
@@ -368,13 +398,41 @@ func (t *Terminal) Exec(line string) {
     err := t.client.Unshare(parts[1])
     if err != nil { t.err(err) }
 
+  case "status":
+    print("Hub:  ")
+    if t.client.HubAddress == "" {
+      println("<not configured>")
+    } else if t.client.Hub.Name != "" {
+      fmt.Printf("%s (%s)\n", t.client.Hub.Name, t.client.HubAddress)
+      nicks := t.client.Nicks()
+      size := dc.ByteSize(0)
+      for _, n := range nicks {
+        info := t.client.Info(n)
+        if info != nil {
+          size += info.Shared
+        }
+      }
+      fmt.Printf("      nicks: %d, shaing: %v\n", len(nicks), size)
+    } else {
+      fmt.Printf("%s (not connected)\n", t.client.HubAddress)
+    }
+    print("Mode: ")
+    if t.client.Passive {
+      println("passive")
+    } else {
+      println("active")
+      fmt.Printf("      %s (TCP)\n", t.client.ClientAddress)
+      fmt.Printf("      %s (UDP)\n", t.client.ClientAddress)
+    }
+    println("Nick:", t.client.Nick)
+
   default:
     fmt.Println(`syntax: command [arg1 [arg2 ...]]
 commands:
   help            this help
   quit            quit the client
   connect         connect to the hub
-  nicks           show peers connected to the hub
+  nicks [-s]      show peers connected to the hub, -s sorts by share size
   ops             show ops on the hub
 
 browsing:
@@ -392,7 +450,7 @@ configuration:
   set <option> [<value>]
       hub      address      Address of the hub to connect to
       nick     string       Local nick to assume
-      passive               Don't have an active server, default
+      passive  true|false   Don't have an active server, default
       active   address      Local address to bind to for an active server
       download string       Path at which to store downloads
       ulslots  integer      Number of upload slots to have
@@ -449,4 +507,27 @@ func (t *Terminal) Run() {
 func (t *Terminal) quit() {
   t.client.DisconnectHub()
   os.Stdin.Close()
+}
+
+/* Implementation of sort.Interface for a NickList structure */
+
+func (nl *NickList) Len() int {
+  return len(nl.Nicks)
+}
+
+func (nl *NickList) Less(i, j int) bool {
+  if nl.BySize {
+    if nl.Infos[i] == nil {
+      return true
+    } else if nl.Infos[j] == nil {
+      return false
+    }
+    return nl.Infos[i].Shared < nl.Infos[j].Shared
+  }
+  return nl.Nicks[i] < nl.Nicks[j]
+}
+
+func (nl *NickList) Swap(i, j int) {
+  nl.Nicks[i], nl.Nicks[j] = nl.Nicks[j], nl.Nicks[i]
+  nl.Infos[i], nl.Infos[j] = nl.Infos[j], nl.Infos[i]
 }
