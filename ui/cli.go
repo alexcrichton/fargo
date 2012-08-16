@@ -427,6 +427,9 @@ func (t *Terminal) Exec(line string) {
     println("Nick:", t.client.Nick)
 
   default:
+    println("unknown command: ", parts[0])
+
+  case "help":
     fmt.Println(`syntax: command [arg1 [arg2 ...]]
 commands:
   help            this help
