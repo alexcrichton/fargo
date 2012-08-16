@@ -66,7 +66,8 @@ var activeTerm *Terminal
 var completionResults []string
 
 var commands = []string{"browse", "connect", "nicks", "ops", "help", "quit",
-                        "ls", "pwd", "cd", "get", "share", "say", "status"}
+                        "ls", "pwd", "cd", "get", "share", "say", "status",
+                        "sharing"}
 var options = []string{"ulslots", "dlslots", "active", "passive", "hub",
                        "nick", "download"}
 
@@ -426,6 +427,23 @@ func (t *Terminal) Exec(line string) {
     }
     println("Nick:", t.client.Nick)
 
+  case "sharing":
+    info := t.client.SharingStats()
+    total := dc.ByteSize(0)
+    for _, s := range info.Shares { total += s.Size }
+    println("Sharing: ", total)
+
+    fmt.Printf("%40s  %10s    %s\n", "Path", "Name", "Size")
+    for _, share := range info.Shares {
+      fmt.Printf("%40.40s %10s - %v\n", share.Dir, share.Name, share.Size)
+    }
+    if info.ToHash > 0 {
+      fmt.Printf("%d files left to hash\n", info.ToHash)
+      for file, pct := range info.Hashing {
+        fmt.Printf("%40s - %.2f%%\n", file, pct * 100)
+      }
+    }
+
   default:
     println("unknown command: ", parts[0])
 
@@ -437,6 +455,8 @@ commands:
   connect         connect to the hub
   nicks [-s]      show peers connected to the hub, -s sorts by share size
   ops             show ops on the hub
+  status          show statistics about the current hub connection
+  sharing         show statistics about what's being shared locally
 
 browsing:
   browse <nick>   begin browsing a peer's files

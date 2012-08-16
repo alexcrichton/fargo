@@ -12,28 +12,42 @@ import "time"
 import "github.com/alexcrichton/fargo/dc/tth"
 
 type Shares struct {
-  shares    chan Share
+  newShares chan *Share
   delShares chan string
   queries   chan fileQuery
   hashers   chan *File
   cmds      chan command
   idle      chan int
+  stats      chan ShareStats
   waiter    *fileQuery
 
+  /* hashing statistics */
   hashing   int32
   toHash    []*File
   tthMap    map[string]*File
+
+  /* overall statistics */
+  list      *FileListing
+  shares    map[string]*Share
+}
+
+type ShareStats struct {
+  Shares  []Share
+  ToHash  uint
+  Hashing map[string]float32
 }
 
 type command int
 const (
   stop command = iota
   rescan
+  getstats
 )
 
 type Share struct {
-  dir     string
-  name    string
+  Dir     string
+  Name    string
+  Size    ByteSize
 }
 
 type fileQuery struct {
@@ -46,17 +60,35 @@ var MaxWorkers = 4
 var tthPattern = regexp.MustCompile("TTH/(\\w+)")
 
 func NewShares() Shares {
-  return Shares{shares:    make(chan Share),
+  return Shares{newShares: make(chan *Share),
                 delShares: make(chan string),
                 queries:   make(chan fileQuery),
                 hashers:   make(chan *File),
                 cmds:      make(chan command),
                 idle:      make(chan int, 1),
+                stats:     make(chan ShareStats),
                 toHash:    make([]*File, 0),
                 tthMap:    make(map[string]*File)}
 }
 
-func (s *Shares) save(c *Client, list *FileListing, xmlFile *File) {
+func (c *Client) Share(name, dir string) error {
+  return c.shares.add(name, dir)
+}
+
+func (c *Client) Unshare(name string) error {
+  return c.shares.remove(name)
+}
+
+func (c *Client) SharingStats() ShareStats {
+  c.shares.cmds <- getstats
+  return <-c.shares.stats
+}
+
+func (c *Client) SpawnHashers() {
+  go c.shares.hash(c)
+}
+
+func (s *Shares) save(c *Client, xmlFile *File) {
   var err error
   defer func() {
     if err != nil {
@@ -75,7 +107,7 @@ func (s *Shares) save(c *Client, list *FileListing, xmlFile *File) {
   _, err = file.WriteString(xml.Header)
   if err != nil { return }
   enc := xml.NewEncoder(file)
-  err = enc.Encode(list)
+  err = enc.Encode(s.list)
   if err != nil { return }
   file.Close() /* flush contents, above defer will just return error */
 
@@ -91,21 +123,22 @@ func (s *Shares) save(c *Client, list *FileListing, xmlFile *File) {
   xmlFile.Size = ByteSize(info.Size())
   xmlFile.realpath = file.Name()
 
-  s.visit(&list.Directory)
+  s.buildTTHMap(&s.list.Directory)
 }
 
-func (s *Shares) visit(dir *Directory) {
+func (s *Shares) buildTTHMap(dir *Directory) {
   for _, f := range dir.Files {
     s.tthMap[f.TTH] = f
   }
   for i, _ := range dir.Dirs {
-    s.visit(&dir.Dirs[i])
+    s.buildTTHMap(&dir.Dirs[i])
   }
 }
 
 func (s *Shares) hash(c *Client) {
   var err error
-  list := FileListing{Version: "1.0.0", Generator: "fargo", Base: "/"}
+  s.list = &FileListing{Version: "1.0.0", Generator: "fargo", Base: "/"}
+  s.shares = make(map[string]*Share)
   xmlList := File{Name: "files.xml.bz2"}
 
   for i := 0; i < MaxWorkers; i++ {
@@ -113,7 +146,7 @@ func (s *Shares) hash(c *Client) {
   }
 
   recheck := time.After(15 * time.Minute)
-  s.save(c, &list, &xmlList)
+  s.save(c, &xmlList)
 
   for {
     /* Send files to the hashers if we can */
@@ -127,82 +160,91 @@ func (s *Shares) hash(c *Client) {
 
     if s.waiter != nil && atomic.LoadInt32(&s.hashing) == 0 {
       /* Be sure we've updated tth hashes and saved the file list */
-      s.save(c, &list, &xmlList)
+      s.save(c, &xmlList)
       /* consume the idle signal if we can */
       select {
         case <-s.idle:
         default:
       }
-      s.waiter.satisfy(s, &list, &xmlList)
+      s.waiter.satisfy(s, &xmlList)
       s.waiter = nil
     }
 
     /* wait for some activity via hashers or some command */
     select {
-      case share := <-s.shares:
-        if list.Directory.childFile(share.name) != nil ||
-           list.Directory.childDir(share.name) != nil {
+      case share := <-s.newShares:
+        if s.shares[share.Name] != nil {
           c.log("hash error: already sharing directory")
           break
         }
-        share.dir, err = filepath.Abs(share.dir)
+        share.Dir, err = filepath.Abs(share.Dir)
         if err == nil {
-          err = s.sync(c, &list, share)
+          err = s.sync(c, share)
         }
         if err != nil {
           c.log("hash error: " + err.Error())
+        } else {
+          s.shares[share.Name] = share
         }
 
       case share := <-s.delShares:
-        for i := 0; i < len(list.Dirs); i++ {
-          if list.Dirs[i].Name == share {
-            list.removeDir(i)
-            break
-          }
-        }
+        delete(s.shares, share)
+        s.list.removeDirName(share)
 
       case <-recheck:
         recheck = time.After(15 * time.Minute)
-        s.rescanShares(&list, c)
+        s.rescanShares(c)
 
       case cmd := <-s.cmds:
         switch cmd {
           case stop:    return
-          case rescan:  s.rescanShares(&list, c)
+          case rescan:  s.rescanShares(c)
+          case getstats:
+            stats := ShareStats{Hashing: make(map[string]float32),
+                                Shares:  make([]Share, 0)}
+
+            for _, sh := range s.shares {
+              stats.Shares = append(stats.Shares, *sh)
+            }
+            stats.ToHash = uint(atomic.LoadInt32(&s.hashing))
+            s.stats <- stats
         }
 
       case <-s.idle:
         if atomic.LoadInt32(&s.hashing) != 0 { break }
-        s.save(c, &list, &xmlList)
+        s.save(c, &xmlList)
 
       case q := <-s.queries:
         if q.wait {
           s.waiter = &q
         } else {
-          q.satisfy(s, &list, &xmlList)
+          q.satisfy(s, &xmlList)
         }
     }
   }
 }
 
-func (s *Shares) rescanShares(list *FileListing, c *Client) {
+func (s *Shares) rescanShares(c *Client) {
   var err error
-  for i := 0; err == nil && i < len(list.Dirs); i++ {
-    err = s.sync(c, list, Share{name: list.Dirs[i].Name,
-                                  dir: list.Dirs[i].realpath})
+  for _, sh := range s.shares {
+    err = s.sync(c, sh)
+    if err != nil {
+      break
+    }
   }
   if err != nil {
     c.log("rescan error: " + err.Error())
   }
 }
 
-func (s *Shares) sync(c *Client, list *FileListing, sh Share) error {
-  file, err := os.Open(sh.dir)
+func (s *Shares) sync(c *Client, sh *Share) error {
+  file, err := os.Open(sh.Dir)
   if err != nil { return err }
   stat, err := file.Stat()
   if err != nil { return err }
-  list.Directory.version++
-  err = s.file(file, stat, &list.Directory, sh.name)
+  s.list.Directory.version++
+  sh.Size = ByteSize(0)
+  err = s.file(file, stat, &s.list.Directory, sh.Name, sh)
   file.Close()
   if err != nil { return err }
 
@@ -210,7 +252,7 @@ func (s *Shares) sync(c *Client, list *FileListing, sh Share) error {
 }
 
 func (s *Shares) file(f *os.File, info os.FileInfo, d *Directory,
-                      name string) error {
+                      name string, sh *Share) error {
 
   if !info.IsDir() {
     d.removeDirName(name)
@@ -220,6 +262,7 @@ func (s *Shares) file(f *os.File, info os.FileInfo, d *Directory,
       d.Files = append(d.Files, file)
     }
     file.Size = ByteSize(info.Size())
+    sh.Size += file.Size
     if info.ModTime().After(file.mtime) || file.TTH == "" {
       file.mtime = info.ModTime()
       file.TTH = ""
@@ -251,7 +294,7 @@ func (s *Shares) file(f *os.File, info os.FileInfo, d *Directory,
     for _, info := range infos {
       f2, err := os.Open(filepath.Join(f.Name(), info.Name()))
       if err != nil { return err }
-      s.file(f2, info, dir, info.Name())
+      s.file(f2, info, dir, info.Name(), sh)
       f2.Close()
     }
   }
@@ -286,20 +329,20 @@ func (s *Shares) queryWait(path string) *File {
   return <-response
 }
 
-func (q *fileQuery) satisfy(s *Shares, list *FileListing, xmlList *File) {
+func (q *fileQuery) satisfy(s *Shares, xmlList *File) {
   matches := tthPattern.FindStringSubmatch(q.path)
   if len(matches) == 2 && len(matches[1]) > 0 {
     q.response <- s.tthMap[matches[1]]
   } else if q.path == "files.xml.bz2" {
     q.response <- xmlList
   } else {
-    f, _ := list.FindFile(q.path)
+    f, _ := s.list.FindFile(q.path)
     q.response <- f
   }
 }
 
 func (s *Shares) add(name, dir string) error {
-  s.shares <- Share{dir: dir, name: name}
+  s.newShares <- &Share{Dir: dir, Name: name}
   return nil
 }
 
@@ -315,7 +358,7 @@ func (s *Shares) update() {
 func (s *Shares) halt() {
   s.cmds <- stop
   close(s.cmds)
-  close(s.shares)
+  close(s.newShares)
   close(s.queries)
   close(s.delShares)
   close(s.hashers)

@@ -464,18 +464,6 @@ func (c *Client) Download(nick string, pathname string) error {
   })
 }
 
-func (c *Client) Share(name, dir string) error {
-  return c.shares.add(name, dir)
-}
-
-func (c *Client) Unshare(name string) error {
-  return c.shares.remove(name)
-}
-
-func (c *Client) SpawnHashers() {
-  go c.shares.hash(c)
-}
-
 func (c *Client) Stop() {
   c.DisconnectHub()
   c.shares.halt()
