@@ -431,17 +431,18 @@ func (t *Terminal) Exec(line string) {
     info := t.client.SharingStats()
     total := dc.ByteSize(0)
     for _, s := range info.Shares { total += s.Size }
-    println("Sharing: ", total)
+    fmt.Printf("Sharing: %v\n", total)
 
     fmt.Printf("%40s  %10s    %s\n", "Path", "Name", "Size")
     for _, share := range info.Shares {
       fmt.Printf("%40.40s %10s - %v\n", share.Dir, share.Name, share.Size)
     }
     if info.ToHash > 0 {
-      fmt.Printf("%d files left to hash\n", info.ToHash)
-      for file, pct := range info.Hashing {
-        fmt.Printf("%40s - %.2f%%\n", file, pct * 100)
-      }
+      fmt.Printf("%v left to hash over %d files\n", info.ToHashSize,
+                 info.ToHash)
+    }
+    for file, pct := range info.Hashing {
+      fmt.Printf("%.2f%% - %40s\n", pct * 100, file)
     }
 
   default:

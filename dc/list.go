@@ -39,6 +39,7 @@ type File struct {
   mtime    time.Time
   version  uint64
   realpath string
+  hashProgress uint64
 }
 
 type VisitFunc func(*File, string) error

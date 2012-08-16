@@ -28,7 +28,7 @@
 #define TTH_BUFSIZE 4096
 #define MAX_GRANULARITY (64 * 1024)
 
-char *fargo_tth(int fd, uint64_t size) {
+char *fargo_tth(int fd, uint64_t size, uint64_t *progress) {
   tth_ctx_t tth;
   char buf[TTH_BUFSIZE];
   char *real = NULL;
@@ -49,6 +49,9 @@ char *fargo_tth(int fd, uint64_t size) {
 
   while ((r = read(fd, buf, TTH_BUFSIZE)) > 0) {
     rd += r;
+    if (progress) {
+      (*progress) += r;
+    }
     // file has been modified. time to back out
     if (rd > size) {
       return NULL;

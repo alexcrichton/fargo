@@ -16,7 +16,7 @@ func hash(t *testing.T, data string) string {
   _, err = file.Seek(0, os.SEEK_SET)
   if err != nil { t.Fatal(err) }
 
-  tth, err := Hash(file, uint64(len(data)))
+  tth, err := Hash(file, uint64(len(data)), nil)
   if err != nil { t.Fatal(err) }
   return tth
 }

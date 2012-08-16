@@ -6,7 +6,6 @@ import "os"
 import "os/exec"
 import "path/filepath"
 import "regexp"
-import "sync/atomic"
 import "time"
 
 import "github.com/alexcrichton/fargo/dc/tth"
@@ -17,13 +16,13 @@ type Shares struct {
   queries   chan fileQuery
   hashers   chan *File
   cmds      chan command
-  idle      chan int
-  stats      chan ShareStats
+  idle      chan string
+  stats     chan ShareStats
   waiter    *fileQuery
 
   /* hashing statistics */
-  hashing   int32
   toHash    []*File
+  hashing   map[string]*File
   tthMap    map[string]*File
 
   /* overall statistics */
@@ -33,7 +32,8 @@ type Shares struct {
 
 type ShareStats struct {
   Shares  []Share
-  ToHash  uint
+  ToHash  int
+  ToHashSize ByteSize
   Hashing map[string]float32
 }
 
@@ -56,7 +56,7 @@ type fileQuery struct {
   wait      bool
 }
 
-var MaxWorkers = 4
+var MaxWorkers = 1
 var tthPattern = regexp.MustCompile("TTH/(\\w+)")
 
 func NewShares() Shares {
@@ -65,7 +65,7 @@ func NewShares() Shares {
                 queries:   make(chan fileQuery),
                 hashers:   make(chan *File),
                 cmds:      make(chan command),
-                idle:      make(chan int, 1),
+                idle:      make(chan string, MaxWorkers),
                 stats:     make(chan ShareStats),
                 toHash:    make([]*File, 0),
                 tthMap:    make(map[string]*File)}
@@ -139,6 +139,7 @@ func (s *Shares) hash(c *Client) {
   var err error
   s.list = &FileListing{Version: "1.0.0", Generator: "fargo", Base: "/"}
   s.shares = make(map[string]*Share)
+  s.hashing = make(map[string]*File)
   xmlList := File{Name: "files.xml.bz2"}
 
   for i := 0; i < MaxWorkers; i++ {
@@ -153,19 +154,17 @@ func (s *Shares) hash(c *Client) {
     done := false
     for !done && len(s.toHash) > 0 {
       select {
-        case s.hashers <- s.toHash[0]:  s.toHash = s.toHash[1:]
-        default:                        done = true
+        case s.hashers <- s.toHash[0]:
+          s.hashing[s.toHash[0].realpath] = s.toHash[0]
+          s.toHash = s.toHash[1:]
+        default:
+          done = true
       }
     }
 
-    if s.waiter != nil && atomic.LoadInt32(&s.hashing) == 0 {
+    if s.waiter != nil {
       /* Be sure we've updated tth hashes and saved the file list */
       s.save(c, &xmlList)
-      /* consume the idle signal if we can */
-      select {
-        case <-s.idle:
-        default:
-      }
       s.waiter.satisfy(s, &xmlList)
       s.waiter = nil
     }
@@ -206,13 +205,23 @@ func (s *Shares) hash(c *Client) {
             for _, sh := range s.shares {
               stats.Shares = append(stats.Shares, *sh)
             }
-            stats.ToHash = uint(atomic.LoadInt32(&s.hashing))
+            stats.ToHash = len(s.toHash)
+            for _, file := range(s.toHash) {
+              stats.ToHashSize += file.Size
+            }
+            for file, info := range(s.hashing) {
+              stats.Hashing[file] = float32(info.hashProgress) /
+                                    float32(info.Size)
+            }
             s.stats <- stats
         }
 
-      case <-s.idle:
-        if atomic.LoadInt32(&s.hashing) != 0 { break }
-        s.save(c, &xmlList)
+      case path := <-s.idle:
+        delete(s.hashing, path)
+        if len(s.hashing) == 0 && len(s.toHash) == 0 {
+          s.save(c, &xmlList)
+        }
+        /* Next iteration will queue up another file to hash */
 
       case q := <-s.queries:
         if q.wait {
@@ -266,7 +275,6 @@ func (s *Shares) file(f *os.File, info os.FileInfo, d *Directory,
     if info.ModTime().After(file.mtime) || file.TTH == "" {
       file.mtime = info.ModTime()
       file.TTH = ""
-      atomic.AddInt32(&s.hashing, 1)
       s.toHash = append(s.toHash, file)
     }
     file.version = d.version
@@ -369,19 +377,15 @@ func (s *Shares) worker() {
     file, err := os.Open(info.realpath)
     hash := ""
     if err == nil {
-      hash, err = tth.Hash(file, uint64(info.Size))
+      info.hashProgress = 0
+      hash, err = tth.Hash(file, uint64(info.Size), &info.hashProgress)
+      file.Close()
     }
     if err == nil {
       info.TTH = hash
     } else {
       info.TTH = "fail"
     }
-    atomic.AddInt32(&s.hashing, -1)
-    /* Flag that a hasher is now idle, if we can't flag the someone else
-     * already has and we can just go about our business as usual */
-    select {
-      case s.idle <- 1:
-      default:
-    }
+    s.idle <- info.realpath
   }
 }
