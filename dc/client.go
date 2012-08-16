@@ -156,6 +156,8 @@ func (c *Client) run() {
       log.Fatal("Couldn't spawn active server at '" +
                 c.ClientAddress + "': ", err)
     }
+    /* if specified via ':xxx' then resolve host here */
+    c.ClientAddress = ln.Addr().String()
     go func() {
       for {
         conn, err := ln.Accept()
@@ -178,6 +180,7 @@ func (c *Client) run() {
     c.log("error connecting: " + err.Error())
     return
   }
+  c.HubAddress = conn.RemoteAddr().String()
   if c.Hub.conn != nil {
     panic("already have Hub connection")
   }
