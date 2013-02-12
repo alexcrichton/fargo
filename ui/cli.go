@@ -25,8 +25,8 @@ package ui
  * figuring out what channels are as well.
  */
 
-// #cgo darwin LDFLAGS: -lreadline.6 -L/usr/local/Cellar/readline/6.2.2/lib
-// #cgo darwin CFLAGS: -I/usr/local/Cellar/readline/6.2.2/include
+// #cgo darwin LDFLAGS: -lreadline.6 -L/usr/local/Cellar/readline/6.2.4/lib
+// #cgo darwin CFLAGS: -I/usr/local/Cellar/readline/6.2.4/include
 // #cgo linux LDFLAGS: -lreadline
 //
 // #include <stdlib.h>
