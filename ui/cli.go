@@ -241,13 +241,13 @@ func (t *Terminal) Exec(line string) {
     list.BySize = len(parts) == 2 && parts[1] == "-s"
     sort.Sort(&list)
 
-    fmt.Printf("%15s %7s %15s\n", "nick", "size", "client")
+    fmt.Printf("%30s %10s %15s\n", "nick", "size", "client")
     for i, n := range list.Nicks {
       info := list.Infos[i]
       if info == nil {
-        fmt.Printf("%15s %7s %15s\n", n, "--", "--")
+        fmt.Printf("%30s %10s %15s\n", n, "--", "--")
       } else {
-        fmt.Printf("%15s %7v %15s\n", n, info.Shared,
+        fmt.Printf("%30s %10v %15s\n", n, info.Shared,
                    info.Client + "/" + info.Version)
       }
     }
