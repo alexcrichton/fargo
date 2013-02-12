@@ -72,8 +72,8 @@ type method struct {
 }
 
 var notConnected = errors.New("not connected to the Hub")
-var infoPattern = regexp.MustCompile(`\$ALL (\S*) (.*)\$ \$(\S*)` + "\001?" +
-                                     `\$(\S*)\$(\S*)\$`)
+var infoPattern = regexp.MustCompile(`\$ALL (\S*) (.*)\$ \$(.*)` + "\001?" +
+                                     `\$(.*)\$(.*)\$`)
 var tagPattern = regexp.MustCompile(`(.*)<(.*) V:(.*),M:(.),H:\d+/\d+/\d+` +
                                     `,S:(\d+).*>`)
 
