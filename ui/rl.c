@@ -60,6 +60,7 @@ int fargo_select_stdin() {
  */
 void fargo_clear_rl() {
     int old_end = rl_end;
+    extern char *rl_display_prompt;
     char *old_prompt = rl_display_prompt;
 
     rl_end = 0;
