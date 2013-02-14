@@ -1,2 +1,5 @@
 language: go
-script: "go test -v ./dc/..."
+install:
+  - go get -v
+script:
+  - go test -v ./dc/...
